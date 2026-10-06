@@ -1,0 +1,16 @@
+[package]
+name = "grid-spike"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Spike de malla virtualizada sobre GPU: mide si el pipeline mmap → decodificar → atlas → dibujar aguanta 100.000 miniaturas."
+
+[dependencies]
+grimorio-core = { path = "../../crates/grimorio-core" }
+wgpu = "30"
+winit = "0.30"
+pollster = "1"
+image.workspace = true
+bytemuck = { version = "1", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true

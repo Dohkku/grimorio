@@ -1,0 +1,23 @@
+[package]
+name = "grimorio-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Núcleo de Grimorio: almacén, índice, importación y miniaturas. Sin ninguna dependencia gráfica."
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+blake3.workspace = true
+image.workspace = true
+libc = "0.2"
+rayon.workspace = true
+memmap2.workspace = true
+thiserror.workspace = true
+# Ya venía dentro con el PNG de `image`; se nombra para inflar los zip de 3MF.
+miniz_oxide = "0.8"
+
+[dev-dependencies]
+tempfile = "3"

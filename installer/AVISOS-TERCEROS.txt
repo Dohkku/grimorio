@@ -1,0 +1,72 @@
+GRIMORIO - AVISOS DE COMPONENTES DE TERCEROS
+=============================================
+
+Grimorio es software libre bajo la AGPL-3.0 (ver LICENSE.md). Para funcionar usa
+componentes de terceros con licencias propias, que se enumeran aquí. Los
+textos completos de las licencias LGPL y GPL van en la carpeta "licencias".
+
+
+1. Qt 6 (The Qt Company Ltd. y colaboradores)
+---------------------------------------------
+Licencia: GNU Lesser General Public License v3 (LGPL-3.0).
+Texto: licencias/LGPL-3.0.txt (y licencias/GPL-3.0.txt, al que remite).
+
+Grimorio usa Qt SIN MODIFICAR y enlazado de forma DINÁMICA: las bibliotecas
+de Qt son los archivos Qt6*.dll y las carpetas de complementos (platforms,
+imageformats, qml, multimedia...) que van junto a grimorio.exe. Cualquiera
+puede sustituirlas por otra compilación compatible de la misma versión de Qt,
+por ejemplo una que haya modificado él mismo: basta con reemplazar los
+archivos en la carpeta de instalación.
+
+Código fuente de Qt: https://download.qt.io/official_releases/qt/
+(la versión exacta es la de los archivos Qt6*.dll, visible en sus
+propiedades, y también en Grimorio, en Ajustes > Acerca de).
+
+
+2. FFmpeg (a través de Qt Multimedia)
+-------------------------------------
+Licencia: LGPL-2.1 o posterior. Las bibliotecas av*.dll y sw*.dll que
+acompañan a Qt Multimedia son las que distribuye The Qt Company, compiladas
+sin componentes GPL. Código fuente: https://ffmpeg.org/download.html
+Enlazado dinámico; se pueden sustituir igual que las de Qt.
+
+
+3. Mesa llvmpipe (opengl32sw.dll)
+---------------------------------
+OpenGL por software, para equipos sin controlador de OpenGL. Licencia MIT.
+Origen: https://www.mesa3d.org/ (compilación distribuida por The Qt Company).
+
+
+4. Microsoft Visual C++ Runtime (vcruntime140*.dll, msvcp140*.dll)
+-------------------------------------------------------------------
+Bibliotecas redistribuibles de Microsoft Visual Studio, incluidas según los
+términos de redistribución de Microsoft.
+
+
+5. Código Rust compilado dentro de Grimorio
+-------------------------------------------
+El núcleo de Grimorio está escrito en Rust y lleva dentro, enlazadas de forma
+estática, estas bibliotecas de licencia permisiva:
+
+  - SQLite (dominio público), a través de rusqlite (MIT)
+  - serde, serde_json (MIT o Apache-2.0)
+  - image (MIT o Apache-2.0)
+  - blake3 (CC0-1.0 o Apache-2.0)
+  - rayon (MIT o Apache-2.0)
+  - memmap2 (MIT o Apache-2.0)
+  - thiserror (MIT o Apache-2.0)
+  - miniz_oxide (MIT, Apache-2.0 o Zlib)
+  - libc (MIT o Apache-2.0)
+  - clap (MIT o Apache-2.0), solo en grim.exe
+  - la biblioteca estándar de Rust (MIT o Apache-2.0)
+
+y sus dependencias, todas con licencias MIT, Apache-2.0, BSD, Zlib o
+similares. La lista completa sale de `cargo tree` sobre el código de esta
+versión.
+
+
+6. Programas externos opcionales
+--------------------------------
+Grimorio puede usar, si están instalados por separado, ffmpeg, pdftoppm
+(Poppler), ImageMagick, Ghostscript y Blender. No se distribuyen con Grimorio:
+se llaman como programas aparte y cada uno tiene su propia licencia.

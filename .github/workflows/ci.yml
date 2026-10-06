@@ -1,0 +1,111 @@
+# Integración continua: en cada push y en cada pull request se compila y se
+# prueba en Linux y en Windows.
+#
+# Linux es donde se desarrolla, y la prueba completa (núcleo, aplicación,
+# qmllint) vive allí. Windows comprueba que todo compila con MSVC, que las
+# pruebas del núcleo pasan con su sistema de archivos y que la aplicación
+# enlaza y arranca sus pruebas sin pantalla.
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"] # las etiquetas las lleva release.yml
+  pull_request:
+
+# Un push nuevo a la misma rama cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Los mismos paquetes que pide app/README.md («Módulos que hacen falta
+      # en Ubuntu 24.04»), más qmllint (dev-tools), el complemento de
+      # plataforma sin pantalla para la prueba de arrastre y multimedia para
+      # revisar Reproductor.qml.
+      - name: Qt y herramientas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ libgl-dev \
+            qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools qt6-qpa-plugins \
+            qml6-module-qtqml qml6-module-qtqml-workerscript \
+            qml6-module-qtqml-models qml6-module-qtquick \
+            qml6-module-qtquick-window qml6-module-qtquick-templates \
+            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-shapes qml6-module-qtmultimedia
+
+      # La versión de Rust la fija rust-toolchain.toml; rustup la instala
+      # sola la primera vez que se llama a cargo.
+      - name: Rust
+        run: |
+          rustup toolchain install || rustup show
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Pruebas del núcleo, la línea de órdenes y el puente
+        run: cargo test --release
+
+      - name: Compilar la aplicación
+        run: |
+          cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build app/build -j "$(nproc)"
+
+      - name: Pruebas de la aplicación
+        run: ctest --test-dir app/build --output-on-failure
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust
+        run: |
+          rustup toolchain install || rustup show
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Qt para MSVC, la misma versión que se publica (release.yml). Solo
+      # hace falta un módulo aparte: qtmultimedia, que importa Reproductor.qml.
+      # Widgets (diálogos de archivos), Quick, Qml, Shapes y OpenGL vienen en
+      # la base.
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtmultimedia
+          cache: true
+
+      # cl.exe, link.exe, rc.exe y Ninja en el PATH.
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Pruebas del núcleo, la línea de órdenes y el puente
+        run: cargo test --release
+
+      - name: Compilar la aplicación
+        run: |
+          cmake -S app -B app/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build app/build
+
+      # qmllint se queda para Linux: el de Qt 6.8 avisa de cosas distintas
+      # que el de la 6.4 con la que se desarrolla, y la revisión del QML no
+      # depende del sistema. Las demás pruebas sí corren, sin pantalla.
+      - name: Pruebas de la aplicación
+        run: ctest --test-dir app/build --output-on-failure -E "^qml_"

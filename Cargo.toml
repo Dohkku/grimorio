@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/grimorio-core",
+    "crates/grimorio-cli",
+    "spikes/grid-wgpu",
+    "app/puente",
+]
+# Los spikes no entran en `cargo build`/`cargo test` normales: uno compila wgpu
+# y tarda, el otro solo tiene sentido enlazado desde CMake.
+# El puente sí entra: es parte del producto, no un experimento.
+default-members = ["crates/grimorio-core", "crates/grimorio-cli", "app/puente"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# 1.89 por `File::try_lock` (el candado del pack de miniaturas), que antes no
+# existía en la biblioteca estándar. La versión exacta con la que se compila
+# está fijada en `rust-toolchain.toml`.
+rust-version = "1.89"
+license = "LicenseRef-Grimorio-Proprietary"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+blake3 = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp"] }
+rayon = "1"
+memmap2 = "0.9"
+thiserror = "2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+panic = "abort"
+
+[profile.bench-fast]
+inherits = "release"
+debug = true
+panic = "unwind"
