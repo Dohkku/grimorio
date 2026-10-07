@@ -1,0 +1,6 @@
+target/
+.bench/
+*.grimorio/
+app/build/
+__pycache__/
+dist/

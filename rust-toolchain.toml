@@ -1,0 +1,13 @@
+# La versión de Rust con la que se compila Grimorio, la misma en todas partes.
+#
+# Fijada a una versión concreta y no a «stable» a secas: así la integración
+# continua de Linux, la de Windows y el portátil compilan con el mismo
+# compilador, y un aviso nuevo de clippy o un cambio de comportamiento llega
+# cuando se sube este número a propósito, no un martes cualquiera porque salió
+# una versión. rustup la descarga sola la primera vez.
+#
+# El mínimo que aguanta el código está en `rust-version` del Cargo.toml raíz.
+[toolchain]
+channel = "1.93.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

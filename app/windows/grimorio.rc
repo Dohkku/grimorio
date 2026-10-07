@@ -1,0 +1,49 @@
+// Recursos del ejecutable de Windows: el icono y la ficha de versión.
+//
+// El icono es el que enseña el Explorador para `grimorio.exe` y el que usan
+// los accesos directos del instalador; el de la ventana lo pone Qt al arrancar
+// desde los PNG de dentro. La ficha es lo que sale en «Propiedades > Detalles».
+//
+// Los números de versión llegan en `version_rc.h`, que escribe CMake a partir
+// de GRIMORIO_VERSION; al publicar, esa versión sale de la etiqueta. Así no
+// hay un segundo sitio donde subirla a mano.
+//
+// Los valores de la ficha van en ASCII a propósito, aunque el archivo se
+// declare UTF-8: según la versión del compilador de recursos, una tilde podía
+// acabar rota en «Propiedades», y no merece la pena por un guion.
+#pragma code_page(65001)
+
+#include <winver.h>
+#include "version_rc.h"
+
+IDI_ICON1 ICON "../icono/grimorio.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VERSION_MAYOR, VERSION_MENOR, VERSION_PARCHE, 0
+PRODUCTVERSION  VERSION_MAYOR, VERSION_MENOR, VERSION_PARCHE, 0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        // 0C0A es español (alfabetización internacional); 04B0, Unicode.
+        BLOCK "0C0A04B0"
+        BEGIN
+            VALUE "CompanyName",      "Frederick Andrade"
+            VALUE "FileDescription",  "Grimorio - biblioteca visual de referencias"
+            VALUE "FileVersion",      VERSION_TEXTO
+            VALUE "InternalName",     "grimorio"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Frederick Andrade Perez"
+            VALUE "OriginalFilename", "grimorio.exe"
+            VALUE "ProductName",      "Grimorio"
+            VALUE "ProductVersion",   VERSION_TEXTO
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0C0A, 1200
+    END
+END

@@ -1,0 +1,18 @@
+[package]
+name = "grimorio-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CLI de Grimorio: el núcleo entero sin abrir una ventana."
+
+[[bin]]
+name = "grim"
+path = "src/main.rs"
+
+[dependencies]
+grimorio-core = { path = "../grimorio-core" }
+clap = { version = "4", features = ["derive", "wrap_help"] }
+image.workspace = true
+serde_json.workspace = true
+rayon.workspace = true

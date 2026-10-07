@@ -1,0 +1,249 @@
+# Publicar una versión: al empujar una etiqueta `vX.Y.Z` se compila en Windows
+# y en Linux, se empaqueta y se crea la release de GitHub con los archivos.
+#
+#   git tag v0.1.0 && git push --tags
+#
+# Sale:
+#   Grimorio-X.Y.Z-windows-x64-instalador.exe   instalador (Inno Setup)
+#   Grimorio-X.Y.Z-windows-x64-portable.zip     la misma carpeta, sin instalar
+#   Grimorio-X.Y.Z-linux-x64.tar.gz             binarios; Qt lo pone el sistema
+#
+# La versión sale de la etiqueta y se escribe en el Cargo.toml (grim --version),
+# en CMake (ajustes, «acerca de», propiedades del .exe) y en el instalador.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # crear la release y subir los archivos
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    # Lo que compila va en PowerShell, que es lo de por defecto. Lo que solo
+    # mueve archivos va en bash, más cómodo; pero cargo NUNCA en bash: el bash
+    # de Git pone delante su `link.exe` (el de coreutils, que hace enlaces de
+    # archivos) y Rust lo confundía con el enlazador de Visual Studio.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versión de la etiqueta
+        id: version
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          # Lo numérico del principio (0.2.0 de 0.2.0-beta.1), que es lo único
+          # que admiten la ficha del .exe y la versión de archivo del instalador.
+          n="$(printf '%s' "$v" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')"
+          if [ -z "$n" ]; then echo "la etiqueta tiene que ser vX.Y.Z: $GITHUB_REF_NAME"; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "numerica=$n" >> "$GITHUB_OUTPUT"
+          # La primera línea `version = ` del Cargo.toml raíz es la del
+          # [workspace.package]: de ahí la toman el núcleo y grim.
+          sed -i "0,/^version = \".*\"/s//version = \"$v\"/" Cargo.toml
+          grep -m1 '^version' Cargo.toml
+
+      - name: Rust
+        run: |
+          rustup toolchain install || rustup show
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtmultimedia
+          cache: true
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Compilar
+        run: |
+          cargo build --release -p grimorio-cli
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake -S app -B app/build -G Ninja -DCMAKE_BUILD_TYPE=Release "-DGRIMORIO_VERSION=${{ steps.version.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build app/build
+
+      - name: Pruebas
+        run: |
+          cargo test --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir app/build --output-on-failure -E "^qml_"
+
+      # La carpeta que se instala, tal cual. windeployqt copia al lado del
+      # .exe las DLL de Qt, los complementos y los módulos de QML que importan
+      # los .qml (QtMultimedia con su FFmpeg, Shapes...). También deja
+      # opengl32sw.dll, el OpenGL por software al que Qt cae en equipos sin
+      # controlador de OpenGL: Grimorio pinta siempre por OpenGL (main.cpp).
+      #
+      # El runtime de Visual C++ se copia en la carpeta en vez de meter su
+      # instalador (que es lo que hace `--compiler-runtime` con MSVC): así
+      # funciona igual el .zip portable, y la instalación «solo para mí» no
+      # tiene que pedir permisos de administrador para instalarlo aparte.
+      - name: Preparar la carpeta
+        shell: bash
+        run: |
+          set -e
+          d=dist/Grimorio
+          mkdir -p "$d/licencias"
+          cp app/build/grimorio.exe target/release/grim.exe "$d/"
+          windeployqt --release --qmldir app/qml --no-translations "$d/grimorio.exe"
+          if [ ! -f "$d/opengl32sw.dll" ]; then
+            cp "$QT_ROOT_DIR/bin/opengl32sw.dll" "$d/"
+          fi
+          # El runtime de Visual C++ cambia de nombre con cada Visual Studio
+          # (VC143, VC145…): se coge el que haya en vez de fijarlo.
+          crt="$(ls -d "$(cygpath -u "$VCToolsRedistDir")"/x64/Microsoft.VC*.CRT | sort | tail -1)"
+          echo "runtime: $crt"
+          cp "$crt"/*.dll "$d/"
+          cp LICENSE.md installer/AVISOS-TERCEROS.txt "$d/"
+          cp installer/licencias/*.txt "$d/licencias/"
+          ls -la "$d"
+
+      # Que lo que se publica arranca: una biblioteca vacía, una captura de la
+      # ventana y salir. Si falta una DLL o un módulo de QML, se ve aquí y no
+      # en el equipo de quien lo descarga. Va con la plataforma normal de
+      # Windows y no con `offscreen`, que allí no tiene OpenGL; la máquina de
+      # GitHub no tiene tarjeta, así que de paso prueba opengl32sw.dll.
+      #
+      # De momento solo avisa (continue-on-error): hasta ver en la primera
+      # publicación que el escritorio de la máquina de GitHub lo deja
+      # arrancar, un fallo de ese entorno no debe parar la release.
+      - name: Probar la carpeta
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -e
+          # Sin el Qt de compilar en el PATH: las DLL tienen que salir de la
+          # carpeta, como en el equipo de quien lo instale.
+          PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vi '/qt' | paste -sd: -)"
+          ./dist/Grimorio/grim.exe init "$RUNNER_TEMP/prueba.grimorio"
+          timeout 120 ./dist/Grimorio/grimorio.exe \
+            "$RUNNER_TEMP/prueba.grimorio" --captura "$RUNNER_TEMP/arranque.png"
+          test -s "$RUNNER_TEMP/arranque.png"
+
+      - name: Captura del arranque
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arranque-windows
+          path: ${{ runner.temp }}/arranque.png
+          if-no-files-found: ignore
+
+      - name: Inno Setup
+        shell: bash
+        run: |
+          if ! command -v iscc >/dev/null && [ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]; then
+            choco install innosetup -y --no-progress
+          fi
+
+      - name: Instalador y portable
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          $n = "${{ steps.version.outputs.numerica }}"
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DVersion=$v" "/DVersionNumerica=$n" "/DOrigen=$PWD\dist\Grimorio" "/DSalida=$PWD\dist" installer\windows\grimorio.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path dist\Grimorio -DestinationPath "dist\Grimorio-$v-windows-x64-portable.zip"
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versión de la etiqueta
+        id: version
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          sed -i "0,/^version = \".*\"/s//version = \"$v\"/" Cargo.toml
+
+      - name: Qt y herramientas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ libgl-dev \
+            qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools qt6-qpa-plugins \
+            qml6-module-qtqml qml6-module-qtqml-workerscript \
+            qml6-module-qtqml-models qml6-module-qtquick \
+            qml6-module-qtquick-window qml6-module-qtquick-templates \
+            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            qml6-module-qtquick-shapes qml6-module-qtmultimedia
+
+      - name: Rust
+        run: |
+          rustup toolchain install || rustup show
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Compilar y probar
+        run: |
+          cargo test --release
+          cargo build --release -p grimorio-cli
+          cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release \
+                -DGRIMORIO_VERSION="${{ steps.version.outputs.version }}"
+          cmake --build app/build -j "$(nproc)"
+          ctest --test-dir app/build --output-on-failure
+
+      # De momento un .tar.gz con los dos binarios: Qt no va dentro, lo pone
+      # el sistema (los paquetes de app/README.md). Un AppImage con Qt dentro
+      # queda para más adelante; ver docs/WINDOWS.md, «Linux».
+      - name: Empaquetar
+        run: |
+          v="${{ steps.version.outputs.version }}"
+          d="dist/Grimorio-$v-linux-x64"
+          mkdir -p "$d/icono"
+          cp app/build/grimorio target/release/grim LICENSE.md README.md "$d/"
+          cp app/icono/grimorio.svg app/icono/grimorio-256.png "$d/icono/"
+          strip "$d/grimorio" "$d/grim"
+          tar -C dist -czf "dist/Grimorio-$v-linux-x64.tar.gz" "Grimorio-$v-linux-x64"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publicar:
+    needs: [windows, linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Grimorio ${{ github.ref_name }}
+          # Las etiquetas con guion (v0.2.0-beta.1) salen como versión previa.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.tar.gz
