@@ -52,6 +52,48 @@ Rectangle {
         anchors.rightMargin: tema.hueco
         spacing: tema.hueco
 
+        // La versión nueva, si la hay. Se queda puesta (no se borra a los
+        // seis segundos como los avisos) hasta que se descarga o se ignora:
+        // es la única forma que tiene Grimorio de decirlo. Ver novedades.h.
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: novedades.nueva.length > 0
+            spacing: tema.hueco * 0.5
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("versión %1 disponible").arg(novedades.nueva)
+                color: tema.seleccion
+                font.pixelSize: tema.fuente * 0.92
+                font.underline: nuevaRaton.containsMouse
+
+                MouseArea {
+                    id: nuevaRaton
+                    anchors.fill: parent
+                    anchors.margins: -tema.hueco * 0.3
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: novedades.abrir()
+                }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "×"
+                color: ignorarRaton.containsMouse ? tema.texto : tema.textoTenue
+                font.pixelSize: tema.fuente
+
+                MouseArea {
+                    id: ignorarRaton
+                    anchors.fill: parent
+                    anchors.margins: -tema.hueco * 0.3
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: novedades.ignorar()
+                }
+            }
+        }
+
         // Deshacer, con el nombre de lo que va a deshacer. Va aquí y no arriba
         // porque esta barra ya cuenta lo que acaba de pasar, y porque un botón
         // que dice «deshacer poner 4 estrellas» enseña el atajo mejor que
@@ -135,6 +177,11 @@ Rectangle {
 
     Connections {
         target: exportar
+        function onAviso(mensaje, error) { estado.avisar(mensaje, error) }
+    }
+
+    Connections {
+        target: novedades
         function onAviso(mensaje, error) { estado.avisar(mensaje, error) }
     }
 

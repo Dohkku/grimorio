@@ -16,6 +16,7 @@
 #include "exportar.h"
 #include "fotogramas.h"
 #include "modelo.h"
+#include "novedades.h"
 #include "nucleo.h"
 #include "onda.h"
 #include "pixeles.h"
@@ -87,7 +88,7 @@ const char *AYUDA =
     "  --bench SEGUNDOS    recorrido automático y estadísticas de fotograma\n"
     "  --captura ARCHIVO   guarda un fotograma en PNG y sale\n"
     "  --visor N           abre el visor N veces y mide cuánto tarda en verse\n"
-    "  --lote N            etiqueta N elementos mientras la malla se desplaza\n"
+    "  --lote N            etiqueta N elementos mientras la galería se desplaza\n"
     "  --guion PREFIJO     recorre la interfaz sola y captura cada paso\n"
     "  --filtro TEXTO      arranca con el buscador puesto\n"
     "  --ver               abre el visor con el primer elemento (con --filtro\n"
@@ -387,6 +388,14 @@ int main(int argc, char **argv)
     Bibliotecas bibliotecas(args.lib, heredados);
     Exportar exportar;
     Vigilancia vigilancia(&nucleo);
+    // Las pasadas automáticas no preguntan por versiones: no tienen que
+    // depender de la red ni sacar un aviso en lo que capturan.
+    // GRIMORIO_SIN_RED es para lo que arranca el programa normal desde fuera,
+    // como el recorrido de pruebas.
+    const bool automatica = args.bench >= 0 || !args.captura.isEmpty() || args.visor > 0
+                            || args.lote > 0 || !args.guion.isEmpty();
+    Novedades novedades(&ajustes, QStringLiteral(GRIMORIO_VERSION),
+                        !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
 
     // El visor 3D pinta con OpenGL dentro de la escena de Qt Quick, y eso solo
     // funciona si la escena entera va por OpenGL. En Linux ya es lo que elige
@@ -416,6 +425,7 @@ int main(int argc, char **argv)
     ctx->setContextProperty(QStringLiteral("bibliotecas"), &bibliotecas);
     ctx->setContextProperty(QStringLiteral("exportar"), &exportar);
     ctx->setContextProperty(QStringLiteral("vigilancia"), &vigilancia);
+    ctx->setContextProperty(QStringLiteral("novedades"), &novedades);
     ctx->setContextProperty(QStringLiteral("banco"), &banco);
     ctx->setContextProperty(QStringLiteral("app"), &puente);
     ctx->setContextProperty(QStringLiteral("versionGrimorio"), QStringLiteral(GRIMORIO_VERSION));

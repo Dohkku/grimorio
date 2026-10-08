@@ -147,6 +147,14 @@ La versión sale de la etiqueta (sin la `v`) y se escribe en el `Cargo.toml`, en
 CMake (ajustes, «acerca de» y las propiedades del `.exe`) y en el instalador.
 Una etiqueta con guion (`v0.2.0-beta.1`) sale como versión previa.
 
+Cuando la release está publicada y los archivos se descargan, falta **avisar a
+quien ya lo tiene instalado**: en la web (`grimorio-web/public/version.json`)
+se cambia `version` por la nueva y se despliega, junto con las URLs fijas de
+`/descargar/` del `vercel.json`. Los Grimorio instalados preguntan por ese
+archivo una vez al día y, si es más nueva que la suya, lo dicen en la barra de
+abajo (ver `app/src/novedades.h`). Hacerlo antes de tiempo manda a la gente a
+una descarga que aún no existe. Las versiones previas no se ponen ahí.
+
 En Windows, el flujo compila, pasa las pruebas, prepara la carpeta con
 `windeployqt` (DLL de Qt, complementos, módulos de QML, `opengl32sw.dll`),
 copia el runtime de Visual C++ dentro de la carpeta en vez de meter su

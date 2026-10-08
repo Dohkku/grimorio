@@ -40,6 +40,9 @@ class Ajustes : public QObject {
     Q_PROPERTY(qreal escala READ escala WRITE setEscala NOTIFY cambio)
     /// El tema de los que vienen dentro: "oscuro" o "papel".
     Q_PROPERTY(QString tema READ tema WRITE setTema NOTIFY cambio)
+    /// Preguntar a la web, una vez al día, si hay una versión nueva. Ver
+    /// `novedades.h`.
+    Q_PROPERTY(bool buscarVersiones READ buscarVersiones WRITE setBuscarVersiones NOTIFY cambio)
 
 public:
     explicit Ajustes(QObject *padre = nullptr);
@@ -53,6 +56,7 @@ public:
     int vista() const { return m_vista; }
     qreal escala() const { return m_escala; }
     QString tema() const { return m_tema; }
+    bool buscarVersiones() const { return m_buscarVersiones; }
 
     void setAnchoLateral(qreal v);
     void setAnchoInspector(qreal v);
@@ -63,6 +67,7 @@ public:
     void setVista(int v);
     void setEscala(qreal v);
     void setTema(const QString &v);
+    void setBuscarVersiones(bool v);
 
     /// Cómo se endereza un modelo 3D concreto: `vueltasX + 4 * vueltasZ`, 0
     /// si nunca se tocó. Es de quien lo mira, como el resto de esto: no cambia
@@ -86,4 +91,5 @@ private:
     int m_vista = -1;
     qreal m_escala = 1.0;
     QString m_tema;
+    bool m_buscarVersiones = true;
 };

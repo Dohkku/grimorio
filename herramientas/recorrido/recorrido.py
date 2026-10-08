@@ -49,7 +49,7 @@ class Recorrido:
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.procs.append(xvfb)
         time.sleep(1.0)
-        env = dict(os.environ, DISPLAY=PANTALLA, XDG_CONFIG_HOME=os.path.join(self.tmp, "config"),
+        env = dict(os.environ, DISPLAY=PANTALLA, XDG_CONFIG_HOME=os.path.join(self.tmp, "config"), GRIMORIO_SIN_RED="1",
                    # Sin bus de sesión: nada de portales ni diálogos que se abran fuera.
                    DBUS_SESSION_BUS_ADDRESS="unix:path=/nonexistent", QT_QPA_PLATFORM="xcb")
         env.pop("WAYLAND_DISPLAY", None)

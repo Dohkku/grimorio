@@ -11,6 +11,7 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_vista = m_disco.value(QStringLiteral("malla/vista"), -1).toInt();
     m_escala = qBound(0.7, m_disco.value(QStringLiteral("interfaz/escala"), 1.0).toReal(), 1.6);
     m_tema = m_disco.value(QStringLiteral("interfaz/tema"), QStringLiteral("oscuro")).toString();
+    m_buscarVersiones = m_disco.value(QStringLiteral("novedades/buscar"), true).toBool();
 }
 
 void Ajustes::guardar(const char *clave, const QVariant &valor)
@@ -86,6 +87,13 @@ void Ajustes::setTema(const QString &v)
     if (m_tema == v) return;
     m_tema = v;
     guardar("interfaz/tema", v);
+}
+
+void Ajustes::setBuscarVersiones(bool v)
+{
+    if (m_buscarVersiones == v) return;
+    m_buscarVersiones = v;
+    guardar("novedades/buscar", v);
 }
 
 int Ajustes::orientacion3d(const QString &id) const

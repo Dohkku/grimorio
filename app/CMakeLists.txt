@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.0 LANGUAGES CXX)
+project(grimorio VERSION 0.1.1 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -105,6 +105,7 @@ qt_add_executable(grimorio
     src/vigilancia.cpp
     src/onda.cpp
     src/visor3d.cpp
+    src/novedades.cpp
 )
 add_dependencies(grimorio puente)
 
@@ -237,6 +238,12 @@ qt_add_executable(prueba_filas pruebas/filas_test.cpp src/filas.cpp)
 target_include_directories(prueba_filas PRIVATE src)
 target_link_libraries(prueba_filas PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME filas COMMAND prueba_filas)
+
+# Lo que decide si sale el aviso de versión nueva, sin red.
+qt_add_executable(prueba_version pruebas/version_test.cpp)
+target_include_directories(prueba_version PRIVATE src)
+target_link_libraries(prueba_version PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME version COMMAND prueba_version)
 
 # El arrastre del árbol, con las filas de verdad y el ratón moviéndose. Es lo
 # único que caza que la carga llegue al otro lado y que las bandas caigan donde

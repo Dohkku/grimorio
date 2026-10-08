@@ -437,6 +437,39 @@ No hace falta ningún módulo de efectos —el Qt de Ubuntu 24.04 no trae
 píxeles de verdad no llegan a estar en pantalla: lo que se decodifica son unas
 decenas de píxeles, no la imagen tapada con algo encima.
 
+## Versiones nuevas
+
+Grimorio no se actualiza solo: avisa. Una vez al día (y ocho segundos después
+de arrancar, para no competir con la primera pantalla de miniaturas) pide
+`https://grimorio.frederickandrade.com/version.json`:
+
+```json
+{ "version": "0.2.0", "descargas": "https://grimorio.frederickandrade.com/" }
+```
+
+Si es más nueva que la suya, la barra de estado enseña «versión 0.2.0
+disponible», que abre la página de descargas, y una × que la ignora hasta la
+siguiente. En Ajustes, «avisar de versiones nuevas» lo apaga del todo y
+«comprobar ahora» pregunta en el acto (y vuelve a enseñar una versión
+ignorada).
+
+- **La web y no la API de GitHub.** El archivo es nuestro: si las descargas se
+  mueven, se cambia el enlace y los programas ya instalados siguen sirviendo.
+  GitHub además limita las consultas sin cuenta.
+- **No manda nada.** Un GET sin cookies y con el agente `Grimorio` a secas, sin
+  la versión. La página de privacidad de la web lo cuenta.
+- **Lo último que se supo se guarda** (`novedades/*` en los ajustes): el aviso
+  sale al arrancar aunque ese día no toque preguntar o no haya red.
+- **Solo un enlace https.** El aviso abre el navegador con lo que diga el
+  archivo; cualquier otra cosa se cambia por la portada.
+- **Las pasadas automáticas no preguntan** (`--bench`, `--captura`, `--visor`,
+  `--lote`, `--guion`), ni nada que arranque con `GRIMORIO_SIN_RED=1`, como el
+  recorrido de pruebas: una prueba no puede depender de la red ni sacar un
+  aviso en lo que captura.
+
+La comparación y la lectura del archivo están en `src/version.h`, sin red, y
+las prueba `version`. Cómo se publica el número nuevo: `docs/WINDOWS.md`.
+
 ## Medir y revisar
 
 ```sh
@@ -467,6 +500,9 @@ cargo test -p grimorio-puente                 # el bus de comandos y la frontera
 - `filas`: la geometría de la malla, sin Qt Quick y sin modelo. Incluye un
   presupuesto de tiempo: rehacer la disposición de cien mil elementos tiene que
   caber en un fotograma.
+- `version`: cuándo sale el aviso de versión nueva. «0.10.0» va por delante
+  de «0.9.0», un archivo roto no avisa de nada y un enlace que no es https no
+  se abre.
 - `sin_colores_a_mano`: ni un color ni una medida escritos a mano en el QML. Si
   el estilo no sale entero del tema, la promesa de que los visuales se pueden
   cambiar se rompe en silencio.

@@ -12,7 +12,7 @@ members = [
 default-members = ["crates/grimorio-core", "crates/grimorio-cli", "app/puente"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 # 1.89 por `File::try_lock` (el candado del pack de miniaturas), que antes no
 # existía en la biblioteca estándar. La versión exacta con la que se compila

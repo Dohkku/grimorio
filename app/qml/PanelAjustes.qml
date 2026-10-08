@@ -319,7 +319,7 @@ Item {
                     }
                 }
 
-                Seccion { text: qsTr("malla") }
+                Seccion { text: qsTr("galería") }
 
                 Interruptor {
                     titulo: qsTr("nombres bajo las celdas")
@@ -366,6 +366,40 @@ Item {
                             ajustes.anchoLateral = 0
                             ajustes.anchoInspector = 0
                         }
+                    }
+                }
+
+                Seccion { text: qsTr("versiones") }
+
+                Interruptor {
+                    titulo: qsTr("avisar de versiones nuevas")
+                    detalle: qsTr("una vez al día pregunta a grimorio.frederickandrade.com cuál es la última; no envía nada tuyo ni instala nada")
+                    puesto: ajustes.buscarVersiones
+                    onCambiado: function (v) { ajustes.buscarVersiones = v }
+                }
+                Item {
+                    width: parent.width
+                    height: comprobarAhora.height + tema.hueco * 0.8
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - comprobarAhora.width - tema.hueco
+                        elide: Text.ElideRight
+                        text: novedades.preguntando
+                              ? qsTr("preguntando…")
+                              : novedades.ultimaVez.getTime() > 0
+                                ? qsTr("última comprobación: %1").arg(
+                                      novedades.ultimaVez.toLocaleString(Qt.locale(), Locale.ShortFormat))
+                                : qsTr("todavía no se ha comprobado")
+                        color: tema.textoTenue
+                        font.pixelSize: tema.fuente * 0.9
+                    }
+                    Boton {
+                        id: comprobarAhora
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        texto: qsTr("comprobar ahora")
+                        enabled: !novedades.preguntando
+                        opacity: enabled ? 1 : 0.4
+                        onPulsado: novedades.comprobar()
                     }
                 }
             }
