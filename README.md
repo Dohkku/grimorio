@@ -7,7 +7,7 @@
 <p align="center">
   Tu biblioteca visual, en tu disco.<br>
   Guarda, ordena y encuentra referencias: imágenes, vídeo, sonido, PDF y modelos 3D.<br>
-  Libre, nativa, para Linux y Windows. Sin nube, sin IA y sin un navegador dentro.
+  Libre, nativa, para Linux y Windows. Sin nube, sin funciones de IA y sin un navegador dentro.
 </p>
 
 <p align="center">
@@ -73,7 +73,7 @@ se copia como cualquier otra. El formato está especificado en
    prueba sin escritorio; la interfaz y `grim` son clientes.
 4. **El estilo es dato.** Ni un color ni una medida a mano en la interfaz:
    todo sale de un tema JSON que se recarga al guardarlo.
-5. **Sin IA.**
+5. **Sin funciones de IA.**
 
 ## Instalar
 
@@ -147,7 +147,7 @@ Windows, an alternative to Eagle. It keeps images (including PSD, AI, EPS,
 Krita, Sketch and RAW previews), video, audio, PDFs and 3D models in a
 library you can search instantly, with tags, stars, colors, nested folders and
 dynamic folders that fill themselves from a filter. It is native (Rust core,
-Qt 6 interface), with no cloud, no AI and no embedded browser.
+Qt 6 interface), with no cloud, no AI features and no embedded browser.
 
 Your library is a plain folder with one readable `item.json` per item; the
 search index and thumbnails are derived and can be rebuilt with

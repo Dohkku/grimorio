@@ -461,7 +461,7 @@ Item {
                         qsTr("Nada de webview: ni Electron, ni Tauri."),
                         qsTr("El núcleo no sabe qué es una ventana."),
                         qsTr("El estilo es dato: todo sale de un tema."),
-                        qsTr("Sin IA.")
+                        qsTr("Sin funciones de IA.")
                     ]
                     delegate: Row {
                         required property string modelData
