@@ -181,13 +181,31 @@ void avisarDeError(const QString &mensaje)
 /// recientes de `Bibliotecas`) y, si no hay ninguna, una nueva en Documentos.
 /// Sin esto, arrancar sin argumentos solo sabía decir «falta la ruta» por una
 /// consola que fuera de la terminal nadie ve.
-QString bibliotecaPorDefecto(QString *error)
+bool esBiblioteca(const QString &ruta)
+{
+    const QByteArray b = ruta.toUtf8();
+    return grim_es_biblioteca(reinterpret_cast<const uint8_t *>(b.constData()), uint32_t(b.size())) != 0;
+}
+
+/// La biblioteca que contiene `ruta`, subiendo de carpeta en carpeta: así se
+/// puede soltar sobre el programa un archivo de dentro (`items/…/original.jpg`)
+/// y abre la suya. Vacío si no hay ninguna por encima.
+QString bibliotecaQueContiene(const QString &ruta)
+{
+    QFileInfo info(ruta);
+    QDir d = info.isDir() ? QDir(info.absoluteFilePath()) : info.absoluteDir();
+    if (!d.exists()) return {};
+    do {
+        if (esBiblioteca(d.absolutePath())) return d.absolutePath();
+    } while (d.cdUp());
+    return {};
+}
+
+QString bibliotecaPorDefecto(QString *error, const QString &menos = QString())
 {
     const QStringList recientes = QSettings().value(QStringLiteral("bibliotecas/recientes")).toStringList();
     for (const QString &r : recientes) {
-        const QByteArray b = r.toUtf8();
-        if (grim_es_biblioteca(reinterpret_cast<const uint8_t *>(b.constData()), uint32_t(b.size())))
-            return r;
+        if (r != menos && esBiblioteca(r)) return r;
     }
     const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (docs.isEmpty()) {
@@ -197,7 +215,7 @@ QString bibliotecaPorDefecto(QString *error)
     const QString nueva = QDir(docs).filePath(QStringLiteral("Grimorio.grimorio"));
     const QByteArray b = nueva.toUtf8();
     const auto *p = reinterpret_cast<const uint8_t *>(b.constData());
-    if (!grim_es_biblioteca(p, uint32_t(b.size())) && !grim_crear_biblioteca(p, uint32_t(b.size()))) {
+    if (!esBiblioteca(nueva) && !grim_crear_biblioteca(p, uint32_t(b.size()))) {
         *error = QStringLiteral("no pude crear una biblioteca en «%1»").arg(nueva);
         return {};
     }
@@ -282,7 +300,34 @@ int main(int argc, char **argv)
         QTextStream(stderr) << "error: " << error << "\n\n" << AYUDA;
         return 2;
     }
-    if (args.lib.isEmpty()) args.lib = bibliotecaPorDefecto(&error);
+    const bool automatica = args.bench >= 0 || !args.captura.isEmpty() || args.visor > 0
+                            || args.lote > 0 || !args.guion.isEmpty();
+    // Lo que se dice en la ventana nada más abrirla, si la biblioteca no es la
+    // que se pidió.
+    QString avisoInicial;
+    if (!args.lib.isEmpty()) {
+        const QString pedida = args.lib;
+        args.lib = bibliotecaQueContiene(pedida);
+        if (args.lib.isEmpty()) {
+            // Una biblioteca que no está —un disco sin montar, una carpeta
+            // movida, un GRIMORIO_LIB viejo— no puede dejar a nadie sin
+            // ventana: se abre la de siempre y se dice. Las pasadas
+            // automáticas sí fallan, porque medir otra biblioteca sin
+            // avisar daría números que no son.
+            const QString motivo = QFileInfo::exists(pedida)
+                                       ? QStringLiteral("«%1» no es una biblioteca de Grimorio").arg(pedida)
+                                       : QStringLiteral("no encuentro la biblioteca «%1»").arg(pedida);
+            if (automatica) {
+                avisarDeError(motivo);
+                return 1;
+            }
+            QTextStream(stderr) << "aviso: " << motivo << "; abro otra\n";
+            avisoInicial = motivo + QStringLiteral("; se ha abierto otra");
+            args.lib = bibliotecaPorDefecto(&error, QDir(pedida).absolutePath());
+        }
+    } else {
+        args.lib = bibliotecaPorDefecto(&error);
+    }
     if (args.lib.isEmpty()) {
         avisarDeError(error);
         return 2;
@@ -392,8 +437,6 @@ int main(int argc, char **argv)
     // depender de la red ni sacar un aviso en lo que capturan.
     // GRIMORIO_SIN_RED es para lo que arranca el programa normal desde fuera,
     // como el recorrido de pruebas.
-    const bool automatica = args.bench >= 0 || !args.captura.isEmpty() || args.visor > 0
-                            || args.lote > 0 || !args.guion.isEmpty();
     Novedades novedades(&ajustes, QStringLiteral(GRIMORIO_VERSION),
                         !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
 
@@ -451,6 +494,13 @@ int main(int argc, char **argv)
         return 1;
     }
     banco.vigilar(ventana);
+    if (!avisoInicial.isEmpty()) {
+        // Con la ventana ya a la vista; antes, el aviso se iría con nadie
+        // mirando.
+        QTimer::singleShot(600, &bibliotecas, [&bibliotecas, avisoInicial] {
+            emit bibliotecas.aviso(avisoInicial, true);
+        });
+    }
     puente.setVentana(ventana);
 
     if (!args.captura.isEmpty()) {

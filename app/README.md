@@ -394,6 +394,19 @@ tiene. Un cierre a lo bruto no la deja condenada: la siguiente ve que ese proces
 ya no está y se lo queda. `grim` no pasa por aquí: la línea de órdenes sigue
 funcionando con la ventana abierta.
 
+## Qué biblioteca se abre
+
+Por orden: la ruta que se pase (o `GRIMORIO_LIB`), la última que se abrió, y si
+no hay ninguna, una nueva en `Documentos/Grimorio.grimorio`. Una ruta que es un
+archivo de dentro de la biblioteca abre esa biblioteca.
+
+Una ruta que no lleva a ninguna —un disco sin montar, una carpeta movida, un
+`GRIMORIO_LIB` viejo— **no deja sin ventana**: se abre la siguiente de la lista
+y la barra de estado dice cuál no se encontró. Antes el programa se cerraba, y
+encima con «ya está abierta», porque el cerrojo no se puede crear en una carpeta
+que no existe. Las pasadas automáticas (`--bench`, `--captura`, `--guion`…) sí
+fallan: medir otra biblioteca sin decirlo daría números que no son.
+
 ## Buscar
 
 El campo de arriba entiende filtros además de palabras, y el botón «filtros»

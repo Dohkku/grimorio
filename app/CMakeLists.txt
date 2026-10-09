@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.2 LANGUAGES CXX)
+project(grimorio VERSION 0.1.3 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
