@@ -52,44 +52,84 @@ Rectangle {
         anchors.rightMargin: tema.hueco
         spacing: tema.hueco
 
-        // La versión nueva, si la hay. Se queda puesta (no se borra a los
-        // seis segundos como los avisos) hasta que se descarga o se ignora:
-        // es la única forma que tiene Grimorio de decirlo. Ver novedades.h.
-        Row {
+        // La versión nueva, si la hay: una píldora del color de la selección,
+        // que es lo único que destaca en una ventana gris. Como texto suelto
+        // del mismo tamaño que los avisos pasaba por uno más y no se veía.
+        // Se queda puesta (no se borra a los seis segundos como los avisos)
+        // hasta que se actualiza o se ignora. Ver novedades.h.
+        Rectangle {
+            id: pildora
             anchors.verticalCenter: parent.verticalCenter
-            visible: novedades.nueva.length > 0
-            spacing: tema.hueco * 0.5
+            visible: novedades.nueva.length > 0 || novedades.fase.length > 0
+            readonly property bool enMarcha: novedades.fase.length > 0
+            height: Math.round(tema.fuente * 1.7)
+            width: filaPildora.implicitWidth + tema.hueco * 1.4
+            radius: height / 2
+            color: tema.seleccion
+            opacity: sobrePildora.containsMouse && !enMarcha ? 0.85 : 1
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("versión %1 disponible").arg(novedades.nueva)
-                color: tema.seleccion
-                font.pixelSize: tema.fuente * 0.92
-                font.underline: nuevaRaton.containsMouse
-
-                MouseArea {
-                    id: nuevaRaton
-                    anchors.fill: parent
-                    anchors.margins: -tema.hueco * 0.3
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: novedades.abrir()
-                }
+            // Lo bajado, de izquierda a derecha, por dentro de la píldora.
+            Rectangle {
+                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                radius: parent.radius
+                width: novedades.progreso > 0 ? parent.width * Math.min(1, novedades.progreso) : 0
+                color: tema.fondo
+                opacity: tema.realce * 3
+                visible: pildora.enMarcha
             }
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "×"
-                color: ignorarRaton.containsMouse ? tema.texto : tema.textoTenue
-                font.pixelSize: tema.fuente
+            MouseArea {
+                id: sobrePildora
+                anchors.fill: parent
+                hoverEnabled: true
+                enabled: !pildora.enMarcha
+                cursorShape: Qt.PointingHandCursor
+                onClicked: novedades.actualizar()
+            }
 
-                MouseArea {
-                    id: ignorarRaton
-                    anchors.fill: parent
-                    anchors.margins: -tema.hueco * 0.3
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: novedades.ignorar()
+            Row {
+                id: filaPildora
+                anchors.centerIn: parent
+                spacing: tema.hueco * 0.5
+
+                Icono {
+                    anchors.verticalCenter: parent.verticalCenter
+                    nombre: "importar"
+                    color: tema.fondo
+                    width: Math.round(tema.fuente * 0.95)
+                    height: width
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: novedades.fase === "bajando"
+                          ? (novedades.progreso >= 0
+                             ? qsTr("bajando la %1… %2 %").arg(novedades.nueva).arg(Math.round(novedades.progreso * 100))
+                             : qsTr("bajando la %1…").arg(novedades.nueva))
+                          : novedades.fase === "instalando"
+                            ? qsTr("instalando la %1…").arg(novedades.nueva)
+                            : novedades.instalable
+                              ? qsTr("Grimorio %1 disponible · actualizar").arg(novedades.nueva)
+                              : qsTr("Grimorio %1 disponible · descargar").arg(novedades.nueva)
+                    color: tema.fondo
+                    font.pixelSize: tema.fuente * 0.95
+                    font.weight: Font.DemiBold
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !pildora.enMarcha
+                    text: "×"
+                    color: tema.fondo
+                    opacity: ignorarRaton.containsMouse ? 1 : 0.7
+                    font.pixelSize: tema.fuente * 1.1
+
+                    MouseArea {
+                        id: ignorarRaton
+                        anchors.fill: parent
+                        anchors.margins: -tema.hueco * 0.3
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: novedades.ignorar()
+                    }
                 }
             }
         }

@@ -240,7 +240,126 @@ Item {
                 visible: panel.pagina === "general"
                 width: hoja.width
 
-                Seccion { topPadding: 0; text: qsTr("apariencia") }
+                // La versión nueva, lo primero de todo y con el color de la
+                // selección: abajo del todo, como una fila más de «versiones»,
+                // no la veía nadie.
+                // Aire arriba: la × de cerrar el panel cae en esa esquina.
+                Item {
+                    width: 1
+                    height: tarjetaVersion.visible ? Math.round(tema.hueco * 1.4) : 0
+                }
+                Rectangle {
+                    id: tarjetaVersion
+                    visible: novedades.nueva.length > 0 || novedades.fase.length > 0
+                    width: parent.width
+                    height: visible ? contenidoVersion.height + tema.hueco * 2.4 : 0
+                    radius: tema.radio * 1.5
+                    color: "transparent"
+                    border.color: tema.seleccion
+                    border.width: Math.max(1, Math.round(tema.fuente * 0.12))
+
+                    readonly property bool enMarcha: novedades.fase.length > 0
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: tema.seleccion
+                        opacity: tema.realce * 1.5
+                    }
+
+                    Column {
+                        id: contenidoVersion
+                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                        anchors.margins: tema.hueco * 1.2
+                        spacing: tema.hueco * 0.6
+
+                        Row {
+                            spacing: tema.hueco * 0.6
+                            Icono {
+                                anchors.verticalCenter: parent.verticalCenter
+                                nombre: "importar"
+                                color: tema.seleccion
+                                width: Math.round(tema.fuente * 1.4)
+                                height: width
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("Grimorio %1 está disponible").arg(novedades.nueva)
+                                color: tema.texto
+                                font.pixelSize: tema.fuente * 1.3
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: tarjetaVersion.enMarcha
+                                  ? (novedades.fase === "bajando"
+                                     ? (novedades.progreso >= 0
+                                        ? qsTr("bajando… %1 %").arg(Math.round(novedades.progreso * 100))
+                                        : qsTr("bajando…"))
+                                     : qsTr("instalando; Grimorio se cierra y se vuelve a abrir solo"))
+                                  : novedades.instalable
+                                    ? qsTr("tienes la %1. Se baja de las publicadas, se comprueba que es la misma y se instala; Grimorio se vuelve a abrir solo, con esta biblioteca.").arg(novedades.actual)
+                                    : qsTr("tienes la %1. Se abre la página de descargas para bajar la nueva.").arg(novedades.actual)
+                            color: tema.textoTenue
+                            font.pixelSize: tema.fuente * 0.95
+                        }
+
+                        // Si el intento anterior falló, aquí y no solo abajo: la
+                        // barra de estado queda tapada por este panel.
+                        Text {
+                            visible: novedades.error.length > 0 && !tarjetaVersion.enMarcha
+                            width: parent.width
+                            wrapMode: Text.WordWrap
+                            text: qsTr("no se ha podido actualizar: %1").arg(novedades.error)
+                            color: tema.seleccion
+                            font.pixelSize: tema.fuente * 0.95
+                            font.weight: Font.DemiBold
+                        }
+
+                        // Lo bajado.
+                        Rectangle {
+                            visible: novedades.fase === "bajando"
+                            width: parent.width
+                            height: Math.max(3, Math.round(tema.fuente * 0.35))
+                            radius: height / 2
+                            color: tema.borde
+                            Rectangle {
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                radius: parent.radius
+                                width: novedades.progreso > 0 ? parent.width * Math.min(1, novedades.progreso) : 0
+                                color: tema.seleccion
+                                Behavior on width { NumberAnimation { duration: 120 } }
+                            }
+                        }
+
+                        Row {
+                            spacing: tema.hueco * 0.6
+                            visible: !tarjetaVersion.enMarcha
+                            Boton {
+                                principal: true
+                                altura: Math.round(tema.fuente * 2.4)
+                                icono: "importar"
+                                texto: novedades.instalable ? qsTr("actualizar ahora") : qsTr("descargar")
+                                onPulsado: novedades.actualizar()
+                            }
+                            Boton {
+                                visible: novedades.instalable
+                                altura: Math.round(tema.fuente * 2.4)
+                                texto: qsTr("ver la página")
+                                onPulsado: novedades.abrir()
+                            }
+                            Boton {
+                                altura: Math.round(tema.fuente * 2.4)
+                                texto: qsTr("ahora no")
+                                onPulsado: novedades.ignorar()
+                            }
+                        }
+                    }
+                }
+
+                Seccion { topPadding: tarjetaVersion.visible ? tema.hueco * 1.5 : 0; text: qsTr("apariencia") }
 
                 Item {
                     width: parent.width
@@ -373,7 +492,7 @@ Item {
 
                 Interruptor {
                     titulo: qsTr("avisar de versiones nuevas")
-                    detalle: qsTr("una vez al día pregunta a grimorio.frederickandrade.com cuál es la última; no envía nada tuyo ni instala nada")
+                    detalle: qsTr("una vez al día pregunta a grimorio.frederickandrade.com cuál es la última; no envía nada tuyo, y no baja ni instala nada si no pulsas «actualizar»")
                     puesto: ajustes.buscarVersiones
                     onCambiado: function (v) { ajustes.buscarVersiones = v }
                 }

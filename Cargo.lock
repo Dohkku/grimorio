@@ -755,7 +755,7 @@ dependencies = [
 
 [[package]]
 name = "grid-spike"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "bytemuck",
  "grimorio-core",
@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "grimorio-cli"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "clap",
  "grimorio-core",
@@ -780,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "grimorio-core"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "blake3",
  "image",

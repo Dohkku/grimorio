@@ -190,11 +190,37 @@ Rectangle {
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: ventana.altoBarra
 
+        // Los ajustes, arriba a la izquierda y del alto del nombre: a la
+        // derecha, al final de una fila de iconos del mismo tamaño, no se
+        // encontraban. El punto avisa de que hay una versión nueva, que se
+        // instala desde ahí.
+        BotonIcono {
+            id: botonAjustes
+            anchors.verticalCenter: parent.verticalCenter
+            x: lateral.sangria
+            altura: Math.round(tema.fuente * 2.6)
+            icono: "engranaje"
+            pista: novedades.nueva.length > 0 ? qsTr("ajustes: hay una versión nueva (Ctrl+,)")
+                                               : qsTr("ajustes (Ctrl+,)")
+            onPulsado: ventana.abrirAjustes()
+
+            Rectangle {
+                visible: novedades.nueva.length > 0
+                anchors { top: parent.top; right: parent.right; margins: Math.round(tema.hueco * 0.2) }
+                width: Math.round(tema.fuente * 0.75)
+                height: width
+                radius: width / 2
+                color: tema.seleccion
+                border.color: tema.panel
+                border.width: Math.max(1, Math.round(tema.fuente * 0.12))
+            }
+        }
+
         Rectangle {
             id: nombreBiblio
             anchors.verticalCenter: parent.verticalCenter
-            x: lateral.sangria
-            width: Math.min(parent.width - lateral.sangria * 2 - 1,
+            x: botonAjustes.x + botonAjustes.width + tema.hueco * 0.3
+            width: Math.min(parent.width - x - lateral.sangria - 1,
                             rotuloBiblio.implicitWidth + flecha.width + tema.hueco * 2)
             height: Math.round(tema.fuente * 2.3)
             radius: tema.radio

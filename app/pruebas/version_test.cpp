@@ -67,6 +67,42 @@ private slots:
         QVERIFY(version::leer("{\"version\": 2}").version.isEmpty());
         QVERIFY(version::leer("{\"version\": \"0.0.0\"}").version.isEmpty());
     }
+
+    static QByteArray conPaquete(const QString &url, const QString &sha)
+    {
+        return QStringLiteral("{\"version\": \"0.2.0\", \"paquetes\": {\"linux\": {\"url\": \"%1\", \"sha256\": \"%2\"}}}")
+            .arg(url, sha)
+            .toUtf8();
+    }
+
+    void lee_el_paquete_de_su_sistema()
+    {
+        const QString url = "https://github.com/Dohkku/grimorio/releases/download/v0.2.0/Grimorio-0.2.0-linux-x64.tar.gz";
+        const QString sha = QString(64, 'A');
+        const auto p = version::leer(conPaquete(url, sha), "linux");
+        QCOMPARE(p.paquete.url, QUrl(url));
+        QCOMPARE(p.paquete.sha256, QString(64, 'a'));
+        // El de otro sistema no se coge.
+        QVERIFY(version::leer(conPaquete(url, sha), "windows").paquete.url.isEmpty());
+        // Sin `paquetes`, como el version.json de antes de la 0.1.4.
+        QVERIFY(version::leer("{\"version\": \"0.2.0\"}", "linux").paquete.url.isEmpty());
+    }
+
+    void un_paquete_de_otro_sitio_o_sin_huella_no_vale()
+    {
+        const QString sha = QString(64, 'a');
+        for (const char *url : { "http://github.com/Dohkku/grimorio/releases/download/v1/x.tar.gz",
+                                 "https://evil.example/Dohkku/grimorio/releases/download/v1/x.tar.gz",
+                                 "https://github.com/otro/grimorio/releases/download/v1/x.tar.gz",
+                                 "https://github.com/Dohkku/grimorio/releases/download/../../otro/x",
+                                 "https://github.com/Dohkku/grimorio/releases/download/v1/x?y=1" }) {
+            QVERIFY2(version::leer(conPaquete(url, sha), "linux").paquete.url.isEmpty(), url);
+        }
+        const QString bien = "https://github.com/Dohkku/grimorio/releases/download/v1/x.tar.gz";
+        QVERIFY(version::leer(conPaquete(bien, ""), "linux").paquete.url.isEmpty());
+        QVERIFY(version::leer(conPaquete(bien, QString(63, 'a')), "linux").paquete.url.isEmpty());
+        QVERIFY(version::leer(conPaquete(bien, QString(64, 'g')), "linux").paquete.url.isEmpty());
+    }
 };
 
 QTEST_MAIN(PruebaVersion)

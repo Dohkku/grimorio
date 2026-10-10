@@ -83,6 +83,16 @@ Name: "{autodesktop}\Grimorio"; Filename: "{app}\grimorio.exe"; Tasks: escritori
 
 [Run]
 Filename: "{app}\grimorio.exe"; Description: "{cm:LaunchProgram,Grimorio}"; Flags: nowait postinstall skipifsilent
+; Lanzado por el botón de actualizar de Grimorio (`/SILENT /actualizar=1`):
+; sin ventanas, y al acabar se vuelve a abrir. Como quien lo usa, no como
+; administrador, aunque la instalación lo haya pedido.
+Filename: "{app}\grimorio.exe"; Flags: nowait runasoriginaluser; Check: DesdeGrimorio
+
+[Code]
+function DesdeGrimorio: Boolean;
+begin
+  Result := ExpandConstant('{param:actualizar|0}') = '1';
+end;
 
 ; Al desinstalar se borra solo lo instalado. Las bibliotecas (por defecto
 ; Documentos\Grimorio.grimorio) y los ajustes (%APPDATA%\Grimorio) son de la

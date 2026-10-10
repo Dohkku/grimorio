@@ -439,6 +439,7 @@ int main(int argc, char **argv)
     // como el recorrido de pruebas.
     Novedades novedades(&ajustes, QStringLiteral(GRIMORIO_VERSION),
                         !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
+    novedades.setRelanzar(heredados + QStringList{ QStringLiteral("--lib"), args.lib });
 
     // El visor 3D pinta con OpenGL dentro de la escena de Qt Quick, y eso solo
     // funciona si la escena entera va por OpenGL. En Linux ya es lo que elige

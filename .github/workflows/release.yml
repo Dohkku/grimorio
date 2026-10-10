@@ -72,7 +72,7 @@ jobs:
         run: |
           cargo build --release -p grimorio-cli
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake -S app -B app/build -G Ninja -DCMAKE_BUILD_TYPE=Release "-DGRIMORIO_VERSION=${{ steps.version.outputs.version }}"
+          cmake -S app -B app/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGRIMORIO_PAQUETE=ON "-DGRIMORIO_VERSION=${{ steps.version.outputs.version }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build app/build
 
@@ -204,7 +204,7 @@ jobs:
         run: |
           cargo test --release
           cargo build --release -p grimorio-cli
-          cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release \
+          cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release -DGRIMORIO_PAQUETE=ON \
                 -DGRIMORIO_VERSION="${{ steps.version.outputs.version }}"
           cmake --build app/build -j "$(nproc)"
           ctest --test-dir app/build --output-on-failure

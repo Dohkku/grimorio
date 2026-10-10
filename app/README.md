@@ -452,25 +452,62 @@ decenas de píxeles, no la imagen tapada con algo encima.
 
 ## Versiones nuevas
 
-Grimorio no se actualiza solo: avisa. Una vez al día (y ocho segundos después
-de arrancar, para no competir con la primera pantalla de miniaturas) pide
+Grimorio avisa de las versiones nuevas, y se actualiza solo **si se le pide**.
+Una vez al día (y ocho segundos después de arrancar, para no competir con la
+primera pantalla de miniaturas) pide
 `https://grimorio.frederickandrade.com/version.json`:
 
 ```json
-{ "version": "0.2.0", "descargas": "https://grimorio.frederickandrade.com/" }
+{
+  "version": "0.2.0",
+  "descargas": "https://grimorio.frederickandrade.com/",
+  "paquetes": {
+    "linux":   { "url": "https://github.com/Dohkku/grimorio/releases/download/v0.2.0/Grimorio-0.2.0-linux-x64.tar.gz",
+                 "sha256": "…" },
+    "windows": { "url": "https://github.com/Dohkku/grimorio/releases/download/v0.2.0/Grimorio-0.2.0-windows-x64-instalador.exe",
+                 "sha256": "…" }
+  }
+}
 ```
 
-Si es más nueva que la suya, la barra de estado enseña «versión 0.2.0
-disponible», que abre la página de descargas, y una × que la ignora hasta la
-siguiente. En Ajustes, «avisar de versiones nuevas» lo apaga del todo y
+Si es más nueva que la suya, la barra de estado enseña una píldora del color de
+la selección, «Grimorio 0.2.0 disponible · actualizar», con una × que la ignora
+hasta la siguiente; el engranaje de arriba a la izquierda lleva un punto, y
+Ajustes abre con una tarjeta arriba del todo: «actualizar ahora», «ver la
+página» y «ahora no». Antes era un texto del tamaño de los avisos en una
+esquina, y no se veía. «Avisar de versiones nuevas» lo apaga del todo y
 «comprobar ahora» pregunta en el acto (y vuelve a enseñar una versión
 ignorada).
+
+**Actualizar ahora** baja el paquete de su sistema, comprueba que su SHA-256 es
+el del `version.json` y lo instala:
+
+- **Windows**: lanza el instalador con `/SILENT /actualizar=1`, en el mismo
+  modo en que se instaló (`/ALLUSERS` si está en Archivos de programa,
+  `/CURRENTUSER` si no: si no, quedarían dos copias) y se cierra. El `.iss` lo
+  vuelve a abrir al acabar, como quien lo usa y no como administrador.
+- **Linux**: abre el `.tar.gz`, copia `grimorio` y `grim` al lado como
+  `.nuevo`, y cambia cada uno con un renombrado; el de antes queda como
+  `.anterior`. Se vuelve a abrir con la misma biblioteca, por un `sh` que
+  espera a que el proceso viejo suelte el cerrojo.
+
+Solo lo hacen los **paquetes publicados** (`-DGRIMORIO_PAQUETE=ON`, que pone
+`release.yml`), instalados donde se puedan cambiar: con el instalador en
+Windows (no el zip portable) y en una carpeta de quien lo usa en Linux. Un
+build de desarrollo, el portable o un `/opt` de root abren la página de
+descargas, como antes. `paquetes` es nuevo en la 0.1.4: las versiones de antes
+no lo miran y siguen abriendo la página.
 
 - **La web y no la API de GitHub.** El archivo es nuestro: si las descargas se
   mueven, se cambia el enlace y los programas ya instalados siguen sirviendo.
   GitHub además limita las consultas sin cuenta.
 - **No manda nada.** Un GET sin cookies y con el agente `Grimorio` a secas, sin
-  la versión. La página de privacidad de la web lo cuenta.
+  la versión. La página de privacidad de la web lo cuenta. Bajar el paquete es
+  otro GET igual, y solo al pulsar.
+- **Solo de las releases, y con huella.** Un paquete vale si es `https`, de
+  `github.com/Dohkku/grimorio/releases/download/` y trae un SHA-256; lo bajado
+  que no coincide se borra sin instalar, y la tarjeta dice por qué. Lo que se
+  ejecuta tiene que ser lo publicado, bit a bit.
 - **Lo último que se supo se guarda** (`novedades/*` en los ajustes): el aviso
   sale al arrancar aunque ese día no toque preguntar o no haya red.
 - **Solo un enlace https.** El aviso abre el navegador con lo que diga el
@@ -479,6 +516,8 @@ ignorada).
   `--lote`, `--guion`), ni nada que arranque con `GRIMORIO_SIN_RED=1`, como el
   recorrido de pruebas: una prueba no puede depender de la red ni sacar un
   aviso en lo que captura.
+- **Para probarlo**, `GRIMORIO_NOVEDADES_URL` cambia de dónde se lee el
+  `version.json` (un `python3 -m http.server` con uno propio basta).
 
 La comparación y la lectura del archivo están en `src/version.h`, sin red, y
 las prueba `version`. Cómo se publica el número nuevo: `docs/WINDOWS.md`.

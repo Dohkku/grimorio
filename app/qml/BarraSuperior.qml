@@ -328,12 +328,6 @@ Rectangle {
                                         : qsTr("abrir el panel de detalle (Ctrl+I)")
             onPulsado: ajustes.verInspector = !ajustes.verInspector
         }
-        BotonIcono {
-            anchors.verticalCenter: parent.verticalCenter
-            icono: "engranaje"
-            pista: qsTr("ajustes (Ctrl+,)")
-            onPulsado: ventana.abrirAjustes()
-        }
     }
 
     // --------------------------------------------------------- los filtros

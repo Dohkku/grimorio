@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.3 LANGUAGES CXX)
+project(grimorio VERSION 0.1.4 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -166,6 +166,13 @@ qt_add_resources(grimorio "temas"
 # lado (ver más abajo).
 target_compile_definitions(grimorio PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:GRIMORIO_VERSION=\"${GRIMORIO_VERSION}\">")
+
+# Lo que se publica (release.yml) sabe actualizarse solo desde el botón de
+# Ajustes; un build de desarrollo no, para no pisarse con lo publicado.
+option(GRIMORIO_PAQUETE "build de los paquetes publicados: se actualiza desde dentro" OFF)
+if(GRIMORIO_PAQUETE)
+    target_compile_definitions(grimorio PRIVATE GRIMORIO_PAQUETE)
+endif()
 
 # El icono de la ventana. En PNG y no en SVG: el SVG pediría el módulo QtSvg,
 # y para un icono bastan los tamaños hechos (app/icono/LEEME.md).
