@@ -176,8 +176,8 @@ Item {
                           { "clave": "renombrar", "texto": qsTr("renombrar") },
                           { "clave": "color", "texto": qsTr("color…") },
                           nucleo.vigiladaDe(menu.idCarpeta).length > 0
-                          ? { "clave": "novigilar", "texto": qsTr("dejar de vigilar %1").arg(nucleo.vigiladaDe(menu.idCarpeta)) }
-                          : { "clave": "vigilar", "texto": qsTr("vigilar una carpeta del disco…") },
+                          ? { "clave": "novigilar", "texto": qsTr("desvincular %1").arg(nucleo.vigiladaDe(menu.idCarpeta)) }
+                          : { "clave": "vigilar", "texto": qsTr("vincular una carpeta del disco…") },
                           { "clave": "borrar", "texto": qsTr("borrar") }]
                        : []
 

@@ -8,6 +8,8 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QRegularExpression>
+#include <QVariantMap>
 #include <QFileInfo>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -400,4 +402,66 @@ void Novedades::instalar(const QString &archivo)
     Q_UNUSED(archivo);
     abrir();
 #endif
+}
+
+void Novedades::prepararCambios(bool yaSeUsaba, bool mostrar)
+{
+    m_mostrarCambios = mostrar;
+    m_vistos = m_disco.value(QStringLiteral("novedades/vistos")).toString();
+    if (m_vistos.isEmpty() && !yaSeUsaba) {
+        // La primera vez: nada es nuevo todavía.
+        m_vistos = m_actual;
+        m_disco.setValue(QStringLiteral("novedades/vistos"), m_vistos);
+    } else if (m_vistos.isEmpty()) {
+        // Viene de una versión de antes de que esto existiera: no se sabe
+        // cuál, así que se enseña solo lo de esta.
+        m_vistos = QStringLiteral("0.0.0");
+    }
+    emit cambio();
+}
+
+bool Novedades::cambiosPendientes() const
+{
+    return m_mostrarCambios && !m_vistos.isEmpty() && version::comparar(m_actual, m_vistos) > 0
+           && !cambios(false).isEmpty();
+}
+
+QVariantList Novedades::cambios(bool todos) const
+{
+    QFile f(QStringLiteral(":/NOVEDADES.md"));
+    if (!f.open(QIODevice::ReadOnly)) return {};
+    const QString md = QString::fromUtf8(f.readAll());
+
+    // Cada versión es un `## X.Y.Z`; lo de encima del primero es la
+    // explicación del archivo y no se enseña.
+    static const QRegularExpression cabecera(QStringLiteral("^## +v?(\\d+\\.\\d+\\.\\d+)[^\\n]*$"),
+                                             QRegularExpression::MultilineOption);
+    QVariantList fuera;
+    auto it = cabecera.globalMatch(md);
+    QList<QRegularExpressionMatch> trozos;
+    while (it.hasNext()) trozos << it.next();
+    // Si se viene de antes de que esto existiera, solo lo de esta versión.
+    const bool soloEsta = !todos && m_vistos == QLatin1String("0.0.0");
+    for (int i = 0; i < trozos.size(); ++i) {
+        const QString v = trozos[i].captured(1);
+        if (version::comparar(v, m_actual) > 0) continue; // escrita para una que aún no ha salido
+        if (!todos) {
+            if (soloEsta ? version::comparar(v, m_actual) != 0 : version::comparar(v, m_vistos) <= 0)
+                continue;
+        }
+        const int ini = trozos[i].capturedEnd();
+        const int fin = i + 1 < trozos.size() ? trozos[i + 1].capturedStart() : md.size();
+        fuera << QVariantMap{ { QStringLiteral("version"), v },
+                              { QStringLiteral("texto"), md.mid(ini, fin - ini).trimmed() } };
+    }
+    return fuera;
+}
+
+void Novedades::cambiosVistos()
+{
+    if (version::comparar(m_actual, m_vistos) <= 0) return;
+    m_vistos = m_actual;
+    m_disco.setValue(QStringLiteral("novedades/vistos"), m_vistos);
+    m_disco.sync();
+    emit cambio();
 }

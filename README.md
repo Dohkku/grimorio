@@ -41,7 +41,7 @@
   `F2` para renombrar (también en lote, con patrón), `Ctrl+Z` para deshacer
   cualquier cosa.
 - **A tu manera.** Tema noche o papel, tamaño de la interfaz, modo seguro que
-  difumina lo marcado como +18, repetidos, carpetas del disco vigiladas,
+  difumina lo marcado como +18, repetidos, carpetas del disco vinculadas,
   capturas de pantalla, pegar desde el portapapeles o una URL.
 
 ## Tus datos son tuyos
@@ -126,6 +126,7 @@ en una pantalla virtual, comprobando en disco cada gesto
 
 ## Documentación
 
+- [NOVEDADES.md](NOVEDADES.md): qué trae cada versión
 - [docs/PLAN.md](docs/PLAN.md): alcance, arquitectura e hitos
 - [docs/FORMATO.md](docs/FORMATO.md): el formato de biblioteca
 - [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md): qué entra y con qué licencia

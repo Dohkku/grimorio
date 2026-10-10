@@ -158,8 +158,37 @@ jobs:
           if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
           & $iscc "/DVersion=$v" "/DVersionNumerica=$n" "/DOrigen=$PWD\dist\Grimorio" "/DSalida=$PWD\dist" installer\windows\grimorio.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Compress-Archive -Path dist\Grimorio -DestinationPath "dist\Grimorio-$v-windows-x64-portable.zip"
+          # La portable: arriba solo el lanzador con el icono y el LEEME; el
+          # programa con sus doscientos archivos, en `programa\`. Abrir el zip
+          # y ver todas las DLL juntas asustaba (installer/windows/portable).
+          $p = "dist\portable\Grimorio"
+          New-Item -ItemType Directory -Force $p | Out-Null
+          Copy-Item -Recurse dist\Grimorio "$p\programa"
+          Copy-Item app\build\lanzador.exe "$p\Grimorio.exe"
+          Copy-Item installer\windows\portable\LEEME.txt "$p\LEEME.txt"
+          Compress-Archive -Path $p -DestinationPath "dist\Grimorio-$v-windows-x64-portable.zip"
           Get-ChildItem dist
+
+      # La portable tal y como se baja: descomprimida, arriba solo tres cosas,
+      # y arrancando por el lanzador hasta que hay captura. Sin el Qt de
+      # compilar en el PATH, como en el equipo de quien la descarga.
+      - name: Probar la portable
+        shell: pwsh
+        run: |
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -notmatch '\\Qt\\' }) -join ';'
+          $d = "$env:RUNNER_TEMP\portable"
+          Expand-Archive (Get-Item dist\*-portable.zip).FullName -DestinationPath $d -Force
+          $g = "$d\Grimorio"
+          $arriba = ((Get-ChildItem $g).Name | Sort-Object) -join ','
+          "arriba: $arriba"
+          if ($arriba -ne 'Grimorio.exe,LEEME.txt,programa') { throw "la portable no tiene lo que debe arriba: $arriba" }
+          & "$g\programa\grim.exe" init "$env:RUNNER_TEMP\portable.grimorio"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $png = "$env:RUNNER_TEMP\portable.png"
+          Start-Process "$g\Grimorio.exe" -ArgumentList "`"$env:RUNNER_TEMP\portable.grimorio`"", "--captura", "`"$png`""
+          for ($i = 0; $i -lt 120 -and -not (Test-Path $png); $i++) { Start-Sleep 1 }
+          if (-not (Test-Path $png)) { throw "la portable no arrancó por su lanzador" }
+          "arrancó por el lanzador"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -180,6 +209,29 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           echo "version=$v" >> "$GITHUB_OUTPUT"
           sed -i "0,/^version = \".*\"/s//version = \"$v\"/" Cargo.toml
+
+      # El texto de la release es el apartado de esta versión en NOVEDADES.md,
+      # el mismo que enseña la aplicación al actualizar. Va aquí, al principio,
+      # para que una versión sin su apartado falle antes de compilar nada.
+      - name: Novedades de la versión
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          awk -v v="$v" '
+            /^## / { sub(/^v/, "", $2); dentro = ($2 == v); next }
+            dentro { print }
+          ' NOVEDADES.md | sed -e '/./,$!d' > dist/novedades.md
+          if [ ! -s dist/novedades.md ]; then
+            echo "falta el apartado «## $v» en NOVEDADES.md"
+            exit 1
+          fi
+          cat >> dist/novedades.md <<EOF
+
+          ---
+
+          **Descargas:** el instalador de Windows (se actualiza solo desde la aplicación), la versión portable para Windows y el paquete de Linux están abajo. También en [grimorio.frederickandrade.com](https://grimorio.frederickandrade.com/).
+          EOF
+          cat dist/novedades.md
 
       - name: Qt y herramientas
         run: |
@@ -225,7 +277,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/novedades.md
           if-no-files-found: error
 
   publicar:
@@ -242,7 +296,7 @@ jobs:
           name: Grimorio ${{ github.ref_name }}
           # Las etiquetas con guion (v0.2.0-beta.1) salen como versión previa.
           prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
+          body_path: dist/novedades.md
           files: |
             dist/*.exe
             dist/*.zip

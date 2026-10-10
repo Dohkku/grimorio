@@ -50,6 +50,10 @@ pub enum Comando {
     BorrarBusqueda {
         id: String,
     },
+    /// El nombre que se enseña de la biblioteca abierta (la carpeta no cambia).
+    RenombrarBiblioteca {
+        nombre: String,
+    },
     RenombrarCarpeta {
         id: String,
         nombre: String,
@@ -383,6 +387,12 @@ pub fn ejecutar(
             eventos::hecho(aviso, id_cmd, String::new());
         }
 
+        Comando::RenombrarBiblioteca { nombre } => {
+            lib.rename(nombre)?;
+            eventos::nombre(aviso, lib);
+            eventos::hecho(aviso, id_cmd, format!("la biblioteca se llama «{}»", lib.meta().name));
+        }
+
         Comando::RenombrarCarpeta { id, nombre } => {
             lib.rename_folder(id, nombre)?;
             eventos::carpetas(aviso, lib);
@@ -587,13 +597,13 @@ pub fn ejecutar(
             }
             let id = grimorio_core::vigiladas::anadir(lib.root(), ruta, carpeta.as_deref())?;
             eventos::vigiladas(aviso, lib);
-            eventos::hecho_con_id(aviso, id_cmd, format!("vigilando {ruta}"), id);
+            eventos::hecho_con_id(aviso, id_cmd, format!("vinculada {ruta}"), id);
         }
 
         Comando::DejarDeVigilar { id } => {
             grimorio_core::vigiladas::quitar(lib.root(), id)?;
             eventos::vigiladas(aviso, lib);
-            eventos::hecho(aviso, id_cmd, "ya no se vigila".to_string());
+            eventos::hecho(aviso, id_cmd, "carpeta desvinculada; lo que ya entró se queda".to_string());
         }
 
         Comando::ImportarVigilada { id, rutas, hasta } => {

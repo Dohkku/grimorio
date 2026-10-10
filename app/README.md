@@ -134,7 +134,7 @@ arriba no son carpetas y no se renombran ni se arrastran.
 | clic en una carpeta | se mira esa carpeta |
 | clic en la que ya está elegida | se vuelve a «Todo» |
 | clic en el hueco de debajo del árbol | se vuelve a «Todo» |
-| clic derecho en una carpeta | crear dentro, renombrar, color, vigilar, borrar |
+| clic derecho en una carpeta | crear dentro, renombrar, color, vincular una carpeta del disco, borrar |
 | clic derecho en el hueco | crear en la raíz |
 
 Tocar el panel se lleva el foco de la malla: seguir escribiendo después de pinchar
@@ -375,6 +375,28 @@ la foto equivocada se quedaba pegada. Ahora toma la vista una vez y hace todo
 con esa. Y cambiar de vista y clonarla van bajo el mismo cerrojo: antes, clonar
 la vieja justo cuando se soltaba era tocar memoria ya liberada.
 
+## Renombrar la biblioteca y sus carpetas vinculadas
+
+«Renombrar esta biblioteca…», en el menú del nombre de arriba a la izquierda,
+cambia el nombre que se enseña y nada más: la carpeta `.grimorio` se queda
+donde y como está, porque su ruta vive en las recientes, en los accesos
+directos y en lo que otros programas tengan apuntado. En `library.json` se toca
+solo `name`; lo demás del archivo, aunque sea de una versión más nueva, sigue
+ahí. Las recientes enseñan ese nombre y no el de la carpeta.
+
+Las **carpetas vinculadas** son las del disco cuyo contenido nuevo entra solo
+en la biblioteca. Antes se decía «vigilar», que en castellano suena a
+vigilancia; por dentro sigue siendo `vigiladas.json` y los mismos comandos,
+para no cambiar el formato. El menú de la biblioteca abre su vista de nodos
+(`PanelVinculos.qml`): la biblioteca a la izquierda, con la carpeta donde vive;
+cada carpeta vinculada a la derecha, con adónde entra lo suyo; una línea entre
+las dos por la que corren trazos hacia la biblioteca, y que late cuando de
+verdad entra algo. Una carpeta que no está (un disco sin conectar) se ve
+apagada, con la línea punteada y quieta, y vuelve a funcionar cuando vuelve.
+Desde ahí se conecta una nueva (el nodo «+») y se desconecta una (su ×); lo que
+ya entró se queda. Las rutas se pulsan para abrirlas en el explorador, y el
+eslabón de una carpeta vinculada en el árbol abre la misma vista.
+
 ## Una ventana por biblioteca
 
 Abrirla dos veces sobre la misma carpeta no da un aviso: da dos programas
@@ -521,6 +543,23 @@ no lo miran y siguen abriendo la página.
 
 La comparación y la lectura del archivo están en `src/version.h`, sin red, y
 las prueba `version`. Cómo se publica el número nuevo: `docs/WINDOWS.md`.
+
+### Qué hay de nuevo
+
+`NOVEDADES.md`, en la raíz, es la única fuente de lo que trae cada versión: un
+apartado `## X.Y.Z` por versión. Va dentro del programa como recurso, y la
+primera vez que se abre una versión después de actualizar, la ventana enseña
+los apartados de las versiones que no se habían visto (`novedades/vistos` en
+los ajustes); «entendido» lo da por visto. Quien lo instala por primera vez no
+ve nada: si no había ajustes de antes (`bibliotecas/recientes`), no hay nada
+«nuevo». Quien viene de una versión anterior a esto ve solo lo de la actual,
+porque no se sabe de cuál viene. Ajustes → acerca de → «novedades» las enseña
+todas, cuando se quiera. No dependen de la red; solo las pasadas automáticas
+no las enseñan.
+
+La publicación (`release.yml`) copia el apartado de su versión como texto de la
+release de GitHub, y falla al principio si no existe: no se puede publicar una
+versión sin decir qué trae. La web lo enseña en `/novedades/`.
 
 ## Medir y revisar
 

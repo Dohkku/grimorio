@@ -339,6 +339,23 @@ Window {
         panelAjustes.abrir(pagina || "general")
     }
 
+    /// Qué hay de nuevo (PanelNovedades.qml). Con `todas`, todas las
+    /// versiones; sin, las que no se habían visto.
+    function abrirNovedades(todas) {
+        panelAjustes.cerrar()
+        panelNovedades.abrir(todas)
+    }
+
+    /// Las carpetas vinculadas, como nodos (PanelVinculos.qml).
+    function abrirVinculos() {
+        panelVinculos.abrir()
+    }
+
+    /// Escribir el nombre nuevo de la biblioteca, arriba a la izquierda.
+    function renombrarBiblioteca() {
+        lateral.renombrarBiblioteca()
+    }
+
     /// Captura una zona de la pantalla y la mete en la carpeta que se mira.
     ///
     /// La ventana se minimiza primero: lo que se quiere capturar casi siempre
@@ -411,7 +428,7 @@ Window {
                 { texto: qsTr("pegar"), valor: "pegar", icono: "pegar", atajo: "Ctrl+V" },
                 { texto: qsTr("desde una dirección web…"), valor: "url", icono: "exportar" },
                 { texto: qsTr("capturar una zona"), valor: "captura", icono: "captura", atajo: "Ctrl+Mayús+X" },
-                { texto: qsTr("vigilar una carpeta del disco…"), valor: "vigilar", icono: "vigilar" }
+                { texto: qsTr("vincular una carpeta del disco…"), valor: "vigilar", icono: "vincular" }
             ],
             alElegir: function (v) {
                 if (ventana.enPapelera) ventana.verPapelera(false)
@@ -635,6 +652,22 @@ Window {
         id: panelAjustes
     }
 
+    PanelVinculos {
+        id: panelVinculos
+    }
+
+    PanelNovedades {
+        id: panelNovedades
+    }
+
+    // Después de actualizar, lo nuevo, una vez. Con un momento de margen: que
+    // la ventana se vea antes de taparla.
+    Timer {
+        interval: 900
+        running: novedades.cambiosPendientes
+        onTriggered: if (novedades.cambiosPendientes) panelNovedades.abrir(false)
+    }
+
     // Encima de todo lo demás: los chips de filtro y el menú de importar.
     Desplegable {
         id: desplegable
@@ -767,6 +800,8 @@ Window {
             if (confirmacion.abierto) confirmacion.abierto = false
             else if (desplegable.visible) desplegable.cerrar()
             else if (panelAjustes.abierto) panelAjustes.cerrar()
+            else if (panelVinculos.abierto) panelVinculos.cerrar()
+            else if (panelNovedades.abierto) panelNovedades.cerrar()
             else if (ventana.visorAbierto) ventana.visorAbierto = false
             else if (modelo.elegidos > 0) modelo.limpiarSeleccion()
         }

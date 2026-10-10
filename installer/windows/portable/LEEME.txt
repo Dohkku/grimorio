@@ -1,0 +1,37 @@
+GRIMORIO (versión portable)
+
+Para abrirlo: doble clic en Grimorio.exe.
+
+No hace falta instalar nada. La carpeta «programa» es el programa en sí:
+no la toques, ni muevas Grimorio.exe fuera de esta carpeta. Para llevarte
+Grimorio a otro sitio (un USB, otra carpeta), mueve la carpeta entera.
+
+Tus bibliotecas no se guardan aquí: por defecto van en
+Documentos\Grimorio.grimorio, y los ajustes en %APPDATA%\Grimorio.
+Borrar esta carpeta quita el programa, no tus referencias.
+
+Si prefieres que se actualice solo desde el propio programa, usa el
+instalador: https://grimorio.frederickandrade.com/
+
+Las licencias (Grimorio, Qt y el resto) están en programa\LICENSE.md,
+programa\AVISOS-TERCEROS.txt y programa\licencias.
+
+--------------------------------------------------------------------
+
+GRIMORIO (portable version)
+
+To open it: double-click Grimorio.exe.
+
+Nothing to install. The «programa» folder is the program itself: leave it
+alone, and don't move Grimorio.exe out of this folder. To take Grimorio
+somewhere else (a USB stick, another folder), move the whole folder.
+
+Your libraries aren't stored here: by default they go in
+Documents\Grimorio.grimorio, and settings in %APPDATA%\Grimorio.
+Deleting this folder removes the program, not your references.
+
+If you'd rather have it update itself from inside the program, use the
+installer: https://grimorio.frederickandrade.com/
+
+Licenses (Grimorio, Qt and the rest) are in programa\LICENSE.md,
+programa\AVISOS-TERCEROS.txt and programa\licencias.

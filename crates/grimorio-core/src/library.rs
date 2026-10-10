@@ -243,6 +243,32 @@ impl Library {
         }
     }
 
+    /// Cambia el nombre que se enseña. Solo el nombre: la carpeta no se mueve,
+    /// porque su ruta está en las recientes, en los accesos directos y en lo
+    /// que otros programas tengan apuntado.
+    ///
+    /// En `library.json` se toca `name` y nada más, sin reescribirlo desde
+    /// `LibraryMeta`: lo que escriba una versión más nueva y esta no conozca
+    /// tiene que seguir ahí.
+    pub fn rename(&mut self, name: &str) -> Result<()> {
+        let nombre = name.trim();
+        if nombre.is_empty() {
+            return Err(Error::Invalid("el nombre de la biblioteca no puede quedar vacío".into()));
+        }
+        let path = self.root.join(LIBRARY_FILE);
+        let bytes = std::fs::read(&path).map_err(|e| Error::io(&path, e))?;
+        let mut valor: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|e| Error::json(&path, e))?;
+        let Some(objeto) = valor.as_object_mut() else {
+            return Err(Error::Invalid(format!("{} no es un objeto", path.display())));
+        };
+        objeto.insert("name".into(), serde_json::Value::String(nombre.to_string()));
+        let json = serde_json::to_vec_pretty(&valor).map_err(|e| Error::json(&path, e))?;
+        write_atomic(&path, &json)?;
+        self.meta.name = nombre.to_string();
+        Ok(())
+    }
+
     // ------------------------------------------------------------------ rutas
 
     pub fn root(&self) -> &Path {
@@ -888,6 +914,26 @@ mod tests {
         assert_eq!(lib2.meta().name, "Mi");
         assert!(root.join("items").is_dir());
         assert!(root.join("thumbs/preview").is_dir());
+    }
+
+    #[test]
+    fn renombrar_cambia_el_nombre_y_no_toca_lo_demas() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lib = Library::create(dir.path(), "Vieja").unwrap();
+        // Lo que escribiría una versión más nueva: tiene que sobrevivir.
+        let path = dir.path().join(LIBRARY_FILE);
+        let mut v: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        v["futuro"] = serde_json::json!({ "algo": 1 });
+        std::fs::write(&path, serde_json::to_vec(&v).unwrap()).unwrap();
+
+        lib.rename("  Referencias de luz  ").unwrap();
+        assert_eq!(lib.meta().name, "Referencias de luz");
+        let v: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(v["futuro"]["algo"], 1);
+        assert_eq!(Library::open(dir.path()).unwrap().meta().name, "Referencias de luz");
+
+        assert!(lib.rename("   ").is_err());
+        assert_eq!(lib.meta().name, "Referencias de luz");
     }
 
     #[test]

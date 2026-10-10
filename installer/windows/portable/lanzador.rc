@@ -1,0 +1,37 @@
+// Recursos del lanzador de la portable: el mismo icono que el programa, y una
+// ficha que diga qué es. La versión llega en la misma `version_rc.h` que
+// escribe CMake para el programa (ver app/CMakeLists.txt), y el icono se busca
+// en las carpetas de inclusión (app/icono).
+#include <winver.h>
+#include "version_rc.h"
+
+1 ICON "grimorio.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VERSION_MAYOR, VERSION_MENOR, VERSION_PARCHE, 0
+PRODUCTVERSION  VERSION_MAYOR, VERSION_MENOR, VERSION_PARCHE, 0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "0C0A04B0"
+        BEGIN
+            VALUE "CompanyName",      "Frederick Andrade"
+            VALUE "FileDescription",  "Grimorio"
+            VALUE "FileVersion",      VERSION_TEXTO
+            VALUE "InternalName",     "lanzador"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Frederick Andrade Perez"
+            VALUE "OriginalFilename", "Grimorio.exe"
+            VALUE "ProductName",      "Grimorio"
+            VALUE "ProductVersion",   VERSION_TEXTO
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0C0A, 1200
+    END
+END

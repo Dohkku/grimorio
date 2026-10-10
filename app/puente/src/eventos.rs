@@ -20,6 +20,8 @@ pub enum Evento<'a> {
         nombre: &'a str,
         total: u64,
     },
+    /// La biblioteca se ha renombrado.
+    Nombre { nombre: &'a str },
     /// Hay una vista nueva publicada: la malla tiene que recogerla entera.
     Vista { cmd: u64, n: usize },
     /// El árbol de carpetas ha cambiado, con cuántos elementos hay en cada una.
@@ -191,6 +193,10 @@ pub fn listo(aviso: &Aviso, lib: &Library) {
             total,
         },
     );
+}
+
+pub fn nombre(aviso: &Aviso, lib: &Library) {
+    manda(aviso, &Evento::Nombre { nombre: &lib.meta().name });
 }
 
 pub fn vista(aviso: &Aviso, cmd: u64, n: &usize) {

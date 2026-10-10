@@ -1,4 +1,5 @@
-// El menú del nombre de la biblioteca: cambiar a otra, abrir, crear.
+// El menú del nombre de la biblioteca: cambiar a otra, abrir, crear,
+// renombrar esta y ver sus carpetas vinculadas.
 //
 // Vive en la ventana, como el de las carpetas, para poder desbordar la barra.
 // Cambiar de biblioteca relanza el programa (el porqué, en bibliotecas.h), así
@@ -74,7 +75,9 @@ Item {
                         Text {
                             width: parent.width
                             elide: Text.ElideRight
-                            text: bibliotecas.nombreDe(fila.modelData)
+                            // La de ahora, del núcleo: así se ve el nombre
+                            // nuevo en cuanto se renombra.
+                            text: fila.esActual ? nucleo.nombre : bibliotecas.nombreDe(fila.modelData)
                             color: tema.texto
                             font.pixelSize: tema.fuente
                             font.weight: fila.esActual ? Font.DemiBold : Font.Normal
@@ -119,58 +122,55 @@ Item {
                 color: tema.borde
             }
 
-            // Las carpetas del disco que entran solas en esta biblioteca.
-            Text {
-                visible: nucleo.vigiladas.length > 0
-                width: parent.width
-                leftPadding: tema.hueco
-                topPadding: tema.hueco * 0.4
-                bottomPadding: tema.hueco * 0.2
-                text: qsTr("vigiladas")
-                color: tema.textoTenue
-                font.pixelSize: tema.fuente * 0.85
-            }
-            Repeater {
-                model: nucleo.vigiladas
-                delegate: Item {
-                    id: vig
-                    required property var modelData
-                    width: columna.width
-                    height: Math.round(tema.fuente * 2.4)
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: tema.hueco
-                        anchors.right: dejar.left
-                        elide: Text.ElideMiddle
-                        text: "◉ " + vig.modelData.ruta + "  →  "
-                              + (vig.modelData.carpeta ? ventana.nombreDeCarpeta(vig.modelData.carpeta)
-                                                       : qsTr("Todo"))
-                        color: tema.texto
-                        font.pixelSize: tema.fuente * 0.85
-                    }
-                    BotonIcono {
-                        id: dejar
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.right: parent.right
-                        anchors.rightMargin: tema.hueco * 0.4
-                        icono: "cerrar"
-                        pista: qsTr("dejar de vigilar (lo ya importado se queda)")
-                        onPulsado: nucleo.dejarDeVigilar(vig.modelData.id)
+            // Las carpetas del disco que entran solas en esta biblioteca: una
+            // fila que abre los vínculos como nodos (PanelVinculos.qml).
+            Rectangle {
+                id: filaVinculos
+                width: columna.width
+                height: Math.round(tema.fuente * 2.4)
+                color: sobreVinculos.containsMouse ? tema.borde : "transparent"
+                Icono {
+                    id: iconoVinculos
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: tema.hueco
+                    nombre: "nodos"
+                    color: nucleo.vigiladas.length > 0 ? tema.seleccion : tema.textoTenue
+                    width: Math.round(tema.fuente * 1.1)
+                    height: width
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: iconoVinculos.right
+                    anchors.leftMargin: tema.hueco * 0.6
+                    text: nucleo.vigiladas.length > 0
+                          ? qsTr("carpetas vinculadas (%1)").arg(nucleo.vigiladas.length)
+                          : qsTr("carpetas vinculadas")
+                    color: tema.texto
+                    font.pixelSize: tema.fuente
+                }
+                MouseArea {
+                    id: sobreVinculos
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        menu.cerrar()
+                        ventana.abrirVinculos()
                     }
                 }
             }
             Rectangle {
-                visible: nucleo.vigiladas.length > 0
                 width: parent.width
                 height: 1
                 color: tema.borde
             }
 
             Repeater {
-                model: [{ "nueva": false, "texto": qsTr("abrir otra…") },
+                model: [{ "renombrar": true, "texto": qsTr("renombrar esta biblioteca…") },
+                        { "nueva": false, "texto": qsTr("abrir otra…") },
                         { "nueva": true, "texto": qsTr("nueva biblioteca…") },
-                        { "vigilar": true, "texto": qsTr("vigilar una carpeta del disco…") }]
+                        { "vigilar": true, "texto": qsTr("vincular una carpeta del disco…") }]
                 delegate: Rectangle {
                     id: accion
                     required property var modelData
@@ -192,7 +192,8 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             menu.cerrar()
-                            if (accion.modelData.vigilar) vigilancia.vigilar("")
+                            if (accion.modelData.renombrar) ventana.renombrarBiblioteca()
+                            else if (accion.modelData.vigilar) vigilancia.vigilar("")
                             else bibliotecas.elegir(accion.modelData.nueva)
                         }
                     }

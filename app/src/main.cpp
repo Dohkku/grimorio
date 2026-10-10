@@ -341,6 +341,9 @@ int main(int argc, char **argv)
 
     // Los ajustes van antes que el tema: de ellos sale cuál se carga y a qué
     // tamaño.
+    // Antes de que nada escriba en los ajustes: si ya había, Grimorio ya se
+    // usaba aquí y este arranque puede ser una actualización (las novedades).
+    const bool yaSeUsaba = QSettings().contains(QStringLiteral("bibliotecas/recientes"));
     Ajustes ajustes;
     Tema tema;
     tema.setEscala(ajustes.escala());
@@ -440,6 +443,7 @@ int main(int argc, char **argv)
     Novedades novedades(&ajustes, QStringLiteral(GRIMORIO_VERSION),
                         !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
     novedades.setRelanzar(heredados + QStringList{ QStringLiteral("--lib"), args.lib });
+    novedades.prepararCambios(yaSeUsaba, !automatica);
 
     // El visor 3D pinta con OpenGL dentro de la escena de Qt Quick, y eso solo
     // funciona si la escena entera va por OpenGL. En Linux ya es lo que elige

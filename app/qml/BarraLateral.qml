@@ -44,6 +44,17 @@ Rectangle {
         z: 3
     }
 
+    // ------------------------------------------------ renombrar la biblioteca
+    /// El nombre de arriba se está escribiendo (desde el menú de la biblioteca).
+    property bool renombrando: false
+
+    function renombrarBiblioteca() {
+        campoNombre.text = nucleo.nombre
+        renombrando = true
+        campoNombre.forceActiveFocus()
+        campoNombre.selectAll()
+    }
+
     // ------------------------------------------------------ crear carpetas
     /// Si se está escribiendo el nombre de una carpeta nueva, y de quién
     /// colgará ("" es la raíz).
@@ -220,14 +231,50 @@ Rectangle {
             id: nombreBiblio
             anchors.verticalCenter: parent.verticalCenter
             x: botonAjustes.x + botonAjustes.width + tema.hueco * 0.3
-            width: Math.min(parent.width - x - lateral.sangria - 1,
-                            rotuloBiblio.implicitWidth + flecha.width + tema.hueco * 2)
+            // Al renombrar, todo el ancho que haya: el nombre nuevo puede ser
+            // más largo que el de ahora.
+            width: lateral.renombrando
+                   ? parent.width - x - lateral.sangria - 1
+                   : Math.min(parent.width - x - lateral.sangria - 1,
+                              rotuloBiblio.implicitWidth + flecha.width + tema.hueco * 2)
             height: Math.round(tema.fuente * 2.3)
             radius: tema.radio
-            color: sobreNombre.containsMouse ? tema.borde : "transparent"
+            color: lateral.renombrando ? tema.fondo
+                                       : (sobreNombre.containsMouse ? tema.borde : "transparent")
+            border.color: lateral.renombrando ? tema.seleccion : "transparent"
+            border.width: lateral.renombrando ? 1 : 0
+
+            // El nombre nuevo. Intro lo guarda, Esc lo deja como estaba, y
+            // salir del campo también guarda, como al crear una carpeta.
+            TextInput {
+                id: campoNombre
+                visible: lateral.renombrando
+                anchors.fill: parent
+                anchors.leftMargin: tema.hueco * 0.7
+                anchors.rightMargin: tema.hueco * 0.7
+                verticalAlignment: TextInput.AlignVCenter
+                clip: true
+                color: tema.texto
+                selectionColor: tema.seleccion
+                selectedTextColor: tema.fondo
+                font.pixelSize: tema.fuente * 1.05
+                font.weight: Font.DemiBold
+                onAccepted: focus = false
+                Keys.onEscapePressed: {
+                    text = nucleo.nombre
+                    focus = false
+                }
+                onActiveFocusChanged: {
+                    if (activeFocus || !lateral.renombrando) return
+                    lateral.renombrando = false
+                    const nuevo = text.trim()
+                    if (nuevo.length > 0 && nuevo !== nucleo.nombre) nucleo.renombrarBiblioteca(nuevo)
+                }
+            }
 
             Text {
                 id: rotuloBiblio
+                visible: !lateral.renombrando
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: tema.hueco * 0.7
@@ -240,6 +287,7 @@ Rectangle {
             }
             Icono {
                 id: flecha
+                visible: !lateral.renombrando
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: rotuloBiblio.right
                 anchors.leftMargin: tema.hueco * 0.35
@@ -251,6 +299,7 @@ Rectangle {
             MouseArea {
                 id: sobreNombre
                 anchors.fill: parent
+                enabled: !lateral.renombrando
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {

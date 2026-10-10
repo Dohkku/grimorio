@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.4 LANGUAGES CXX)
+project(grimorio VERSION 0.1.5 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -22,8 +22,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 if(WIN32)
-    # El icono y las propiedades del .exe van en un archivo de recursos.
+    # El icono y las propiedades del .exe van en un archivo de recursos. El C,
+    # para el lanzador de la portable (más abajo).
     enable_language(RC)
+    enable_language(C)
 endif()
 if(MSVC)
     # Rust enlaza su biblioteca estándar contra el runtime de C en DLL (/MD).
@@ -149,12 +151,22 @@ qt_add_resources(grimorio "interfaz"
         qml/consulta.js
         qml/iconos.js
         qml/PanelAjustes.qml
+        qml/PanelVinculos.qml
+        qml/PanelNovedades.qml
         qml/Pista.qml
         qml/EjesVista.qml
 )
 
 # Los temas que vienen dentro, para elegirlos en los ajustes sin saber dónde
 # está el archivo. `--tema` sigue pudiendo cargar cualquier otro.
+# Lo que trae cada versión, para enseñarlo al actualizar (novedades.h). El
+# mismo archivo llena la release de GitHub (release.yml).
+qt_add_resources(grimorio "novedades"
+    PREFIX "/"
+    BASE "${RAIZ}"
+    FILES "${RAIZ}/NOVEDADES.md"
+)
+
 qt_add_resources(grimorio "temas"
     PREFIX "/temas"
     BASE "${RAIZ}/temas"
@@ -230,6 +242,18 @@ if(WIN32)
     # inclusión. Para el C++ no cambia nada: ahí no hay nada que incluya.
     target_include_directories(grimorio PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/windows")
+
+    # El `Grimorio.exe` de la portable, que arranca `programa\grimorio.exe`
+    # (el porqué, en lanzador.c). Aquí se llama `lanzador.exe`: en una carpeta
+    # de Windows, `Grimorio.exe` y `grimorio.exe` son el mismo archivo. Se
+    # renombra al empaquetar (release.yml).
+    add_executable(lanzador WIN32
+        "${RAIZ}/installer/windows/portable/lanzador.c"
+        "${RAIZ}/installer/windows/portable/lanzador.rc")
+    target_compile_definitions(lanzador PRIVATE UNICODE _UNICODE)
+    target_include_directories(lanzador PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/icono")
+    target_link_libraries(lanzador PRIVATE user32)
 else()
     target_link_libraries(grimorio PRIVATE
         # Lo que arrastran la biblioteca estándar de Rust y el SQLite empotrado.

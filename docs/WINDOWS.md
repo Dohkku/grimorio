@@ -169,10 +169,18 @@ nada y genera:
   `%LOCALAPPDATA%\Programs`). No asocia ninguna extensión. Al desinstalar,
   las bibliotecas y los ajustes se quedan.
 - `Grimorio-X.Y.Z-windows-x64-portable.zip`: la misma carpeta, para
-  descomprimir y usar.
+  descomprimir y usar, pero ordenada para quien la abre: arriba solo
+  `Grimorio.exe`, `LEEME.txt` y la carpeta `programa`, que es la del
+  instalador tal cual. Ver doscientas DLL juntas al abrir el zip asustaba, y
+  no se sabía cuál abrir. Windows solo busca las DLL junto al .exe, así que
+  el `Grimorio.exe` de arriba es un lanzador de unas líneas de C
+  (`installer/windows/portable/lanzador.c`) que arranca
+  `programa\grimorio.exe` con los mismos argumentos y se va. La publicación
+  la prueba descomprimida y arrancando por el lanzador.
 
 Los dos llevan `LICENSE.md`, `AVISOS-TERCEROS.txt` y la carpeta `licencias`
-con la LGPL y la GPL: Qt va enlazado de forma dinámica y sin modificar, y sus
+con la LGPL y la GPL (en la portable, dentro de `programa`, y el LEEME dice
+dónde): Qt va enlazado de forma dinámica y sin modificar, y sus
 DLL se pueden sustituir, como exige la LGPL (ver `docs/DEPENDENCIAS.md`).
 
 El instalador no va firmado: Windows SmartScreen avisará de «editor

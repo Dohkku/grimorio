@@ -5,7 +5,10 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLockFile>
 #include <QProcess>
 #include <QStandardPaths>
@@ -52,6 +55,14 @@ void Bibliotecas::guardar()
 
 QString Bibliotecas::nombreDe(const QString &ruta) const
 {
+    // El nombre que se le puso (se puede renombrar sin mover la carpeta); si
+    // no se puede leer, el de la carpeta.
+    QFile f(QDir(ruta).filePath(QStringLiteral("library.json")));
+    if (f.open(QIODevice::ReadOnly)) {
+        const QString puesto = QJsonDocument::fromJson(f.read(64 * 1024)).object()
+                                   .value(QStringLiteral("name")).toString().trimmed();
+        if (!puesto.isEmpty()) return puesto;
+    }
     QString n = QFileInfo(ruta).fileName();
     if (n.endsWith(QLatin1String(".grimorio"))) n.chop(9);
     return n;

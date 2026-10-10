@@ -18,7 +18,7 @@ extern "C" {
 
 class Nucleo : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QString nombre READ nombre NOTIFY listo)
+    Q_PROPERTY(QString nombre READ nombre NOTIFY nombreCambio)
     Q_PROPERTY(QString raiz READ raiz NOTIFY listo)
     Q_PROPERTY(int total READ total NOTIFY totalCambio)
     Q_PROPERTY(QVariantList carpetas READ carpetas NOTIFY carpetasCambiaron)
@@ -99,6 +99,8 @@ public:
     /// Renombra con un patrón: {nombre}, {n}, {n:3}, {fecha}.
     Q_INVOKABLE void renombrarEnLote(const QStringList &ids, const QString &patron, int inicio);
     Q_INVOKABLE void renombrarCarpeta(const QString &id, const QString &nombre);
+    /// El nombre que se enseña de la biblioteca; la carpeta del disco no cambia.
+    Q_INVOKABLE void renombrarBiblioteca(const QString &nombre);
     /// `color` en "#rrggbb"; cadena vacía para quitárselo.
     Q_INVOKABLE void colorCarpeta(const QString &id, const QString &color);
     /// Cuelga la carpeta de otra y, si se dice, la coloca delante de una
@@ -168,6 +170,7 @@ public:
 
 signals:
     void listo();
+    void nombreCambio();
     void vistaNueva(int n);
     void carpetasCambiaron();
     void busquedasCambiaron();

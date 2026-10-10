@@ -44,7 +44,11 @@ void Nucleo::procesar(const QString &json)
         m_raiz = ev.value(QStringLiteral("raiz")).toString();
         m_total = ev.value(QStringLiteral("total")).toInt();
         emit totalCambio();
+        emit nombreCambio();
         emit listo();
+    } else if (tipo == QLatin1String("nombre")) {
+        m_nombre = ev.value(QStringLiteral("nombre")).toString();
+        emit nombreCambio();
     } else if (tipo == QLatin1String("vista")) {
         emit vistaNueva(ev.value(QStringLiteral("n")).toInt());
     } else if (tipo == QLatin1String("carpetas")) {
@@ -264,6 +268,12 @@ void Nucleo::crearCarpeta(const QString &nombre, const QString &padre)
                     { QStringLiteral("nombre"), nombre } };
     if (!padre.isEmpty()) o[QStringLiteral("padre")] = padre;
     mandar(o);
+}
+
+void Nucleo::renombrarBiblioteca(const QString &nombre)
+{
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("renombrar_biblioteca") },
+             { QStringLiteral("nombre"), nombre } });
 }
 
 void Nucleo::renombrarCarpeta(const QString &id, const QString &nombre)

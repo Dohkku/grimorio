@@ -565,6 +565,12 @@ Item {
 
                 Seccion { text: qsTr("versión") }
                 Dato { que: qsTr("Grimorio"); valor: versionGrimorio }
+                Boton {
+                    centrado: false
+                    icono: "info"
+                    texto: qsTr("novedades: qué trae cada versión")
+                    onPulsado: ventana.abrirNovedades(true)
+                }
                 Dato { que: qsTr("Qt"); valor: versionQt }
                 Dato { que: qsTr("biblioteca"); valor: nucleo.nombre }
 

@@ -76,7 +76,7 @@ pub fn anadir(raiz: &Path, ruta: &str, carpeta: Option<&str>) -> Result<String> 
     }
     let mut todas = cargar(raiz)?;
     if todas.iter().any(|v| v.ruta == ruta && v.carpeta.as_deref() == carpeta) {
-        return Err(Error::Invalid(format!("«{ruta}» ya se vigila")));
+        return Err(Error::Invalid(format!("«{ruta}» ya está vinculada")));
     }
     let id = crate::id::new_id();
     todas.push(Vigilada {
@@ -94,7 +94,7 @@ pub fn quitar(raiz: &Path, id: &str) -> Result<()> {
     let antes = todas.len();
     todas.retain(|v| v.id != id);
     if todas.len() == antes {
-        return Err(Error::Invalid(format!("no se vigila {id}")));
+        return Err(Error::Invalid(format!("no hay ninguna carpeta vinculada con id {id}")));
     }
     guardar(raiz, &todas)
 }

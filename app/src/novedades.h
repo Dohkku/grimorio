@@ -24,6 +24,11 @@
 //
 // Lo último que se supo se guarda en los ajustes, así que el aviso sale al
 // arrancar aunque ese día no se pregunte o no haya red.
+//
+// Y lo que trae cada versión: `NOVEDADES.md`, que va dentro del programa. La
+// primera vez que se abre una versión después de actualizar, la ventana enseña
+// los apartados de las versiones que todavía no se habían visto; quien lo
+// instala por primera vez no ve nada, porque para él no hay «nuevo».
 #pragma once
 #include <QDateTime>
 #include <QObject>
@@ -31,6 +36,7 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
+#include <QVariantList>
 
 class Ajustes;
 class QNetworkAccessManager;
@@ -57,6 +63,9 @@ class Novedades : public QObject {
     Q_PROPERTY(qreal progreso READ progreso NOTIFY progresoCambio)
     /// Por qué falló el último intento de actualizar; vacío si no falló.
     Q_PROPERTY(QString error READ error NOTIFY cambio)
+    /// Hay novedades de esta versión (o de otras desde la última vista) que
+    /// todavía no se han enseñado.
+    Q_PROPERTY(bool cambiosPendientes READ cambiosPendientes NOTIFY cambio)
 
 public:
     /// `activa` en falso para las pasadas automáticas (--bench, --captura,
@@ -73,6 +82,14 @@ public:
     QString fase() const { return m_fase; }
     qreal progreso() const { return m_progreso; }
     QString error() const { return m_error; }
+    bool cambiosPendientes() const;
+
+    /// Decide qué novedades quedan por enseñar. `yaSeUsaba`: había ajustes de
+    /// antes de este arranque, o sea que esto es una actualización y no la
+    /// primera vez. `mostrar` en falso para las pasadas automáticas, que no
+    /// tienen que sacar nada encima de lo que miden o capturan. No depende de
+    /// la red: las novedades van dentro del programa.
+    void prepararCambios(bool yaSeUsaba, bool mostrar);
 
     /// Con qué argumentos volver a abrirse después de actualizar (la
     /// biblioteca de ahora, el tema).
@@ -86,6 +103,12 @@ public:
     Q_INVOKABLE void abrir();
     /// El botón de actualizar: baja e instala si se puede; si no, abre la web.
     Q_INVOKABLE void actualizar();
+    /// Los apartados de NOVEDADES.md que tocan: `{version, texto}`, de la más
+    /// nueva a la más vieja. Con `todos`, todos hasta esta versión; si no,
+    /// solo los que no se han visto.
+    Q_INVOKABLE QVariantList cambios(bool todos) const;
+    /// Ya se han enseñado los de esta versión.
+    Q_INVOKABLE void cambiosVistos();
 
 signals:
     void cambio();
@@ -118,4 +141,6 @@ private:
     qreal m_progreso = 0;
     QStringList m_relanzar;
     QString m_error;
+    QString m_vistos; // la última versión cuyas novedades se enseñaron
+    bool m_mostrarCambios = false;
 };

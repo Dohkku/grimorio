@@ -29,7 +29,8 @@ public:
     QStringList recientes() const { return m_recientes; }
     QString actual() const { return m_actual; }
 
-    /// El nombre que se enseña: el de la carpeta, sin el «.grimorio».
+    /// El nombre que se enseña: el de su `library.json`, o el de la carpeta
+    /// sin el «.grimorio» si no se puede leer.
     Q_INVOKABLE QString nombreDe(const QString &ruta) const;
     /// Cambia a esa biblioteca (relanzando), si se puede.
     Q_INVOKABLE void abrir(const QString &ruta);

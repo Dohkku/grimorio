@@ -120,17 +120,25 @@ Rectangle {
         font.weight: fila.elegida ? Font.DemiBold : Font.Normal
     }
 
-    // Vigilada: lo que aparezca en esa carpeta del disco entra aquí solo.
-    Text {
+    // Vinculada: lo que aparezca en esa carpeta del disco entra aquí solo.
+    // Pulsarlo abre los vínculos como nodos.
+    Icono {
         id: ojo
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: numero.left
         anchors.rightMargin: tema.hueco * 0.4
         readonly property string ruta: nucleo.vigiladas.length >= 0 ? nucleo.vigiladaDe(fila.idCarpeta) : ""
         visible: ruta.length > 0 && !mas.visible
-        text: "◉"
+        nombre: "vincular"
         color: tema.seleccion
-        font.pixelSize: tema.fuente * 0.75
+        width: Math.round(tema.fuente * 0.95)
+        height: width
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -tema.hueco * 0.3
+            cursorShape: Qt.PointingHandCursor
+            onClicked: ventana.abrirVinculos()
+        }
     }
 
     Text {
