@@ -88,12 +88,14 @@ Filename: "{app}\grimorio.exe"; Description: "{cm:LaunchProgram,Grimorio}"; Flag
 ; administrador, aunque la instalación lo haya pedido.
 Filename: "{app}\grimorio.exe"; Flags: nowait runasoriginaluser; Check: DesdeGrimorio
 
+; Al desinstalar se borra solo lo instalado. Las bibliotecas (por defecto
+; Documentos\Grimorio.grimorio) y los ajustes (%APPDATA%\Grimorio) son de la
+; persona y se quedan.
+
+; La sección de código va la última: Inno Setup lee como Pascal todo lo que
+; viene detrás, comentarios con «;» incluidos.
 [Code]
 function DesdeGrimorio: Boolean;
 begin
   Result := ExpandConstant('{param:actualizar|0}') = '1';
 end;
-
-; Al desinstalar se borra solo lo instalado. Las bibliotecas (por defecto
-; Documentos\Grimorio.grimorio) y los ajustes (%APPDATA%\Grimorio) son de la
-; persona y se quedan.
