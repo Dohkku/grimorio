@@ -302,11 +302,14 @@ target_link_libraries(prueba_version PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME version COMMAND prueba_version)
 
 # Lo que pone un paquete de Linux en su sitio al actualizar, y lo que completa
-# una instalación a la que le falta algo (ver src/paquete.h).
-qt_add_executable(prueba_paquete pruebas/paquete_test.cpp src/paquete.cpp)
-target_include_directories(prueba_paquete PRIVATE src)
-target_link_libraries(prueba_paquete PRIVATE Qt6::Core Qt6::Test)
-add_test(NAME paquete COMMAND prueba_paquete)
+# una instalación a la que le falta algo (ver src/paquete.h). Solo en Linux: en
+# Windows actualiza el instalador, y estas pruebas miran permisos de Unix.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    qt_add_executable(prueba_paquete pruebas/paquete_test.cpp src/paquete.cpp)
+    target_include_directories(prueba_paquete PRIVATE src)
+    target_link_libraries(prueba_paquete PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME paquete COMMAND prueba_paquete)
+endif()
 
 # El arrastre del árbol, con las filas de verdad y el ratón moviéndose. Es lo
 # único que caza que la carga llegue al otro lado y que las bandas caigan donde
