@@ -200,6 +200,15 @@ QString Modelo::idDe(int i) const
     return idEn(size_t(i));
 }
 
+int Modelo::indiceDe(const QString &id) const
+{
+    if (!m_vista || id.isEmpty()) return -1;
+    const QByteArray b = id.toUtf8();
+    const size_t i = grim_vista_indice_de(m_vista, reinterpret_cast<const uint8_t *>(b.constData()),
+                                          uint32_t(b.size()));
+    return i == SIZE_MAX || int(i) >= m_n ? -1 : int(i);
+}
+
 uint32_t Modelo::anchoDe(int i) const
 {
     if (!m_vista || i < 0 || i >= m_n) return 0;

@@ -24,30 +24,19 @@
       }
       button:hover { background: rgba(20, 20, 22, .95); border-color: rgba(255,255,255,.6); }
       button[disabled] { opacity: .6; cursor: default; }
-      .aviso {
-        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-        font: 500 13px/1.3 system-ui, sans-serif; color: #f2efe9;
-        background: rgba(20, 20, 22, .92); border-radius: 10px; padding: 9px 14px;
-        display: none; max-width: 70vw;
-      }
     </style>
-    <div class="barra"><button class="una">a Grimorio</button><button class="todas"></button></div>
-    <div class="aviso"></div>`;
+    <div class="barra"><button class="una">a Grimorio</button><button class="todas"></button></div>`;
   document.documentElement.appendChild(anfitrion);
 
   const barra = sombra.querySelector(".barra");
   const una = sombra.querySelector(".una");
   const todas = sombra.querySelector(".todas");
-  const aviso = sombra.querySelector(".aviso");
   let actual = null;
   let carrusel = [];
-  let olvido = null;
 
-  function avisar(texto) {
-    aviso.textContent = texto;
-    aviso.style.display = "block";
-    clearTimeout(olvido);
-    olvido = setTimeout(() => { aviso.style.display = "none"; }, 3500);
+  /// Lo que va pasando, en el aviso común (aviso.js).
+  function avisar(titulo, estado = "en curso", detalle = "") {
+    avisoGrimorio({ estado, titulo, detalle });
   }
 
   function colocar() {
@@ -184,20 +173,20 @@
   }
 
   async function guardar(medio, todos) {
-    avisar("buscando el original…");
+    avisar("Buscando el original…");
     const { lista: encontrados, como } = await pedidos(medio, todos);
     const lista = encontrados.filter((p) => p.url);
     if (lista.length === 0) {
-      avisar(`no encuentro qué guardar${como ? " · " + como : ""}`);
+      avisar("No encuentro qué guardar", "error", como || "");
       return { ok: false, error: "nada que guardar" };
     }
-    avisar(lista.length === 1 ? "guardando en Grimorio…" : `guardando ${lista.length} en Grimorio…`);
+    avisar(lista.length === 1 ? "Guardando en Grimorio…" : `Guardando ${lista.length} en Grimorio…`);
     const r = await chrome.runtime.sendMessage({ tipo: "guardar", lista });
-    if (!(r && r.ok)) {
-      avisar((r && r.error) || "no se pudo guardar");
-      return r || { ok: false };
-    }
-    avisar(`${lista.length === 1 ? "guardada" : lista.length + " guardadas"} · ${como}`);
+    // Lo que pasó de verdad, y debajo cómo se consiguió (original, lo ya
+    // bajado…), que es lo que dice si la calidad es la buena.
+    const a = avisoDeResultado(r, lista.length);
+    if (a.estado !== "error" && como) a.detalle = [a.detalle, como].filter(Boolean).join(" · ");
+    avisoGrimorio(a);
     return r;
   }
 
@@ -211,7 +200,7 @@
   chrome.runtime.onMessage.addListener((m, _de, responder) => {
     if (m.tipo !== "guardarClicDerecho") return false;
     if (!bajoElClicDerecho) {
-      avisar("no había ninguna foto ni vídeo bajo el ratón");
+      avisar("No había ninguna foto ni vídeo bajo el ratón", "error");
       responder({ ok: false, error: "nada bajo el ratón" });
       return false;
     }

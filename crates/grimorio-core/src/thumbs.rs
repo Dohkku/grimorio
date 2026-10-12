@@ -67,7 +67,21 @@ impl PackWriter {
             .write(true)
             .open(&ruta_cerrojo)
             .map_err(|e| Error::io(&ruta_cerrojo, e))?;
-        if cerrojo.try_lock().is_err() {
+        // Se insiste un momento antes de rendirse. Al lanzar un programa de
+        // fuera (ffmpeg, grim-recorte), el proceso nuevo hereda por un instante
+        // una copia del archivo del cerrojo, y el cerrojo sigue puesto aunque
+        // el escritor de antes ya lo haya soltado. Sin esperar, una importación
+        // justo después de otra decía «otro proceso está escribiendo» sin que
+        // hubiera ninguno.
+        let mut libre = cerrojo.try_lock().is_ok();
+        for _ in 0..20 {
+            if libre {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            libre = cerrojo.try_lock().is_ok();
+        }
+        if !libre {
             return Err(Error::Invalid(format!(
                 "otro proceso está escribiendo en {}\n  \
                  cierra la otra instancia de Grimorio e inténtalo de nuevo",

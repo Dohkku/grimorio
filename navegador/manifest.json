@@ -36,6 +36,7 @@
         "https://www.instagram.com/*"
       ],
       "js": [
+        "aviso.js",
         "elegir.js",
         "instagram.js"
       ],

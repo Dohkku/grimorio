@@ -7,6 +7,8 @@
 // traduce a algo que se pueda hacer.
 "use strict";
 
+importScripts("aviso.js");
+
 const PROGRAMA = "com.grimorio.puerta";
 /// Por encima de esto no se mandan los bytes, se manda la dirección y la baja
 /// Grimorio: un mensaje al programa nativo no puede pasar de 64 MB, y en base64
@@ -76,16 +78,45 @@ async function carpetaElegida() {
   return carpeta || "";
 }
 
+/// Guarda cada uno y devuelve lo que pasó con cada uno: guardada, repetida
+/// (ya estaba), en camino (sigue bajando) o error. Lo apunta en las últimas.
 async function guardarLista(lista) {
   const carpeta = await carpetaElegida();
-  let fallo = null;
-  let hechos = 0;
+  const resultados = [];
   for (const p of lista) {
-    const r = await guardarUno(p, carpeta);
-    if (r && r.ok) hechos++;
-    else fallo = fallo || r;
+    const r = (await guardarUno(p, carpeta)) || { ok: false, error: "Grimorio no contestó" };
+    resultados.push({ ...r, nombre: r.nombre || p.nombre || "" });
   }
-  return fallo && hechos === 0 ? fallo : { ok: true, hechos };
+  await apuntar(resultados);
+  return { ok: resultados.some((r) => r.ok), resultados };
+}
+
+/// Las últimas guardadas, para la ventanita del botón.
+async function apuntar(resultados) {
+  const { ultimas = [] } = await chrome.storage.local.get("ultimas");
+  const nuevas = resultados.map((r) => ({
+    estado: r.ok ? r.estado || "guardada" : "error",
+    nombre: r.nombre || "",
+    error: r.ok ? "" : r.error || "",
+    id: r.id || "",
+    cuando: Date.now(),
+  }));
+  await chrome.storage.local.set({ ultimas: [...nuevas.reverse(), ...ultimas].slice(0, 8) });
+}
+
+/// El aviso dentro de una página que no es Instagram (allí lo pone su script).
+async function avisarEn(tab, aviso) {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["aviso.js"] });
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (a) => avisoGrimorio(a),
+      args: [aviso],
+    });
+  } catch (_) {
+    // Páginas en las que no se puede pintar (las del propio navegador): queda
+    // la marca del botón.
+  }
 }
 
 async function marcar(tabId, bien) {
@@ -108,12 +139,20 @@ async function alPulsarMenu(info, tab) {
       return { ok: false, error: String(e.message || e) };
     }
   }
+  if (tab) await avisarEn(tab, { estado: "en curso", titulo: "Guardando en Grimorio…" });
+  let r;
   if ((info.mediaType === "image" || info.mediaType === "video") && info.srcUrl) {
-    return guardarLista([{ url: info.srcUrl, origen: info.pageUrl, nombre: tab && tab.title }]);
+    r = await guardarLista([{ url: info.srcUrl, origen: info.pageUrl, nombre: tab && tab.title }]);
+  } else {
+    // Un enlace o la página: Grimorio busca su imagen principal (og:image).
+    const url = info.linkUrl || info.pageUrl;
+    const uno = await hablar({ accion: "traer", url, origen: url, carpeta: await carpetaElegida() });
+    const resultados = [{ ...uno, nombre: uno.nombre || (tab && tab.title) || "" }];
+    await apuntar(resultados);
+    r = { ok: uno.ok, resultados };
   }
-  // Un enlace o la página: Grimorio busca su imagen principal (og:image).
-  const url = info.linkUrl || info.pageUrl;
-  return hablar({ accion: "traer", url, origen: url, carpeta: await carpetaElegida() });
+  if (tab) await avisarEn(tab, avisoDeResultado(r, 1));
+  return r;
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -122,6 +161,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((m, de, responder) => {
+  if (m.tipo === "mostrar") {
+    hablar({ accion: "mostrar", id: m.id }).then(responder);
+    return true;
+  }
   if (m.tipo === "guardar") {
     guardarLista(m.lista).then(responder);
     return true;

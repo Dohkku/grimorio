@@ -217,17 +217,24 @@ void Traer::descargar(const QUrl &url, const QString &carpeta)
     bajar(url, carpeta, QString(), 0, QImage());
 }
 
-void Traer::traerDesde(const QUrl &url, const QString &origen, const QString &carpeta)
+void Traer::mal(const QString &etiqueta, const QString &mensaje)
+{
+    emit aviso(mensaje, true);
+    if (!etiqueta.isEmpty()) emit falloTraer(etiqueta, mensaje);
+}
+
+void Traer::traerDesde(const QUrl &url, const QString &origen, const QString &carpeta,
+                       const QString &etiqueta)
 {
     if (!esWeb(url)) {
-        emit aviso(tr("no es una dirección web: %1").arg(url.toString()), true);
+        mal(etiqueta, tr("no es una dirección web: %1").arg(url.toString()));
         return;
     }
-    bajar(url, carpeta, origen, 0, QImage());
+    bajar(url, carpeta, origen, 0, QImage(), etiqueta);
 }
 
 bool Traer::guardarDatos(const QByteArray &datos, const QString &tipo, const QString &nombre,
-                         const QString &carpeta, const QString &origen)
+                         const QString &carpeta, const QString &origen, const QString &etiqueta)
 {
     if (datos.isEmpty()) return false;
     QString n = nombre.trimmed().isEmpty()
@@ -237,38 +244,39 @@ bool Traer::guardarDatos(const QByteArray &datos, const QString &tipo, const QSt
     const QString ext = extensionDe(tipo.toLower());
     if (!ext.isEmpty() && QFileInfo(n).suffix().toLower() != ext) n += QLatin1Char('.') + ext;
     if (QFileInfo(n).suffix().isEmpty()) {
-        emit aviso(tr("lo que llegó del navegador no dice qué es (%1)").arg(tipo), true);
+        mal(etiqueta, tr("lo que llegó del navegador no dice qué es (%1)").arg(tipo));
         return false;
     }
     const QString ruta = dirTemporal() + QLatin1Char('/') + n;
     QFile f(ruta);
     if (!f.open(QIODevice::WriteOnly) || f.write(datos) != datos.size()) {
-        emit aviso(tr("no pude guardar lo que llegó del navegador"), true);
+        mal(etiqueta, tr("no pude guardar lo que llegó del navegador"));
         return false;
     }
     f.close();
-    m_nucleo->importarDeFuera({ ruta }, carpeta, origen, true);
+    m_nucleo->importarDeFuera({ ruta }, carpeta, origen, true, etiqueta);
     return true;
 }
 
-void Traer::guardarImagen(const QImage &img, const QString &carpeta, const QString &origen)
+void Traer::guardarImagen(const QImage &img, const QString &carpeta, const QString &origen,
+                          const QString &etiqueta)
 {
     if (img.isNull()) {
-        emit aviso(tr("la imagen del portapapeles está vacía"), true);
+        mal(etiqueta, tr("la imagen del portapapeles está vacía"));
         return;
     }
     const QString nombre = QStringLiteral("pegado %1.png")
                                .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss")));
     const QString ruta = dirTemporal() + QLatin1Char('/') + nombre;
     if (!img.save(ruta, "PNG")) {
-        emit aviso(tr("no pude guardar la imagen pegada"), true);
+        mal(etiqueta, tr("no pude guardar la imagen pegada"));
         return;
     }
-    m_nucleo->importarDeFuera({ ruta }, carpeta, origen, true);
+    m_nucleo->importarDeFuera({ ruta }, carpeta, origen, true, etiqueta);
 }
 
 void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen, int saltos,
-                  const QImage &reserva)
+                  const QImage &reserva, const QString &etiqueta)
 {
     QNetworkRequest pide(url);
     // Hay sitios que a un cliente sin nombre le devuelven una página de error
@@ -283,10 +291,10 @@ void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen
         r->deleteLater();
         if (r->error() != QNetworkReply::NoError) {
             if (!reserva.isNull()) {
-                guardarImagen(reserva, carpeta, origen);
+                guardarImagen(reserva, carpeta, origen, etiqueta);
                 return;
             }
-            emit aviso(tr("no pude descargar %1: %2").arg(url.toString(), r->errorString()), true);
+            mal(etiqueta, tr("no pude descargar %1: %2").arg(url.toString(), r->errorString()));
             return;
         }
         const QString tipo = r->header(QNetworkRequest::ContentTypeHeader)
@@ -299,15 +307,14 @@ void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen
         if (tipo == QLatin1String("text/html") || tipo == QLatin1String("application/xhtml+xml")) {
             const QUrl img = saltos == 0 ? imagenPrincipal(QString::fromUtf8(datos), final_) : QUrl();
             if (img.isValid()) {
-                bajar(img, carpeta, origen.isEmpty() ? url.toString() : origen, saltos + 1, reserva);
+                bajar(img, carpeta, origen.isEmpty() ? url.toString() : origen, saltos + 1, reserva, etiqueta);
                 return;
             }
             if (!reserva.isNull()) {
-                guardarImagen(reserva, carpeta, origen);
+                guardarImagen(reserva, carpeta, origen, etiqueta);
                 return;
             }
-            emit aviso(tr("esa página no dice cuál es su imagen; abre la imagen y copia su dirección"),
-                       true);
+            mal(etiqueta, tr("esa página no dice cuál es su imagen; abre la imagen y copia su dirección"));
             return;
         }
 
@@ -318,22 +325,22 @@ void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen
             nombre += QLatin1Char('.') + ext;
         if (!tipoImportable(tipo) && QFileInfo(nombre).suffix().isEmpty()) {
             if (!reserva.isNull()) {
-                guardarImagen(reserva, carpeta, origen);
+                guardarImagen(reserva, carpeta, origen, etiqueta);
                 return;
             }
-            emit aviso(tr("eso no es una imagen ni un vídeo (%1)").arg(tipo.isEmpty() ? tr("sin tipo") : tipo),
-                       true);
+            mal(etiqueta, tr("eso no es una imagen ni un vídeo (%1)").arg(tipo.isEmpty() ? tr("sin tipo") : tipo));
             return;
         }
 
         const QString ruta = dirTemporal() + QLatin1Char('/') + nombre;
         QFile f(ruta);
         if (!f.open(QIODevice::WriteOnly) || f.write(datos) != datos.size()) {
-            emit aviso(tr("no pude guardar la descarga"), true);
+            mal(etiqueta, tr("no pude guardar la descarga"));
             return;
         }
         f.close();
-        m_nucleo->importarDeFuera({ ruta }, carpeta, origen.isEmpty() ? url.toString() : origen, true);
+        m_nucleo->importarDeFuera({ ruta }, carpeta, origen.isEmpty() ? url.toString() : origen, true,
+                                  etiqueta);
     });
 }
 

@@ -119,6 +119,13 @@ pub enum Evento<'a> {
         /// no tiene versiones que elegir.
         versiones: Vec<VersionJson>,
     },
+    /// Cómo acabó una importación que pidió saberlo (ver `Importar::etiqueta`).
+    Importado {
+        etiqueta: &'a str,
+        nuevos: Vec<ElementoJson>,
+        repetidos: Vec<ElementoJson>,
+        fallos: Vec<String>,
+    },
     /// Lo que pesaría una versión, antes de crearla.
     Estimacion {
         cmd: u64,
@@ -166,6 +173,12 @@ pub struct EtiquetaJson {
 pub struct MuestraJson {
     pub color: String,
     pub peso: f32,
+}
+
+#[derive(Serialize)]
+pub struct ElementoJson {
+    pub id: String,
+    pub nombre: String,
 }
 
 #[derive(Serialize)]
@@ -395,6 +408,39 @@ fn versiones(lib: &Library, it: &grimorio_core::Item) -> Vec<VersionJson> {
             alto: v.height,
         })
         .collect()
+}
+
+pub fn importado(aviso: &Aviso, lib: &Library, etiqueta: &str, r: &grimorio_core::import::ImportReport) {
+    let elemento = |id: &String| ElementoJson {
+        id: id.clone(),
+        nombre: lib.load_item(id).map(|i| i.name).unwrap_or_default(),
+    };
+    manda(
+        aviso,
+        &Evento::Importado {
+            etiqueta,
+            nuevos: r.ids.iter().map(elemento).collect(),
+            repetidos: r.repetidos.iter().map(|(_, id)| elemento(id)).collect(),
+            fallos: r
+                .failed
+                .iter()
+                .map(|(_, e)| e.clone())
+                .chain((r.unsupported > 0).then(|| "no es un tipo de archivo que Grimorio sepa abrir".to_string()))
+                .collect(),
+        },
+    );
+}
+
+pub fn importado_mal(aviso: &Aviso, etiqueta: &str, error: &str) {
+    manda(
+        aviso,
+        &Evento::Importado {
+            etiqueta,
+            nuevos: Vec::new(),
+            repetidos: Vec::new(),
+            fallos: vec![error.to_string()],
+        },
+    );
 }
 
 pub fn estimacion(aviso: &Aviso, cmd: u64, id: &str, e: &grimorio_core::pilas::Estimacion) {

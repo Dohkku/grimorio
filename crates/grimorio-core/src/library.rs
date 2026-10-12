@@ -657,6 +657,31 @@ impl Library {
         progreso: &(dyn Fn(usize, usize) + Sync),
     ) -> Result<Vaciado> {
         let ids = self.index.ids_en_papelera()?;
+        self.borrar_de_la_papelera(ids, progreso)
+    }
+
+    /// Borra de verdad algunos de los que están en la papelera: lo que se
+    /// elige dentro de ella y se borra. Lo que no está en la papelera no se
+    /// toca aunque venga en la lista: borrar para siempre algo que se ve en
+    /// la biblioteca no puede pasar por equivocarse de vista.
+    ///
+    /// Como vaciar, **no se deshace** y tira la historia entera.
+    pub fn borrar_para_siempre(
+        &mut self,
+        ids: &[String],
+        progreso: &(dyn Fn(usize, usize) + Sync),
+    ) -> Result<Vaciado> {
+        let tirados: std::collections::HashSet<String> =
+            self.index.ids_en_papelera()?.into_iter().collect();
+        let elegidos: Vec<String> = ids.iter().filter(|id| tirados.contains(*id)).cloned().collect();
+        self.borrar_de_la_papelera(elegidos, progreso)
+    }
+
+    fn borrar_de_la_papelera(
+        &mut self,
+        ids: Vec<String>,
+        progreso: &(dyn Fn(usize, usize) + Sync),
+    ) -> Result<Vaciado> {
         let total = ids.len();
         let items = self.items_dir();
         let mut borrados = Vec::with_capacity(total);
@@ -1213,6 +1238,23 @@ mod tests_edicion {
         lib.deshacer(&nada).unwrap();
         assert_eq!(lib.index().search(&normal).unwrap().len(), 5);
         assert!(lib.index().search(&papelera).unwrap().is_empty());
+    }
+
+    #[test]
+    fn borrar_para_siempre_solo_toca_lo_elegido_de_la_papelera() {
+        let (_d, mut lib) = biblioteca();
+        let ids = mete(&mut lib, 4);
+        lib.tirar(&ids[..3], true, &nada).unwrap();
+        // Uno elegido de la papelera y otro que se ve en la biblioteca.
+        let v = lib
+            .borrar_para_siempre(&[ids[0].clone(), ids[3].clone()], &nada)
+            .unwrap();
+        assert_eq!(v.borrados, 1);
+        assert!(!lib.item_dir(&ids[0]).exists(), "el elegido se borra");
+        assert!(lib.item_dir(&ids[1]).exists(), "el resto de la papelera sigue");
+        assert!(lib.item_dir(&ids[3]).exists(), "lo que no está tirado no se toca");
+        assert_eq!(lib.index().contar_papelera().unwrap(), 2);
+        assert_eq!(lib.index().count().unwrap(), 1);
     }
 
     #[test]

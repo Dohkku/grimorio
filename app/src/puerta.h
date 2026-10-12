@@ -12,13 +12,19 @@
 //   {"accion":"hola"}       → {"ok":true,"biblioteca":"…","version":"…"}
 //   {"accion":"carpetas"}   → {"ok":true,"carpetas":[{"id","nombre","nivel"}]}
 //   {"accion":"traer", "url" | "datos"+"tipo", "origen", "nombre", "carpeta"}
-//                           → {"ok":true}
+//                           → {"ok":true,"estado":"guardada"|"repetida","id","nombre"}
+//                             o {"ok":false,"error":"…"}
+//   {"accion":"mostrar","id"} → {"ok":true}: enseña ese elemento en la ventana
 //
-// «traer» contesta en cuanto empieza: bajar e importar puede tardar, y lo que
-// pase después se cuenta en la barra de estado, como cualquier importación.
+// «traer» contesta cuando ha acabado de verdad —entró, ya estaba o falló—, no
+// cuando empieza: así el navegador puede decir lo que pasó. Si tarda más de
+// la cuenta, contesta que sigue en camino.
 #pragma once
+#include <QHash>
 #include <QObject>
+#include <QPointer>
 #include <QString>
+#include <QVariantMap>
 
 class Nucleo;
 class Traer;
@@ -44,6 +50,12 @@ public:
     Q_INVOKABLE QString conectarNavegadores();
     Q_INVOKABLE void abrirCarpetaExtension();
 
+signals:
+    /// El navegador pide ver un elemento («ver en Grimorio»).
+    void mostrar(const QString &id);
+
+public:
+
     /// Dónde escucha. `grim` calcula lo mismo por su cuenta: ver
     /// `nativo::ruta_puerta` en crates/grimorio-cli.
     static QString nombre();
@@ -54,11 +66,17 @@ public:
 private:
     bool intentarAbrir();
     void atender(QLocalSocket *s);
-    QByteArray responder(const QByteArray &linea);
+    /// La respuesta, o vacía si se contestará más tarde (ver `pendientes`).
+    QByteArray responder(const QByteArray &linea, QLocalSocket *s);
+    void contestar(QLocalSocket *s, const QByteArray &respuesta);
+    /// Lo que se trae esperando a que acabe, por su etiqueta.
+    void acabado(const QVariantMap &resultado);
+    void fallido(const QString &etiqueta, const QString &mensaje);
 
     Nucleo *m_nucleo;
     Traer *m_traer;
     QString m_version;
     QLocalServer *m_servidor;
     QTimer *m_reintento = nullptr;
+    QHash<QString, QPointer<QLocalSocket>> m_pendientes;
 };

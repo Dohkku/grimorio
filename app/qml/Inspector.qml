@@ -705,7 +705,8 @@ Rectangle {
                         width: (parent.width - parent.spacing) / 2
                         icono: "papelera"
                         texto: ventana.enPapelera ? qsTr("recuperar") : qsTr("papelera")
-                        onPulsado: ventana.tirar()
+                        onPulsado: ventana.enPapelera ? nucleo.papelera(modelo.seleccion, false)
+                                                      : ventana.tirar()
                     }
                 }
 

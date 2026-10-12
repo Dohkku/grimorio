@@ -8,6 +8,15 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.7
+
+- **Borrar para siempre.** En la papelera, Supr o el botón borran del disco
+  lo que elijas, después de preguntar. Antes lo devolvían a la biblioteca.
+- **Recuperar.** En la papelera, el botón de la ficha recupera la imagen.
+- **Enter confirma** las preguntas, como «vaciar papelera».
+- **Arreglado:** importar justo después de otra importación podía decir
+  «otro proceso está escribiendo» sin que lo hubiera.
+
 ## 0.1.6
 
 - **Versiones de una imagen.** La misma imagen en varios pesos se apila, y en

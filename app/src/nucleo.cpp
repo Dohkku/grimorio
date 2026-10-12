@@ -108,6 +108,10 @@ void Nucleo::procesar(const QString &json)
         e.remove(QStringLiteral("tipo"));
         e.remove(QStringLiteral("cmd"));
         emit estimacion(e);
+    } else if (tipo == QLatin1String("importado")) {
+        QVariantMap r = ev.toVariantMap();
+        r.remove(QStringLiteral("tipo"));
+        emit importado(r);
     } else if (tipo == QLatin1String("sugerencia_pila")) {
         emit sugerenciaPila(ev.value(QStringLiteral("pares")).toArray().toVariantList());
     } else if (tipo == QLatin1String("progreso")) {
@@ -457,6 +461,13 @@ void Nucleo::marcarAdulto(const QStringList &ids, bool si)
              { QStringLiteral("si"), si } });
 }
 
+void Nucleo::borrarParaSiempre(const QStringList &ids)
+{
+    if (ids.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("borrar_para_siempre") },
+             { QStringLiteral("ids"), deLista(ids) } });
+}
+
 void Nucleo::vaciarPapelera()
 {
     mandar({ { QStringLiteral("cmd"), QStringLiteral("vaciar_papelera") } });
@@ -499,7 +510,7 @@ void Nucleo::importar(const QStringList &rutas, const QString &carpeta)
 }
 
 void Nucleo::importarDeFuera(const QStringList &rutas, const QString &carpeta,
-                             const QString &origen, bool mover)
+                             const QString &origen, bool mover, const QString &etiqueta)
 {
     if (rutas.isEmpty()) return;
     QJsonObject o { { QStringLiteral("cmd"), QStringLiteral("importar") },
@@ -507,6 +518,7 @@ void Nucleo::importarDeFuera(const QStringList &rutas, const QString &carpeta,
                     { QStringLiteral("mover"), mover } };
     if (!carpeta.isEmpty()) o[QStringLiteral("carpeta")] = carpeta;
     if (!origen.isEmpty()) o[QStringLiteral("origen")] = origen;
+    if (!etiqueta.isEmpty()) o[QStringLiteral("etiqueta")] = etiqueta;
     mandar(o);
 }
 

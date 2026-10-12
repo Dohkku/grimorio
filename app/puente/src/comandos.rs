@@ -217,6 +217,10 @@ pub enum Comando {
     },
     /// Borra de verdad lo que hay en la papelera. No tiene vuelta.
     VaciarPapelera,
+    /// Borra de verdad lo elegido dentro de la papelera. No tiene vuelta.
+    BorrarParaSiempre {
+        ids: Vec<String>,
+    },
     Deshacer,
     Rehacer,
     /// Pide las etiquetas que empiezan por un prefijo, para autocompletar.
@@ -244,6 +248,11 @@ pub enum Comando {
         /// de una carpeta vigilada sigue siendo de esa carpeta.
         #[serde(default)]
         copiar: bool,
+        /// Quien importa y quiere saber cómo acabó —la puerta del navegador—
+        /// pone aquí una etiqueta, y al terminar sale un evento `importado`
+        /// con ella: lo que entró, lo que ya estaba y lo que falló.
+        #[serde(default)]
+        etiqueta: Option<String>,
     },
     /// Empieza a vigilar una carpeta del disco; lo nuevo entra en `carpeta`.
     VigilarCarpeta {
@@ -670,6 +679,7 @@ pub fn ejecutar(
                 origen: None,
                 mover: false,
                 copiar: true,
+                etiqueta: None,
             };
             ejecutar(lib, &importar, id_cmd, aviso, vista)?;
             grimorio_core::vigiladas::marcar(lib.root(), id, *hasta)?;
@@ -1012,6 +1022,23 @@ pub fn ejecutar(
             );
         }
 
+        Comando::BorrarParaSiempre { ids } => {
+            let v = lib.borrar_para_siempre(ids, &|_, _| {})?;
+            let q = consulta_actual(vista);
+            republicar(lib, q, id_cmd, aviso, vista)?;
+            eventos::carpetas(aviso, lib);
+            eventos::registro(aviso, lib);
+            if let Some((_, motivo)) = v.fallos.first() {
+                eventos::error(aviso, id_cmd, &format!("no se pudo borrar: {motivo}"));
+            }
+            let n = v.borrados;
+            eventos::hecho(
+                aviso,
+                id_cmd,
+                format!("{n} elemento{} borrado{} para siempre", plural(n), plural(n)),
+            );
+        }
+
         Comando::Deshacer | Comando::Rehacer => {
             let atras = matches!(cmd, Comando::Deshacer);
             let a = Mutex::new(*aviso);
@@ -1084,9 +1111,13 @@ pub fn ejecutar(
             origen,
             mover,
             copiar,
+            etiqueta,
         } => {
             if let Some(c) = carpeta {
                 if !lib.folders().existe(c) {
+                    if let Some(e) = etiqueta {
+                        eventos::importado_mal(aviso, e, &format!("no existe la carpeta {c}"));
+                    }
                     return Err(Error::Invalid(format!("no existe la carpeta {c}")));
                 }
             }
@@ -1114,7 +1145,19 @@ pub fn ejecutar(
                 if let Ok(av) = a.lock() {
                     eventos::progreso(&av, id_cmd, "importar", hechos, total);
                 }
-            })?;
+            });
+            let informe = match informe {
+                Ok(i) => i,
+                Err(e) => {
+                    if let Some(et) = etiqueta {
+                        eventos::importado_mal(aviso, et, &e.to_string());
+                    }
+                    return Err(e);
+                }
+            };
+            if let Some(et) = etiqueta {
+                eventos::importado(aviso, lib, et, &informe);
+            }
             // Lo contrario de importar es mandar lo importado a la papelera, no
             // borrarlo: deshacer nunca debería poder perder un archivo.
             if !informe.ids.is_empty() {

@@ -40,13 +40,21 @@ public:
     /// Lo que llega del navegador (ver puerta.h). `origen` es la página de la
     /// que sale —el post de Instagram, no la dirección de la imagen, que
     /// caduca—; `nombre`, cómo se llamará si se sabe algo mejor que la URL.
-    void traerDesde(const QUrl &url, const QString &origen, const QString &carpeta);
+    ///
+    /// `etiqueta` es la de quien quiere saber cómo acabó (la puerta): la
+    /// importación la devuelve en `Nucleo::importado`, y si falla antes de
+    /// importar, sale en `falloTraer`.
+    void traerDesde(const QUrl &url, const QString &origen, const QString &carpeta,
+                    const QString &etiqueta = QString());
     /// Lo mismo cuando el navegador ya trae los bytes: lo que solo se puede
     /// bajar con la sesión de quien mira, o lo que ya estaba en pantalla.
     bool guardarDatos(const QByteArray &datos, const QString &tipo, const QString &nombre,
-                      const QString &carpeta, const QString &origen);
+                      const QString &carpeta, const QString &origen,
+                      const QString &etiqueta = QString());
 
 signals:
+    /// Lo que pidió saber cómo acababa (`etiqueta`) no llegó a importarse.
+    void falloTraer(const QString &etiqueta, const QString &mensaje);
     /// Para la barra de estado.
     void aviso(const QString &mensaje, bool error);
 
@@ -56,9 +64,12 @@ private:
     /// nombre en cache/salida), o "".
     QString idPropio(const QString &ruta) const;
     QString dirTemporal() const;
-    void guardarImagen(const QImage &img, const QString &carpeta, const QString &origen);
+    void guardarImagen(const QImage &img, const QString &carpeta, const QString &origen,
+                       const QString &etiqueta = QString());
     void bajar(const QUrl &url, const QString &carpeta, const QString &origen, int saltos,
-               const QImage &reserva);
+               const QImage &reserva, const QString &etiqueta = QString());
+    /// Un error: a la barra de estado y, si alguien espera, a quien espera.
+    void mal(const QString &etiqueta, const QString &mensaje);
 
     Nucleo *m_nucleo;
     QNetworkAccessManager *m_red;

@@ -50,6 +50,9 @@ impl Default for ImportOptions {
 pub struct ImportReport {
     pub imported: usize,
     pub duplicates: usize,
+    /// De los repetidos, los que ya estaban en la biblioteca, con el id del
+    /// elemento que los tiene: lo que llega y ya estaba se puede enseñar.
+    pub repetidos: Vec<(PathBuf, String)>,
     pub unsupported: usize,
     /// Los que entraron pero todavía no sabemos dibujar: el vídeo, el PDF, la
     /// tipografía. Están en la biblioteca con sus datos; les falta la cara.
@@ -188,11 +191,12 @@ pub fn import(
         })
         .collect();
 
-    let known: HashSet<String> = if opts.skip_duplicates {
-        lib.index().known_hashes()?
+    let known: std::collections::HashMap<String, String> = if opts.skip_duplicates {
+        lib.index().ids_por_hash()?
     } else {
-        HashSet::new()
+        std::collections::HashMap::new()
     };
+    let repetidos: Mutex<Vec<(PathBuf, String)>> = Mutex::new(Vec::new());
     let seen: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
     let done = AtomicUsize::new(0);
     let total = candidates.len();
@@ -209,7 +213,7 @@ pub fn import(
     let prepared: Vec<std::result::Result<Option<Prepared>, (PathBuf, String)>> = candidates
         .par_iter()
         .map(|path| {
-            let r = prepare_one(&rutas, path, opts, &known, &seen, &dup_count);
+            let r = prepare_one(&rutas, path, opts, &known, &seen, &dup_count, &repetidos);
             let n = done.fetch_add(1, Ordering::Relaxed) + 1;
             if n % 32 == 0 || n == total {
                 progress(n, total);
@@ -315,6 +319,7 @@ pub fn import(
     }
 
     report.duplicates = dup_count.load(Ordering::Relaxed);
+    report.repetidos = repetidos.into_inner().unwrap_or_default();
     report.elapsed_ms = started.elapsed().as_millis();
     Ok(report)
 }
@@ -408,9 +413,10 @@ fn prepare_one(
     rutas: &Rutas,
     path: &Path,
     opts: &ImportOptions,
-    known: &HashSet<String>,
+    known: &std::collections::HashMap<String, String>,
     seen: &Mutex<HashSet<String>>,
     dup_count: &AtomicUsize,
+    repetidos: &Mutex<Vec<(PathBuf, String)>>,
 ) -> Result<Option<Prepared>> {
     let ext = path
         .extension()
@@ -420,8 +426,11 @@ fn prepare_one(
     let (hash, bytes, size) = leer_y_hashear(path, &ext)?;
 
     if opts.skip_duplicates {
-        if known.contains(&hash) {
+        if let Some(id) = known.get(&hash) {
             dup_count.fetch_add(1, Ordering::Relaxed);
+            if let Ok(mut r) = repetidos.lock() {
+                r.push((path.to_path_buf(), id.clone()));
+            }
             return Ok(None);
         }
         let mut s = seen.lock().unwrap();
@@ -682,6 +691,20 @@ mod tests {
         .unwrap();
         assert_eq!(rep.imported, 1);
         assert_eq!(rep.duplicates, 1);
+        // Repetido dentro de la misma tanda: no hay a quién señalar todavía.
+        assert!(rep.repetidos.is_empty());
+
+        // Otra vez el mismo archivo: ya estaba, y se dice cuál es.
+        let otra = import(
+            &mut lib,
+            &[src.join("a.png")],
+            &ImportOptions::default(),
+            &|_, _| {},
+        )
+        .unwrap();
+        assert_eq!(otra.imported, 0);
+        assert_eq!(otra.repetidos.len(), 1);
+        assert_eq!(otra.repetidos[0].1, rep.ids[0]);
 
         // Reimportar la misma carpeta no duplica nada.
         let rep2 = import(&mut lib, &[src], &ImportOptions::default(), &|_, _| {}).unwrap();

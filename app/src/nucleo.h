@@ -146,6 +146,8 @@ public:
     /// Marca o desmarca lo elegido como contenido adulto.
     Q_INVOKABLE void marcarAdulto(const QStringList &ids, bool si);
     Q_INVOKABLE void vaciarPapelera();
+    /// Borra de verdad lo elegido dentro de la papelera. No se deshace.
+    Q_INVOKABLE void borrarParaSiempre(const QStringList &ids);
     Q_INVOKABLE void deshacer();
     Q_INVOKABLE void rehacer();
     /// Pide las etiquetas que empiezan por un prefijo. Sin prefijo, las más
@@ -190,7 +192,7 @@ public:
     /// Importar con lo que solo sabe quien trae el archivo de fuera: la URL de
     /// la que viene y si es un temporal que se puede mover en vez de copiar.
     void importarDeFuera(const QStringList &rutas, const QString &carpeta,
-                         const QString &origen, bool mover);
+                         const QString &origen, bool mover, const QString &etiqueta = QString());
     Q_INVOKABLE void abrirFuera(const QString &id);
     /// Si `hija` cuelga de `padre`, a cualquier profundidad.
     ///
@@ -223,6 +225,9 @@ signals:
     /// Lo recién importado que se parece a algo que ya estaba:
     /// `[{nuevo, nombre_nuevo, peso_nuevo, existente, nombre_existente, peso_existente}]`.
     void sugerenciaPila(const QVariantList &pares);
+    /// Cómo acabó una importación con etiqueta: `{etiqueta, nuevos, repetidos,
+    /// fallos}`, con `{id, nombre}` en las dos listas. Ver puerta.h.
+    void importado(const QVariantMap &resultado);
     /// Un mensaje corto para la barra de estado: fin de una tarea o un error.
     void aviso(const QString &mensaje, bool esError);
 

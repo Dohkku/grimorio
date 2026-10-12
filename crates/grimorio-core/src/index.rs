@@ -474,6 +474,17 @@ impl Index {
         Ok(out)
     }
 
+    /// Cada contenido que ya está en la biblioteca (fuera de la papelera),
+    /// con el id del elemento que lo tiene. Es lo que deja decir «esto ya lo
+    /// tenías, es este» en vez de solo «repetido».
+    pub fn ids_por_hash(&self) -> Result<std::collections::HashMap<String, String>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT hash, id FROM items WHERE hash <> '' AND trashed = 0")?;
+        let filas = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+        Ok(filas.collect::<std::result::Result<_, _>>()?)
+    }
+
     pub fn get(&self, id: &str) -> Result<Option<QueryHit>> {
         Ok(self
             .conn

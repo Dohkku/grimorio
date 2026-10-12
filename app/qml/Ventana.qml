@@ -317,8 +317,12 @@ Window {
         a.push({ texto: modelo.adultoFoco ? qsTr("quitar +18") : qsTr("marcar +18"),
                  valor: "adulto", icono: "escudo" })
         a.push({ separador: true })
-        a.push(enPapelera ? { texto: qsTr("recuperar"), valor: "papelera", icono: "papelera", atajo: "Supr" }
-                          : { texto: qsTr("a la papelera"), valor: "papelera", icono: "papelera", atajo: "Supr" })
+        if (enPapelera) {
+            a.push({ texto: qsTr("recuperar"), valor: "recuperar", icono: "papelera" })
+            a.push({ texto: qsTr("borrar para siempre…"), valor: "papelera", icono: "papelera", atajo: "Supr" })
+        } else {
+            a.push({ texto: qsTr("a la papelera"), valor: "papelera", icono: "papelera", atajo: "Supr" })
+        }
         return a
     }
 
@@ -336,6 +340,7 @@ Window {
         case "sacar": nucleo.sacarDeCarpeta(modelo.seleccion, carpetaActual); break
         case "adulto": nucleo.marcarAdulto(modelo.seleccion, !modelo.adultoFoco); break
         case "papelera": tirar(); break
+        case "recuperar": nucleo.papelera(modelo.seleccion, false); break
         case "apilar": {
             const principal = modelo.idDe(modelo.actual)
             nucleo.apilar(principal, modelo.seleccion.filter(function (x) { return x !== principal }))
@@ -384,7 +389,17 @@ Window {
     function tirar() {
         const ids = modelo.seleccion
         if (ids.length === 0) return
-        if (enPapelera) { nucleo.papelera(ids, false); return }
+        if (enPapelera) {
+            // Dentro de la papelera, borrar es borrar de verdad. Se pregunta
+            // siempre: es lo único que no tiene vuelta atrás.
+            borrarPendiente = ids
+            confirmarBorrado.preguntar(
+                ids.length === 1 ? qsTr("¿Borrar para siempre?")
+                                 : qsTr("¿Borrar para siempre %1?").arg(Textos.elementos(ids.length)),
+                qsTr("Se borran los archivos del disco. No se puede deshacer."),
+                qsTr("borrar para siempre"))
+            return
+        }
         if (!modelo.hayPilasElegidas()) { nucleo.papelera(ids, true); return }
         switch (ajustes.borrarPila) {
         case "sola": nucleo.papelera(ids, true, false); break
@@ -750,6 +765,15 @@ Window {
         onAceptado: nucleo.vaciarPapelera()
     }
 
+    property var borrarPendiente: []
+    Confirmar {
+        id: confirmarBorrado
+        onAceptado: {
+            nucleo.borrarParaSiempre(ventana.borrarPendiente)
+            ventana.borrarPendiente = []
+        }
+    }
+
     Confirmar {
         id: confirmarModelo
         onAceptado: {
@@ -871,7 +895,37 @@ Window {
     Timer {
         id: refrescoPila
         interval: 0
-        onTriggered: ventana.refrescarPila()
+        onTriggered: {
+            ventana.refrescarPila()
+            ventana.ensenarPendiente()
+        }
+    }
+
+    // «Ver en Grimorio» desde el navegador: la ventana delante, en «Todo» y
+    // sin filtros —lo recién guardado podría no encajar en lo que se miraba—,
+    // y el elemento elegido y a la vista en cuanto llega la vista nueva.
+    Connections {
+        target: puerta
+        function onMostrar(id) { ventana.mostrarElemento(id) }
+    }
+    property string porEnsenar: ""
+    function mostrarElemento(id) {
+        visorAbierto = false
+        carpetaActual = ""
+        textoBusqueda = ""
+        porEnsenar = id
+        consultar()
+        if (ventana.visibility === Window.Minimized) ventana.showNormal()
+        ventana.raise()
+        ventana.requestActivate()
+    }
+    function ensenarPendiente() {
+        if (porEnsenar.length === 0) return
+        const i = modelo.indiceDe(porEnsenar)
+        porEnsenar = ""
+        if (i < 0) return
+        modelo.elegir(i)
+        malla.llevarHasta(i)
     }
 
     function refrescarPila() {
@@ -916,6 +970,7 @@ Window {
         enabled: !ventana.escribiendo
         onActivated: {
             if (confirmacion.abierto) confirmacion.abierto = false
+            else if (confirmarBorrado.abierto) confirmarBorrado.abierto = false
             else if (confirmarModelo.abierto) confirmarModelo.abierto = false
             else if (preguntaPila.abierto) preguntaPila.abierto = false
             else if (crearVersion.abierto) crearVersion.abierto = false
@@ -930,6 +985,7 @@ Window {
     Shortcut {
         sequence: "Return"
         enabled: modelo.actual >= 0 && !ventana.visorAbierto && !ventana.escribiendo
+                 && !confirmacion.abierto && !confirmarBorrado.abierto
         onActivated: ventana.visorAbierto = true
     }
     Shortcut {
@@ -945,9 +1001,8 @@ Window {
     Shortcut {
         sequences: [StandardKey.Delete]
         enabled: modelo.elegidos > 0 && !ventana.escribiendo
-        // En la papelera, Supr recupera. Borrar de verdad desde ahí tiene su
-        // propio botón con su confirmación: la tecla que se pulsa sin mirar no
-        // puede ser la que no tiene vuelta atrás.
+        // En la papelera, Supr borra para siempre, pero siempre preguntando
+        // antes: la tecla que se pulsa sin mirar no puede borrar sin más.
         onActivated: ventana.tirar()
     }
     Shortcut {

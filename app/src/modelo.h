@@ -112,6 +112,8 @@ public slots:
     Q_INVOKABLE void elegirPrimeros(int n);
     /// El id de una fila, para mandarlo al núcleo.
     Q_INVOKABLE QString idDe(int i) const;
+    /// La posición de un elemento en la vista, o -1 si no está en ella.
+    Q_INVOKABLE int indiceDe(const QString &id) const;
     /// Accesos con nombre para QML. Existen para no tener números de rol
     /// escritos a mano en el QML, que es de los errores más difíciles de ver:
     /// un 263 mal puesto no falla, simplemente enseña otra cosa.

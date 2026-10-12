@@ -24,6 +24,16 @@ Item {
         abierto = true
     }
 
+    // Enter contesta que sí, como el botón resaltado.
+    Shortcut {
+        sequences: ["Return", "Enter"]
+        enabled: raiz.abierto
+        onActivated: {
+            raiz.abierto = false
+            raiz.aceptado()
+        }
+    }
+
     // Tapa lo de debajo, también para el ratón: mientras hay una pregunta en
     // pantalla no se puede seguir tocando lo de detrás.
     MouseArea {
