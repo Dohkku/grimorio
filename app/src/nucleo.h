@@ -123,7 +123,26 @@ public:
                                const QStringList &quitar);
     Q_INVOKABLE void nota(const QString &id, const QString &texto);
     Q_INVOKABLE void renombrar(const QString &id, const QString &nombre);
-    Q_INVOKABLE void papelera(const QStringList &ids, bool dentro);
+    /// Con `conVersiones`, una principal se lleva su pila entera; sin él va
+    /// sola y su versión más pesada ocupa su sitio.
+    Q_INVOKABLE void papelera(const QStringList &ids, bool dentro, bool conVersiones = false);
+    /// Mete `ids` como versiones en la pila de `principal`.
+    Q_INVOKABLE void apilar(const QString &principal, const QStringList &ids);
+    /// Saca de su pila; de una principal, suelta todas sus versiones.
+    Q_INVOKABLE void desapilar(const QStringList &ids);
+    Q_INVOKABLE void hacerPrincipal(const QString &id);
+    /// Saca una versión ligera de `id` sin tocar el original. `lado` 0 deja
+    /// el tamaño; `calidad` solo cuenta en jpg.
+    Q_INVOKABLE void crearVersion(const QString &id, const QString &formato,
+                                  int calidad, int lado);
+    /// Cuánto pesaría esa versión, sin crearla. Contesta con `estimacion`.
+    Q_INVOKABLE void estimarVersion(const QString &id, const QString &formato,
+                                    int calidad, int lado);
+    /// Un archivo hecho fuera —un recorte— como versión en la pila de `id`.
+    Q_INVOKABLE void anadirVersion(const QString &id, const QString &ruta,
+                                   const QString &recorte);
+    /// `[{principal, ids}]`, como una sola cosa que se deshace.
+    Q_INVOKABLE void apilarGrupos(const QVariantList &grupos);
     /// Marca o desmarca lo elegido como contenido adulto.
     Q_INVOKABLE void marcarAdulto(const QStringList &ids, bool si);
     Q_INVOKABLE void vaciarPapelera();
@@ -150,6 +169,19 @@ public:
     /// Pide la ficha de un elemento. Llamarla con el mismo id dos veces no
     /// cuesta nada: es leer un JSON pequeño en el hilo del núcleo.
     Q_INVOKABLE void pedirFicha(const QString &id);
+    /// Una ruta del disco como URL. Hecho a mano en QML se rompe con un «#»
+    /// en el nombre o con la letra de unidad de Windows.
+    Q_INVOKABLE QUrl urlDeRuta(const QString &ruta) const { return QUrl::fromLocalFile(ruta); }
+    /// La misma ruta para pintarla con el proveedor de imágenes, que sabe
+    /// abrir lo que Qt no (WebP en algunas máquinas). Ver `archivo/` en
+    /// proveedor.cpp.
+    Q_INVOKABLE QString imagenDeRuta(const QString &ruta) const
+    {
+        if (ruta.isEmpty()) return {};
+        return QStringLiteral("image://grim/archivo/")
+               + QString::fromLatin1(ruta.toUtf8().toBase64(
+                   QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+    }
     Q_INVOKABLE void importar(const QStringList &rutas, const QString &carpeta = QString());
     /// Lo que llega de arrastrar y soltar: URLs, no rutas. La conversión se
     /// hace aquí y no en QML porque quitar el "file://" a mano se rompe con el
@@ -186,6 +218,11 @@ signals:
     /// que volver a consultar la biblioteca entera por una estrella.
     void itemCambiado(const QString &id, const QVariantMap &estado);
     void progreso(const QString &que, int hechos, int total);
+    /// Lo que pesaría una versión: `{id, peso, ancho, alto, original}`.
+    void estimacion(const QVariantMap &e);
+    /// Lo recién importado que se parece a algo que ya estaba:
+    /// `[{nuevo, nombre_nuevo, peso_nuevo, existente, nombre_existente, peso_existente}]`.
+    void sugerenciaPila(const QVariantList &pares);
     /// Un mensaje corto para la barra de estado: fin de una tarea o un error.
     void aviso(const QString &mensaje, bool esError);
 

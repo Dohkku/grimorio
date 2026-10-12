@@ -22,6 +22,10 @@ Item {
     /// El archivo original, para el cuentagotas. De un RAW lo que hay es su
     /// vista previa interna, que suele ser mayor que la de 1024.
     property url original
+    /// Si se mira un archivo que no está en la malla —una versión de una
+    /// pila—, su imagen por ruta (`nucleo.imagenDeRuta`). La previa y el
+    /// original salen de ella: por id, el proveedor no lo encontraría.
+    property string fuenteArchivo: ""
     property bool conOriginal: true
     /// Las medidas del original según la ficha, si se saben. Sirven para que
     /// la geometría no salte al llegar el original: hasta entonces se acerca
@@ -170,7 +174,8 @@ Item {
         y: vi.posY
         transformOrigin: Item.TopLeft
         scale: vi.hayPrevia ? vi.dibW / vi.previaW : 1
-        source: vi.idElemento.length > 0 ? "image://grim/previa/" + vi.idElemento : ""
+        source: vi.fuenteArchivo.length > 0 ? vi.fuenteArchivo
+                : vi.idElemento.length > 0 ? "image://grim/previa/" + vi.idElemento : ""
         asynchronous: true
         cache: true
         visible: !vi.hayAlta
@@ -187,8 +192,9 @@ Item {
         scale: vi.hayAlta ? vi.dibW / vi.altaW : 1
         // Por el proveedor y no con la ruta: Qt no sabe abrir WebP en esta
         // máquina, y el proveedor cae al núcleo cuando Qt no sabe.
-        source: vi.pedirAlta && vi.conOriginal && vi.idElemento.length > 0
-                ? "image://grim/original/" + vi.idElemento : ""
+        source: !vi.pedirAlta || !vi.conOriginal || vi.idElemento.length === 0 ? ""
+                : vi.fuenteArchivo.length > 0 ? vi.fuenteArchivo
+                : "image://grim/original/" + vi.idElemento
         asynchronous: true
         // Un original de varios megas por imagen vista no puede quedarse en el
         // caché de Qt: se lleva la memoria y no se vuelve a mirar.

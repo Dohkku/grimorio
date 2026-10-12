@@ -119,6 +119,11 @@ pub struct Query {
     /// Solo lo que tiene repetido (exacto o casi), con cada grupo seguido.
     #[serde(default)]
     pub repetidos: bool,
+    /// Una pila entera: la principal con ese id y sus versiones. Es lo único
+    /// que enseña las versiones; cualquier otra consulta las deja fuera y ve
+    /// solo la principal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pila: Option<String>,
     pub sort: SortBy,
     /// Cuántos resultados como mucho. **Cero significa todos**: la malla carga
     /// la biblioteca entera y pedirle que adivine un tope sería inventarse un
@@ -152,6 +157,7 @@ impl Default for Query {
             desde_ms: None,
             hasta_ms: None,
             repetidos: false,
+            pila: None,
             sort: SortBy::ImportedDesc,
             limit: 200,
             offset: 0,
@@ -189,6 +195,10 @@ pub struct QueryHit {
     /// celda al pintarse: preguntarlo elemento a elemento sería una consulta
     /// por celda y por fotograma.
     pub adulto: bool,
+    /// Cuántas versiones tiene debajo, sin contarse a sí mismo. Cero en casi
+    /// todo; la celda lo enseña como una insignia cuando no lo es.
+    #[serde(default)]
+    pub versiones: u32,
 }
 
 impl QueryHit {

@@ -19,7 +19,6 @@ elementos**.
 | Interfaz | Núcleo en Rust + capa QML (Qt 6) + pegamento fino en C++. Confirmado con números en M0 (ver docs/M0.md) |
 | Archivos | Copiar dentro de la biblioteca por defecto, como Eagle. `mover` y `referenciar` existen en el núcleo y se exponen como ajuste en M3 |
 | Licencia | Software libre bajo AGPL-3.0 desde la primera versión pública. Formato de biblioteca documentado en público |
-| IA | Fuera del núcleo. Si algún día, como plugin |
 
 ## Alcance
 
@@ -30,10 +29,8 @@ visor instantáneo, inspector, búsqueda con filtros, valoración y notas.
 **v1:** carpetas inteligentes, búsqueda por color, vigilancia de carpetas,
 vídeo/audio/PDF/tipografías/RAW, duplicados, plugins.
 
-**Después:** extensión de navegador, comparación y presentación, formatos de
-diseño (PSD, AI, Sketch), sincronización.
-
-**Fuera:** cualquier función de IA.
+**Después:** comparación y presentación, formatos de diseño (PSD, AI,
+Sketch), sincronización. La extensión de navegador ya está (cola, 16).
 
 ## Arquitectura
 
@@ -125,6 +122,9 @@ por arriba; lo cerrado sale de aquí y entra en el hito que le toque.
 | 11 | Modelos 3D: STL para imprimir, `.blend`, y los de intercambio | hecho |
 | 12 | Sonido: onda en el tiempo y en frecuencia, ir a un momento con el ratón, cámara lenta | hecho |
 | 13 | Mandos de vídeo más ricos | hecho: fotograma a fotograma, velocidad, A–B, volumen, vista previa en la barra |
+| 14 | La misma imagen en varios pesos, como una sola | hecho: pilas de versiones, versiones ligeras con el peso a la vista, sugerir apilar al importar |
+| 15 | Quitar el fondo | hecho: `grim-recorte` con ISNet, local, con el modelo dentro |
+| 16 | Extensión de navegador, sobre todo para Instagram | hecho para fotos y carruseles en Brave/Chrome; los vídeos de Instagram y Firefox, después |
 
 Sobre el 8, lo pedido con detalle: el modo seguro difumina lo marcado; abrir un
 elemento marcado lo enseña **solo mientras está abierto** y al volver a la malla

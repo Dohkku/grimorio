@@ -6,6 +6,7 @@
 
 mod bench;
 mod fmt;
+mod nativo;
 mod synth;
 
 use clap::{Parser, Subcommand};
@@ -136,6 +137,42 @@ enum Cmd {
         /// Sacar de la papelera en vez de meter
         #[arg(long)]
         sacar: bool,
+        /// Una principal con versiones se lleva la pila entera. Sin esto va
+        /// sola y su versión más pesada ocupa su sitio
+        #[arg(long)]
+        pila: bool,
+    },
+    /// Conecta la extensión del navegador con Grimorio (o la desconecta)
+    Navegador {
+        /// instalar o desinstalar
+        #[arg(value_name = "QUÉ", default_value = "instalar")]
+        que: String,
+    },
+    /// Mete elementos como versiones en la pila de PRINCIPAL
+    Stack {
+        #[arg(value_name = "PRINCIPAL")]
+        principal: String,
+        #[arg(value_name = "ID", required = true)]
+        ids: Vec<String>,
+    },
+    /// Saca de su pila (de una principal, suelta todas sus versiones)
+    Unstack {
+        #[arg(value_name = "ID", required = true)]
+        ids: Vec<String>,
+    },
+    /// Saca una versión más ligera sin tocar el original y la mete en su pila
+    Version {
+        #[arg(value_name = "ID")]
+        id: String,
+        /// jpg, png o webp
+        #[arg(long, default_value = "jpg")]
+        formato: String,
+        /// Calidad de 1 a 100 (solo jpg)
+        #[arg(long, default_value_t = 82)]
+        calidad: u8,
+        /// Lado mayor en píxeles; 0 deja el tamaño
+        #[arg(long, default_value_t = 1600)]
+        lado: u32,
     },
     /// Borra de verdad todo lo que hay en la papelera. No se deshace
     Empty {
@@ -222,6 +259,18 @@ enum BenchCmd {
 }
 
 fn main() -> ExitCode {
+    // Lanzado por el navegador para la extensión: ni subórdenes ni colores,
+    // solo el protocolo del navegador por la entrada y la salida.
+    let args: Vec<String> = std::env::args().collect();
+    if nativo::es_del_navegador(&args) {
+        return match nativo::correr() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("grim (navegador): {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let cli = Cli::parse();
     match run(&cli) {
         Ok(()) => ExitCode::SUCCESS,
@@ -493,13 +542,13 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
 
-        Cmd::Trash { ids, sacar } => {
+        Cmd::Trash { ids, sacar, pila } => {
             let mut lib = open_lib_escritura(cli)?;
             let resueltos: Vec<String> = ids
                 .iter()
                 .map(|i| resolver_id(&lib, i))
                 .collect::<Result<_, _>>()?;
-            let (tocados, _) = lib.tirar(&resueltos, !sacar, &|_, _| {})?;
+            let (tocados, _) = lib.tirar_pilas(&resueltos, !sacar, *pila, &|_, _| {})?;
             println!(
                 "{} {} elemento{}",
                 fmt::accent(if *sacar {
@@ -509,6 +558,74 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 }),
                 tocados,
                 if tocados == 1 { "" } else { "s" }
+            );
+            Ok(())
+        }
+
+        Cmd::Navegador { que } => {
+            let hechos = match que.as_str() {
+                "instalar" => nativo::instalar()?,
+                "desinstalar" => nativo::desinstalar()?,
+                otro => return Err(format!("¿«{otro}»? Es «instalar» o «desinstalar»").into()),
+            };
+            if hechos.is_empty() {
+                println!("no encontré ningún navegador conocido (Brave, Chrome, Chromium, Edge, Vivaldi, Firefox)");
+            } else {
+                println!(
+                    "{} {}",
+                    fmt::accent(if que == "instalar" { "conectado con" } else { "desconectado de" }),
+                    hechos.join(", ")
+                );
+            }
+            Ok(())
+        }
+
+        Cmd::Stack { principal, ids } => {
+            let mut lib = open_lib_escritura(cli)?;
+            let principal = resolver_id(&lib, principal)?;
+            let resueltos: Vec<String> = ids
+                .iter()
+                .map(|i| resolver_id(&lib, i))
+                .collect::<Result<_, _>>()?;
+            let n = lib.apilar(&principal, &resueltos)?;
+            println!("{} {n} en la pila de {}", fmt::accent("apilados"), lib.load_item(&principal)?.name);
+            Ok(())
+        }
+
+        Cmd::Unstack { ids } => {
+            let mut lib = open_lib_escritura(cli)?;
+            let resueltos: Vec<String> = ids
+                .iter()
+                .map(|i| resolver_id(&lib, i))
+                .collect::<Result<_, _>>()?;
+            let n = lib.desapilar(&resueltos)?;
+            println!("{} {n}", fmt::accent("fuera de la pila"));
+            Ok(())
+        }
+
+        Cmd::Version {
+            id,
+            formato,
+            calidad,
+            lado,
+        } => {
+            let mut lib = open_lib_escritura(cli)?;
+            let id = resolver_id(&lib, id)?;
+            let receta = grimorio_core::Receta {
+                formato: formato.clone(),
+                calidad: *calidad,
+                lado: *lado,
+                recorte: None,
+            };
+            let nuevo = lib.crear_version(&id, &receta)?;
+            let original = lib.load_item(&id)?;
+            let v = lib.load_item(&nuevo)?;
+            println!(
+                "{} {}  {} → {}",
+                fmt::accent("versión"),
+                &nuevo[nuevo.len().saturating_sub(8)..],
+                fmt::bytes(original.size),
+                fmt::bytes(v.size)
             );
             Ok(())
         }

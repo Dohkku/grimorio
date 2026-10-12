@@ -301,6 +301,19 @@ Window {
         ]
         if (carpetaActual.length > 0)
             a.push({ texto: qsTr("sacar de la carpeta"), valor: "sacar", icono: "salir" })
+        // Las pilas. Apilar pide más de uno —el del foco es la principal—, y
+        // sacar una versión ligera tiene sentido de una imagen en una imagen.
+        if (!enPapelera) {
+            const foco = modelo.actual
+            if (varios)
+                a.push({ texto: qsTr("apilar como versiones"), valor: "apilar", icono: "pila" })
+            else if (foco >= 0 && modelo.familiaDe(foco) === Textos.IMAGEN)
+                a.push({ texto: qsTr("crear versión…"), valor: "version", icono: "pila" })
+            if (foco >= 0 && modelo.versionesDe(foco) > 0)
+                a.push({ texto: qsTr("deshacer la pila"), valor: "desapilar", icono: "pila" })
+            if (recorte.hayPrograma && foco >= 0 && modelo.familiaDe(foco) === Textos.IMAGEN)
+                a.push({ texto: qsTr("quitar el fondo"), valor: "fondo", icono: "recorte" })
+        }
         a.push({ texto: modelo.adultoFoco ? qsTr("quitar +18") : qsTr("marcar +18"),
                  valor: "adulto", icono: "escudo" })
         a.push({ separador: true })
@@ -322,7 +335,61 @@ Window {
         case "renombrar": renombrar(); break
         case "sacar": nucleo.sacarDeCarpeta(modelo.seleccion, carpetaActual); break
         case "adulto": nucleo.marcarAdulto(modelo.seleccion, !modelo.adultoFoco); break
-        case "papelera": nucleo.papelera(modelo.seleccion, !enPapelera); break
+        case "papelera": tirar(); break
+        case "apilar": {
+            const principal = modelo.idDe(modelo.actual)
+            nucleo.apilar(principal, modelo.seleccion.filter(function (x) { return x !== principal }))
+            break
+        }
+        case "version": {
+            const i = modelo.actual
+            crearVersion.abrir(modelo.idDe(i), modelo.nombreDe(i), modelo.anchoDe(i), modelo.altoDe(i))
+            break
+        }
+        case "desapilar": nucleo.desapilar([modelo.idDe(modelo.actual)]); break
+        case "fondo": quitarFondo(); break
+        }
+    }
+
+    /// Quita el fondo de las imágenes elegidas: cada una gana una versión sin
+    /// fondo en su pila. La primera vez hay que bajar el modelo, y eso se
+    /// pregunta: son 170 MB, y es la única vez que esto toca la red.
+    property var fondoPendiente: null
+    function quitarFondo() {
+        let ids = [], urls = []
+        const elegidos = modelo.indicesElegidos()
+        for (let i = 0; i < elegidos.length; i++) {
+            const k = elegidos[i]
+            if (modelo.familiaDe(k) !== Textos.IMAGEN) continue
+            ids.push(modelo.idDe(k))
+            urls.push(modelo.urlDe(k))
+        }
+        if (ids.length === 0) return
+        if (recorte.hayModelo) {
+            recorte.quitarFondo(ids, urls)
+            return
+        }
+        fondoPendiente = { ids: ids, urls: urls }
+        confirmarModelo.preguntar(
+            qsTr("Falta el modelo para quitar fondos"),
+            qsTr("Grimorio lo trae dentro, pero esta instalación no lo tiene (pasa al compilar desde el código). Son %1 MB (ISNet, licencia Apache-2.0) que se bajan una vez de las releases de Grimorio en github.com. Tus fotos no salen de aquí: el recorte se hace en tu ordenador.").arg(recorte.megasModelo),
+            qsTr("bajar el modelo"))
+    }
+
+    /// Manda lo elegido a la papelera, o lo recupera estando en ella.
+    ///
+    /// Si entre lo elegido hay una principal con versiones, qué pasa con ellas
+    /// lo decide quien tira: o se lo pregunta cada vez, o contestó una y pidió
+    /// que se recordara (se cambia en ajustes, en «pilas»).
+    function tirar() {
+        const ids = modelo.seleccion
+        if (ids.length === 0) return
+        if (enPapelera) { nucleo.papelera(ids, false); return }
+        if (!modelo.hayPilasElegidas()) { nucleo.papelera(ids, true); return }
+        switch (ajustes.borrarPila) {
+        case "sola": nucleo.papelera(ids, true, false); break
+        case "todas": nucleo.papelera(ids, true, true); break
+        default: preguntaPila.preguntar(ids)
         }
     }
 
@@ -610,6 +677,11 @@ Window {
             id: estado
             anchors { bottom: parent.bottom; left: lateral.right; right: inspector.left }
         }
+
+        SugerenciaPila {
+            id: sugerencia
+            anchors { bottom: estado.top; right: inspector.left; margins: tema.margen }
+        }
     }
 
     // El visor tapa todo lo demás. Se abre con Intro o doble clic.
@@ -676,6 +748,28 @@ Window {
     Confirmar {
         id: confirmacion
         onAceptado: nucleo.vaciarPapelera()
+    }
+
+    Confirmar {
+        id: confirmarModelo
+        onAceptado: {
+            const p = ventana.fondoPendiente
+            ventana.fondoPendiente = null
+            if (p) recorte.quitarFondo(p.ids, p.urls)
+            recorte.bajarModelo()
+        }
+    }
+
+    PreguntaPila {
+        id: preguntaPila
+        onElegido: function (ids, conVersiones, recordar) {
+            if (recordar) ajustes.borrarPila = conVersiones ? "todas" : "sola"
+            nucleo.papelera(ids, true, conVersiones)
+        }
+    }
+
+    CrearVersion {
+        id: crearVersion
     }
 
     // Un velo mientras se arrastra: la ventana entera es la zona de soltar, así
@@ -763,6 +857,30 @@ Window {
     Connections {
         target: nucleo
         function onListo() { ventana.consultar() }
+        // Una pila cambia sin que cambie el elemento en foco: deshacer una
+        // versión nueva, sacar otra de la pila. La ficha es la que lista las
+        // versiones, así que se vuelve a pedir. Solo si hay pila de por medio:
+        // cada letra del buscador publica una vista, y pedir la ficha en cada
+        // una no aportaría nada.
+        function onVistaNueva() { refrescoPila.restart() }
+        function onSugerenciaPila(pares) { sugerencia.mostrar(pares) }
+    }
+
+    // Un turno después de la vista nueva y no en el mismo: el modelo la recoge
+    // por la misma señal, y hasta entonces el foco es el de la vista vieja.
+    Timer {
+        id: refrescoPila
+        interval: 0
+        onTriggered: ventana.refrescarPila()
+    }
+
+    function refrescarPila() {
+        const i = modelo.actual
+        if (i < 0) return
+        const id = modelo.idDe(i)
+        const habia = nucleo.ficha.id === id && nucleo.ficha.versiones
+                      && nucleo.ficha.versiones.length > 0
+        if (habia || modelo.versionesDe(i) > 0) nucleo.pedirFicha(id)
     }
 
     Shortcut {
@@ -798,6 +916,9 @@ Window {
         enabled: !ventana.escribiendo
         onActivated: {
             if (confirmacion.abierto) confirmacion.abierto = false
+            else if (confirmarModelo.abierto) confirmarModelo.abierto = false
+            else if (preguntaPila.abierto) preguntaPila.abierto = false
+            else if (crearVersion.abierto) crearVersion.abierto = false
             else if (desplegable.visible) desplegable.cerrar()
             else if (panelAjustes.abierto) panelAjustes.cerrar()
             else if (panelVinculos.abierto) panelVinculos.cerrar()
@@ -827,7 +948,7 @@ Window {
         // En la papelera, Supr recupera. Borrar de verdad desde ahí tiene su
         // propio botón con su confirmación: la tecla que se pulsa sin mirar no
         // puede ser la que no tiene vuelta atrás.
-        onActivated: nucleo.papelera(modelo.seleccion, !ventana.enPapelera)
+        onActivated: ventana.tirar()
     }
     Shortcut {
         sequence: "Ctrl+Shift+N"
@@ -975,6 +1096,7 @@ Window {
         readonly property string etiqueta: "rótulo"
         property real escalaAntes: 1
         property string temaAntes: ""
+        property string borrarPilaAntes: ""
 
         Timer {
             id: reloj
@@ -1118,7 +1240,86 @@ Window {
                 ajustes.escala = guionista.escalaAntes
                 ajustes.tema = guionista.temaAntes
                 break
+            // Las pilas: sacar una versión ligera y tirar la principal, que
+            // pregunta qué hacer con sus versiones. La versión se va con el
+            // deshacer del final, como todo lo demás.
             case 27:
+                modelo.elegir(0)
+                crearVersion.abrir(modelo.idDe(0), modelo.nombreDe(0), modelo.anchoDe(0), modelo.altoDe(0))
+                break
+            case 28:
+                app.capturar(guion + "22-crear-version.png")
+                crearVersion.crear()
+                break
+            case 29:
+                guionista.borrarPilaAntes = ajustes.borrarPila
+                ajustes.borrarPila = ""
+                modelo.elegir(0)
+                ventana.tirar()
+                break
+            case 30:
+                app.capturar(guion + "23-tirar-una-pila.png")
+                preguntaPila.abierto = false
+                ajustes.borrarPila = guionista.borrarPilaAntes
+                break
+            // Una versión en el visor: no está en la malla, así que se pinta
+            // por su ruta. Por id se quedaba en negro.
+            case 31:
+                ventana.visorAbierto = true
+                break
+            case 32: {
+                const p = visor.pila
+                for (let i = p.length - 1; i >= 0; i--)
+                    if (!p[i].principal) { visor.idVersion = p[i].id; break }
+                break
+            }
+            case 33:
+                app.capturar(guion + "24-visor-una-version.png")
+                ventana.visorAbierto = false
+                break
+            // La pregunta de después de importar, con una pareja de verdad de
+            // la biblioteca: la primera imagen y la segunda.
+            case 34:
+                sugerencia.mostrar([{
+                    nuevo: modelo.idDe(1), nombre_nuevo: modelo.nombreDe(1), peso_nuevo: 18000,
+                    existente: modelo.idDe(0), nombre_existente: modelo.nombreDe(0), peso_existente: 52000
+                }])
+                break
+            case 35:
+                app.capturar(guion + "25-ya-la-tenias.png")
+                sugerencia.mostrar([])
+                break
+            // Quitar el fondo, si hay con qué: el programa y el modelo. El guion
+            // no baja nada —las pasadas automáticas no tocan la red—, así que
+            // sin el modelo puesto de antes estos pasos se saltan.
+            case 36:
+                if (!recorte.hayPrograma || !recorte.hayModelo) {
+                    guionista.paso = 40
+                    break
+                }
+                modelo.elegir(0)
+                ventana.quitarFondo()
+                break
+            case 37:
+                // Esperar a que acabe: se vuelve a este paso mientras quede algo.
+                if (recorte.pendientes > 0) guionista.paso -= 1
+                break
+            case 38:
+                ventana.visorAbierto = true
+                break
+            case 39: {
+                const p = visor.pila
+                for (let i = 0; i < p.length; i++)
+                    if (p[i].receta === "sin fondo") { visor.idVersion = p[i].id; break }
+                break
+            }
+            case 40:
+                if (ventana.visorAbierto) {
+                    app.capturar(guion + "26-sin-fondo.png")
+                    ventana.visorAbierto = false
+                }
+                break
+            case 41:
                 if (guionista.carpeta.length > 0) nucleo.borrarCarpeta(guionista.carpeta)
                 break
             default:

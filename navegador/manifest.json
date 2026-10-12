@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Grimorio",
+  "description": "Guarda imágenes en tu biblioteca de Grimorio: con el clic derecho en cualquier web y con un botón en Instagram.",
+  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvIpFJ2WN4AKZl4jANUFWcr1/nLpoULf6cqnlU/nT/pBfsrUJG7A//lBUBum7MY87mIx8QkQv1OxZ+UWPf30dElmWFiv6TD3eu+CO/BCXrvYUtpF6FvTIlPk+xtjZXuGnRPHa3zuBpC0YY7LrB6OhwcmytktHbdV64kFXHdGTF75tUw+qBxhD/u/HznaC+zYzPSNDZchF6PVQZRix/mZ3yXguzuAfgBMqVUpxFg3xhzfHUjoC3iIoyMzABef3k5YS3hUwFbUUn6pxqP42Czh0rzAjVze53TRdWcC67idLB9QqckJv7z0iUTpr+wU5b8WI9+0AN58CanS32ZvHH/A8CwIDAQAB",
+  "icons": {
+    "16": "iconos/16.png",
+    "32": "iconos/32.png",
+    "48": "iconos/48.png",
+    "128": "iconos/128.png"
+  },
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "fondo.js"
+  },
+  "action": {
+    "default_title": "Grimorio",
+    "default_popup": "ventana.html",
+    "default_icon": {
+      "16": "iconos/16.png",
+      "32": "iconos/32.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.instagram.com/*"
+      ],
+      "js": [
+        "elegir.js",
+        "instagram.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

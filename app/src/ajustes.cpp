@@ -12,6 +12,7 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_escala = qBound(0.7, m_disco.value(QStringLiteral("interfaz/escala"), 1.0).toReal(), 1.6);
     m_tema = m_disco.value(QStringLiteral("interfaz/tema"), QStringLiteral("oscuro")).toString();
     m_buscarVersiones = m_disco.value(QStringLiteral("novedades/buscar"), true).toBool();
+    m_borrarPila = m_disco.value(QStringLiteral("pilas/borrar"), QString()).toString();
 }
 
 void Ajustes::guardar(const char *clave, const QVariant &valor)
@@ -108,4 +109,15 @@ void Ajustes::ponerOrientacion3d(const QString &id, int v)
     if (v == 0) m_disco.remove(clave);
     else m_disco.setValue(clave, v);
     m_disco.sync();
+}
+
+void Ajustes::setBorrarPila(const QString &v)
+{
+    // Lo que no sea una de las dos respuestas es «preguntar»: un valor raro
+    // escrito a mano en el archivo no puede decidir un borrado.
+    const QString limpio = (v == QLatin1String("sola") || v == QLatin1String("todas"))
+                           ? v : QString();
+    if (m_borrarPila == limpio) return;
+    m_borrarPila = limpio;
+    guardar("pilas/borrar", limpio);
 }

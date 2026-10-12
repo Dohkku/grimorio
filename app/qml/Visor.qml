@@ -34,6 +34,20 @@ Item {
     readonly property bool esModelo: familiaFoco === Textos.MODELO
     readonly property bool conVisorPropio: esDocumento || esModelo
 
+    /// La pila del elemento en foco, de la versión más pesada a la más ligera,
+    /// con la principal marcada. Vacía si no es de ninguna. Sale de la ficha:
+    /// la vista solo dice cuántas hay, no cuáles.
+    readonly property var pila: nucleo.ficha.id === idFoco && nucleo.ficha.versiones
+                                ? nucleo.ficha.versiones : []
+    /// La versión que se está mirando, o vacío para la principal. Se vuelve a
+    /// la principal al cambiar de elemento: una elección es de una pila.
+    property string idVersion: ""
+    readonly property var version: {
+        for (let i = 0; i < pila.length; i++)
+            if (pila[i].id === idVersion && !pila[i].principal) return pila[i]
+        return null
+    }
+
     /// Si ya se ha llegado a hacer falta un reproductor.
     ///
     /// Una vez creado no se destruye hasta cerrar el programa, y eso es a
@@ -47,8 +61,14 @@ Item {
     // Cerrado, el original decodificado para el cuentagotas sobra: puede ser
     // mucha memoria.
     onVisibleChanged: {
-        if (visible) forceActiveFocus()
-        else pixeles.soltar()
+        if (visible) {
+            forceActiveFocus()
+            // Sin el panel de detalle nadie habría pedido la ficha, y es la
+            // que dice qué versiones hay.
+            if (idFoco.length > 0 && nucleo.ficha.id !== idFoco) nucleo.pedirFicha(idFoco)
+        } else {
+            pixeles.soltar()
+        }
     }
     onHayQueReproducirChanged: if (hayQueReproducir && !hizoFalta) espera.restart()
 
@@ -109,10 +129,17 @@ Item {
         id: imagen
         anchors.fill: parent
         visible: visor.visible && visor.esImagen
-        idElemento: visible ? visor.idFoco : ""
-        original: visible && visor.foco >= 0 ? modelo.urlDe(visor.foco) : ""
-        anchoPista: nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.ancho || 0) : 0
-        altoPista: nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.alto || 0) : 0
+        // Una versión es un elemento como otro: tiene su previsualización y su
+        // archivo, y se enseña con los suyos.
+        idElemento: !visible ? "" : visor.version ? visor.version.id : visor.idFoco
+        fuenteArchivo: visible && visor.version ? nucleo.imagenDeRuta(visor.version.ruta) : ""
+        original: !visible || visor.foco < 0 ? ""
+                  : visor.version ? nucleo.urlDeRuta(visor.version.ruta)
+                  : modelo.urlDe(visor.foco)
+        anchoPista: visor.version ? visor.version.ancho
+                    : nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.ancho || 0) : 0
+        altoPista: visor.version ? visor.version.alto
+                   : nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.alto || 0) : 0
         onSiguiente: visor.mover(1)
         onCerrar: visor.cerrar()
     }
@@ -183,7 +210,11 @@ Item {
         readonly property bool listo: status === Loader.Ready && active
         onLoaded: visor.darVisorPropio()
     }
-    onIdFocoChanged: darVisorPropio()
+    onIdFocoChanged: {
+        idVersion = ""
+        if (visible && idFoco.length > 0) nucleo.pedirFicha(idFoco)
+        darVisorPropio()
+    }
 
     function darVisorPropio() {
         const v = visorPropio.item
@@ -224,7 +255,93 @@ Item {
         }
     }
 
+    // Las versiones de la pila, por peso. Elegir una la enseña en su lugar;
+    // arrastrarla la lleva a otra aplicación tal cual, y el botón la copia.
+    // Es para lo que existen: pasar la ligera sin tener que exportar nada.
+    Row {
+        id: versiones
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: rotulo.top
+        anchors.bottomMargin: tema.hueco
+        spacing: tema.hueco * 0.5
+        visible: visor.esImagen && visor.pila.length > 1
+
+        Repeater {
+            model: versiones.visible ? visor.pila : []
+            delegate: Rectangle {
+                id: chip
+                required property var modelData
+                readonly property bool elegida: modelData.principal ? visor.version === null
+                                                                    : visor.idVersion === modelData.id
+                width: textosChip.implicitWidth + tema.hueco * 1.6
+                height: textosChip.implicitHeight + tema.hueco * 0.8
+                radius: tema.radio
+                color: tema.panel
+                border.color: elegida ? tema.seleccion : tema.borde
+                border.width: elegida ? 2 : 1
+
+                Column {
+                    id: textosChip
+                    anchors.centerIn: parent
+                    spacing: tema.hueco * 0.1
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: Textos.peso(chip.modelData.peso)
+                        color: tema.texto
+                        font.pixelSize: tema.fuente
+                        font.weight: chip.elegida ? Font.DemiBold : Font.Normal
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: chip.modelData.ancho + "×" + chip.modelData.alto + " · "
+                              + chip.modelData.ext
+                              + (chip.modelData.principal ? " · " + qsTr("principal") : "")
+                        color: tema.textoTenue
+                        font.pixelSize: tema.fuente * 0.78
+                    }
+                }
+
+                MouseArea {
+                    id: agarre
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    property point desde
+                    onPressed: function (e) { desde = Qt.point(e.x, e.y) }
+                    onClicked: visor.idVersion = chip.modelData.principal ? "" : chip.modelData.id
+                    onPositionChanged: function (e) {
+                        if (!pressed) return
+                        if (Math.abs(e.x - desde.x) + Math.abs(e.y - desde.y) < tema.fuente) return
+                        portapapeles.arrastrarFuera(agarre, [nucleo.urlDeRuta(chip.modelData.ruta)], "")
+                    }
+                }
+            }
+        }
+
+        Boton {
+            icono: "copiar"
+            onPulsado: {
+                const v = visor.version
+                const ruta = v ? v.ruta : ""
+                const n = ruta.length > 0
+                          ? portapapeles.copiarArchivos([nucleo.urlDeRuta(ruta)])
+                          : portapapeles.copiarArchivos([modelo.urlDe(visor.foco)])
+                if (n > 0) estado.avisar(qsTr("copiada esta versión"))
+            }
+        }
+        Boton {
+            icono: "pila"
+            visible: visor.version !== null
+            texto: qsTr("hacer principal")
+            onPulsado: {
+                nucleo.hacerPrincipal(visor.version.id)
+                visor.idVersion = ""
+            }
+        }
+    }
+
     Text {
+        id: rotulo
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: tema.margen

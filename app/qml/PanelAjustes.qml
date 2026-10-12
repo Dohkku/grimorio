@@ -488,6 +488,52 @@ Item {
                     }
                 }
 
+                Seccion { text: qsTr("pilas") }
+
+                // Lo que se contestó con «recordar» al tirar una principal con
+                // versiones. Aquí se cambia, y «preguntar» lo olvida.
+                Item {
+                    width: parent.width
+                    height: textoPila.height + opcionesPila.height + tema.hueco * 1.2
+                    Column {
+                        id: textoPila
+                        width: parent.width
+                        spacing: tema.hueco * 0.15
+                        Text {
+                            width: parent.width
+                            text: qsTr("al tirar una imagen con versiones")
+                            color: tema.texto
+                            font.pixelSize: tema.fuente
+                        }
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: qsTr("sola: la versión más pesada ocupa su sitio. Las dos cosas se deshacen con Ctrl+Z")
+                            color: tema.textoTenue
+                            font.pixelSize: tema.fuente * 0.85
+                        }
+                    }
+                    Row {
+                        id: opcionesPila
+                        anchors.top: textoPila.bottom
+                        anchors.topMargin: tema.hueco * 0.6
+                        spacing: tema.hueco * 0.5
+                        Repeater {
+                            model: [
+                                { valor: "", texto: qsTr("preguntar") },
+                                { valor: "sola", texto: qsTr("va sola") },
+                                { valor: "todas", texto: qsTr("toda la pila") }
+                            ]
+                            delegate: Boton {
+                                required property var modelData
+                                texto: modelData.texto
+                                activo: ajustes.borrarPila === modelData.valor
+                                onPulsado: ajustes.borrarPila = modelData.valor
+                            }
+                        }
+                    }
+                }
+
                 Seccion { text: qsTr("versiones") }
 
                 Interruptor {
@@ -579,14 +625,13 @@ Item {
                 Dato { que: qsTr("desde"); valor: qsTr("España") }
                 Dato { que: qsTr("licencia"); valor: qsTr("© 2026 · AGPL-3.0, software libre") }
 
-                Seccion { text: qsTr("cinco promesas") }
+                Seccion { text: qsTr("cuatro promesas") }
                 Repeater {
                     model: [
                         qsTr("Tus datos son tuyos y se leen: un item.json por elemento."),
                         qsTr("Nada de webview: ni Electron, ni Tauri."),
                         qsTr("El núcleo no sabe qué es una ventana."),
-                        qsTr("El estilo es dato: todo sale de un tema."),
-                        qsTr("Sin funciones de IA.")
+                        qsTr("El estilo es dato: todo sale de un tema.")
                     ]
                     delegate: Row {
                         required property string modelData

@@ -56,6 +56,8 @@ enum GrimFamilia {
 uint8_t grim_vista_familia(const GrimVista *v, size_t i);
 /// 1 si está marcado como contenido adulto.
 uint8_t grim_vista_adulto(const GrimVista *v, size_t i);
+/// Cuántas versiones tiene debajo; 0 si no es una pila.
+uint32_t grim_vista_versiones(const GrimVista *v, size_t i);
 /// La extensión, apuntando dentro de la vista. No copia.
 const uint8_t *grim_vista_ext(const GrimVista *v, size_t i, uint32_t *len);
 /// Duración en segundos, o 0 si el archivo no dura.

@@ -18,6 +18,9 @@ memmap2.workspace = true
 thiserror.workspace = true
 # Ya venía dentro con el PNG de `image`; se nombra para inflar los zip de 3MF.
 miniz_oxide = "0.8"
+# WebP con pérdida para las versiones ligeras. `image` solo lo escribe sin
+# pérdida, y un codificador VP8 propio son meses. libwebp va compilada dentro.
+webp = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"

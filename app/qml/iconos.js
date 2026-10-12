@@ -23,6 +23,10 @@ var trazos = {
     "captura":     "M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15",
     "pegar":       "M8.5 5 H6 V21 H18 V5 H15.5 M9 3 H15 V7 H9 Z",
     "carpeta":     "M3 6 H9.5 L11.5 8 H21 V19 H3 Z",
+    // Dos hojas, una detrás de otra: la misma imagen en varias versiones.
+    "pila":        "M8.5 3.5 H20.5 V15.5 H8.5 Z M5.5 7 V18.5 H17",
+    // Una figura sola: lo que queda al quitar el fondo.
+    "recorte":     "M12 4 A3.5 3.5 0 1 0 12 11 A3.5 3.5 0 1 0 12 4 M5 20 C5 15.5 8 13.5 12 13.5 C16 13.5 19 15.5 19 20",
     "vincular":    "M10 14 L14 10 M8.5 11.5 L6.6 13.4 A3.1 3.1 0 0 0 10.6 17.4 L12.5 15.5 M15.5 12.5 L17.4 10.6 A3.1 3.1 0 0 0 13.4 6.6 L11.5 8.5",
     "nodos":       "M6 9.5 A2.5 2.5 0 1 0 6 14.5 A2.5 2.5 0 1 0 6 9.5 M18 3.5 A2.5 2.5 0 1 0 18 8.5 A2.5 2.5 0 1 0 18 3.5 M18 15.5 A2.5 2.5 0 1 0 18 20.5 A2.5 2.5 0 1 0 18 15.5 M8.3 11 L15.7 7 M8.3 13 L15.7 17",
     "etiqueta":    "M3.5 12.2 V4 H11.7 L20.5 12.8 L12.8 20.5 Z",

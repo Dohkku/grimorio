@@ -442,6 +442,70 @@ Rectangle {
                 }
             }
 
+            // ------------------------------------------------- la pila
+            // Las versiones que hay debajo, de la más pesada a la más ligera.
+            // Elegir cuál se ve se hace en el visor; aquí se ordena la pila.
+            Bloque {
+                id: bloquePila
+                titulo: qsTr("pila · %1 versiones").arg(lista.length)
+                readonly property var lista: inspector.alDia && inspector.ficha.versiones
+                                             ? inspector.ficha.versiones : []
+                visible: inspector.cuantos === 1 && lista.length > 1
+
+                Repeater {
+                    model: bloquePila.lista
+                    delegate: Item {
+                        id: filaVersion
+                        required property var modelData
+                        width: parent ? parent.width : 0
+                        height: Math.max(datosVersion.implicitHeight, accionesVersion.height)
+
+                        Column {
+                            id: datosVersion
+                            anchors.left: parent.left
+                            anchors.right: accionesVersion.left
+                            anchors.rightMargin: tema.hueco * 0.5
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                text: Textos.peso(filaVersion.modelData.peso)
+                                      + (filaVersion.modelData.principal ? "  ·  " + qsTr("principal") : "")
+                                color: tema.texto
+                                font.pixelSize: tema.fuente * 0.95
+                                font.weight: filaVersion.modelData.principal ? Font.DemiBold : Font.Normal
+                            }
+                            Text {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                text: filaVersion.modelData.ancho + "×" + filaVersion.modelData.alto
+                                      + " · " + (filaVersion.modelData.receta || filaVersion.modelData.ext)
+                                color: tema.textoTenue
+                                font.pixelSize: tema.fuente * 0.8
+                            }
+                        }
+
+                        Row {
+                            id: accionesVersion
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: tema.hueco * 0.3
+                            visible: !filaVersion.modelData.principal
+                            Boton {
+                                discreto: true
+                                texto: qsTr("hacer principal")
+                                onPulsado: nucleo.hacerPrincipal(filaVersion.modelData.id)
+                            }
+                            Boton {
+                                discreto: true
+                                icono: "salir"
+                                onPulsado: nucleo.desapilar([filaVersion.modelData.id])
+                            }
+                        }
+                    }
+                }
+            }
+
             // ------------------------------------------------- la paleta
             // Los colores que de verdad tiene, cada uno del ancho de lo que
             // ocupa. Pinchar uno busca lo que se le parece.
@@ -641,7 +705,7 @@ Rectangle {
                         width: (parent.width - parent.spacing) / 2
                         icono: "papelera"
                         texto: ventana.enPapelera ? qsTr("recuperar") : qsTr("papelera")
-                        onPulsado: nucleo.papelera(modelo.seleccion, !ventana.enPapelera)
+                        onPulsado: ventana.tirar()
                     }
                 }
 

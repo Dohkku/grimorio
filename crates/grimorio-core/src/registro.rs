@@ -41,6 +41,11 @@ pub struct Parche {
     /// El mapa de orden entero (ver `Item::orden`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orden: Option<std::collections::BTreeMap<String, f64>>,
+    /// La principal de la pila en la que entra (ver `Item::pila`). Como en la
+    /// nota, la cadena vacía es «fuera de toda pila»: así el contrario de
+    /// apilar es otro parche más y no un caso aparte.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pila: Option<String>,
 }
 
 impl Parche {
@@ -92,6 +97,13 @@ impl Parche {
             ..Default::default()
         }
     }
+    /// Mete en la pila de `principal`; con `""`, la saca de la que esté.
+    pub fn pila(principal: &str) -> Self {
+        Parche {
+            pila: Some(principal.to_string()),
+            ..Default::default()
+        }
+    }
 
     /// Toma de `item` los mismos campos que menciona `molde`.
     ///
@@ -111,6 +123,10 @@ impl Parche {
             papelera: molde.papelera.map(|_| item.trashed),
             adulto: molde.adulto.map(|_| item.adult),
             orden: molde.orden.as_ref().map(|_| item.orden.clone()),
+            pila: molde
+                .pila
+                .as_ref()
+                .map(|_| item.pila.clone().unwrap_or_default()),
         }
     }
 
@@ -177,6 +193,19 @@ impl Parche {
             if item.adult != v {
                 atras.adulto = Some(item.adult);
                 item.adult = v;
+            }
+        }
+        if let Some(p) = &self.pila {
+            // Nadie es versión de sí mismo: eso lo dejaría fuera de la malla
+            // sin una principal que lo enseñe.
+            let nueva = if p.is_empty() || *p == item.id {
+                None
+            } else {
+                Some(p.clone())
+            };
+            if item.pila != nueva {
+                atras.pila = Some(item.pila.clone().unwrap_or_default());
+                item.pila = nueva;
             }
         }
 

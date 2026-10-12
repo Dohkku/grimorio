@@ -217,6 +217,40 @@ void Traer::descargar(const QUrl &url, const QString &carpeta)
     bajar(url, carpeta, QString(), 0, QImage());
 }
 
+void Traer::traerDesde(const QUrl &url, const QString &origen, const QString &carpeta)
+{
+    if (!esWeb(url)) {
+        emit aviso(tr("no es una dirección web: %1").arg(url.toString()), true);
+        return;
+    }
+    bajar(url, carpeta, origen, 0, QImage());
+}
+
+bool Traer::guardarDatos(const QByteArray &datos, const QString &tipo, const QString &nombre,
+                         const QString &carpeta, const QString &origen)
+{
+    if (datos.isEmpty()) return false;
+    QString n = nombre.trimmed().isEmpty()
+                    ? QStringLiteral("del navegador %1")
+                          .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss")))
+                    : limpiarNombre(nombre);
+    const QString ext = extensionDe(tipo.toLower());
+    if (!ext.isEmpty() && QFileInfo(n).suffix().toLower() != ext) n += QLatin1Char('.') + ext;
+    if (QFileInfo(n).suffix().isEmpty()) {
+        emit aviso(tr("lo que llegó del navegador no dice qué es (%1)").arg(tipo), true);
+        return false;
+    }
+    const QString ruta = dirTemporal() + QLatin1Char('/') + n;
+    QFile f(ruta);
+    if (!f.open(QIODevice::WriteOnly) || f.write(datos) != datos.size()) {
+        emit aviso(tr("no pude guardar lo que llegó del navegador"), true);
+        return false;
+    }
+    f.close();
+    m_nucleo->importarDeFuera({ ruta }, carpeta, origen, true);
+    return true;
+}
+
 void Traer::guardarImagen(const QImage &img, const QString &carpeta, const QString &origen)
 {
     if (img.isNull()) {

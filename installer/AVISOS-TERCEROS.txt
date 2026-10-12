@@ -58,6 +58,8 @@ estática, estas bibliotecas de licencia permisiva:
   - miniz_oxide (MIT, Apache-2.0 o Zlib)
   - libc (MIT o Apache-2.0)
   - clap (MIT o Apache-2.0), solo en grim.exe
+  - libwebp (BSD-3-Clause), a través de webp (MIT o Apache-2.0)
+  - tract (MIT o Apache-2.0), solo en grim-recorte.exe
   - la biblioteca estándar de Rust (MIT o Apache-2.0)
 
 y sus dependencias, todas con licencias MIT, Apache-2.0, BSD, Zlib o
@@ -70,3 +72,11 @@ versión.
 Grimorio puede usar, si están instalados por separado, ffmpeg, pdftoppm
 (Poppler), ImageMagick, Ghostscript y Blender. No se distribuyen con Grimorio:
 se llaman como programas aparte y cada uno tiene su propia licencia.
+
+Quitar fondos usa el modelo ISNet (isnet-general-use, de DIS: Xuebin Qin y
+otros, «Highly Accurate Dichotomous Image Segmentation», ECCV 2022), bajo la
+licencia Apache-2.0 (texto en licencias/Apache-2.0.txt). Grimorio lo
+distribuye en modelos/isnet-general-use-pesos16.onnx con un único cambio: los
+pesos se guardan en coma flotante de 16 bits en lugar de 32, con el mismo
+cálculo. El programa herramientas/modelo/preparar.py del código de Grimorio
+hace esa conversión desde el original.

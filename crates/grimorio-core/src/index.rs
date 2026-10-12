@@ -16,7 +16,9 @@ use std::path::Path;
 /// creación sin subir este número, y un índice que ya estaba en la 3 salía de
 /// `migrate` antes de crearla: reordenar arrastrando daba «no such table» en
 /// toda biblioteca que existiera de antes.
-pub const USER_VERSION: i32 = 4;
+///
+/// Versión 5: las pilas de versiones (`items.pila`).
+pub const USER_VERSION: i32 = 5;
 
 /// Cuántos `item.json` se leen a la vez al reconstruir el índice. Todos van a
 /// la misma transacción; la tanda solo acota la memoria.
@@ -51,6 +53,7 @@ const INDICES_SECUNDARIOS: &[(&str, &str)] = &[
     ("idx_items_bucket", "CREATE INDEX IF NOT EXISTS idx_items_bucket ON items(color_bucket) WHERE trashed = 0"),
     ("idx_items_kind", "CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind) WHERE trashed = 0"),
     ("idx_items_adult", "CREATE INDEX IF NOT EXISTS idx_items_adult ON items(adult) WHERE trashed = 0"),
+    ("idx_items_pila", "CREATE INDEX IF NOT EXISTS idx_items_pila ON items(pila) WHERE pila IS NOT NULL"),
     ("idx_if_folder", "CREATE INDEX IF NOT EXISTS idx_if_folder ON item_folders(folder_id, item_id)"),
     ("idx_it_tag", "CREATE INDEX IF NOT EXISTS idx_it_tag ON item_tags(tag_id, item_id)"),
 ];
@@ -280,6 +283,21 @@ impl Index {
             )?;
         }
 
+        // Versión 5: de qué pila es versión cada uno. Sin valor es «de
+        // ninguna», que es lo que era todo lo importado antes de que hubiera
+        // pilas. El índice parcial solo lleva las versiones: son pocas, y es
+        // lo único que se busca por esta columna.
+        let hay_pila: bool = self
+            .conn
+            .prepare("SELECT 1 FROM pragma_table_info('items') WHERE name = 'pila'")?
+            .exists([])?;
+        if !hay_pila {
+            self.conn.execute_batch(
+                "ALTER TABLE items ADD COLUMN pila TEXT;
+                 CREATE INDEX IF NOT EXISTS idx_items_pila ON items(pila) WHERE pila IS NOT NULL;",
+            )?;
+        }
+
         self.conn
             .pragma_update(None, "user_version", USER_VERSION)?;
         Ok(())
@@ -356,10 +374,12 @@ impl Index {
     /// árbol en memoria.
     pub fn folder_counts(&self) -> Result<std::collections::HashMap<String, u64>> {
         let mut st = self.conn.prepare(
-            "SELECT f.folder_id, COUNT(*)
-               FROM item_folders f JOIN items i ON i.id = f.item_id
-              WHERE i.trashed = 0
-              GROUP BY f.folder_id",
+            &format!(
+                "SELECT f.folder_id, COUNT(*)
+                   FROM item_folders f JOIN items i ON i.id = f.item_id
+                  WHERE i.trashed = 0 AND {A_LA_VISTA}
+                  GROUP BY f.folder_id"
+            ),
         )?;
         let filas = st.query_map([], |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u64))
@@ -392,13 +412,45 @@ impl Index {
 
     // -------------------------------------------------------------- lectura
 
+    /// Cuántos elementos se ven: las versiones no cuentan aparte, igual que no
+    /// salen aparte en la malla.
     pub fn count(&self) -> Result<u64> {
-        let n: i64 =
-            self.conn
-                .query_row("SELECT COUNT(*) FROM items WHERE trashed = 0", [], |r| {
-                    r.get(0)
-                })?;
+        let n: i64 = self.conn.query_row(
+            &format!("SELECT COUNT(*) FROM items i WHERE i.trashed = 0 AND {A_LA_VISTA}"),
+            [],
+            |r| r.get(0),
+        )?;
         Ok(n as u64)
+    }
+
+    /// Si hay alguna versión en la biblioteca. Una sola mirada al índice
+    /// parcial de las versiones, que en una biblioteca sin pilas está vacío.
+    pub fn hay_pilas(&self) -> Result<bool> {
+        Ok(self.conn.query_row(
+            "SELECT EXISTS (SELECT 1 FROM items WHERE pila IS NOT NULL)",
+            [],
+            |r| r.get::<_, bool>(0),
+        )?)
+    }
+
+    /// Cuántas versiones vivas tiene cada principal, solo de las que tienen.
+    pub fn pilas(&self) -> Result<std::collections::HashMap<String, u32>> {
+        let mut st = self.conn.prepare_cached(
+            "SELECT pila, COUNT(*) FROM items
+              WHERE pila IS NOT NULL AND trashed = 0
+              GROUP BY pila",
+        )?;
+        let filas = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)? as u32)))?;
+        Ok(filas.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Los ids de las versiones de `principal`, en la papelera o fuera.
+    pub fn versiones_de(&self, principal: &str) -> Result<Vec<String>> {
+        let mut st = self
+            .conn
+            .prepare_cached("SELECT id FROM items WHERE pila = ?1 ORDER BY id")?;
+        let filas = st.query_map(params![principal], |r| r.get::<_, String>(0))?;
+        Ok(filas.collect::<std::result::Result<_, _>>()?)
     }
 
     pub fn total_size(&self) -> Result<u64> {
@@ -617,6 +669,107 @@ impl Index {
         Ok(Duplicados { grupos, saltados })
     }
 
+    /// Para cada uno de `nuevos`, lo que ya había en la biblioteca y es casi
+    /// la misma imagen: misma huella a `distancia` bits o menos y la misma
+    /// proporción. Es lo que deja preguntar, al importar, «¿esto es otra
+    /// versión de aquello?».
+    ///
+    /// Las mismas bandas que [`Index::duplicados`], por lo mismo: comparar
+    /// cada nuevo con cien mil sería pagar por todo para encontrar uno. Lo
+    /// encontrado se da como su principal si es una versión: se apila con la
+    /// pila, no con una de sus caras.
+    pub fn parecidos(&self, nuevos: &[String], distancia: u32) -> Result<Vec<Parecido>> {
+        let distancia = distancia.min(3);
+        if nuevos.is_empty() {
+            return Ok(Vec::new());
+        }
+        let son_nuevos: HashSet<&str> = nuevos.iter().map(String::as_str).collect();
+        struct Fila {
+            id: String,
+            huella: u64,
+            ancho: u32,
+            alto: u32,
+            peso: u64,
+            pila: Option<String>,
+        }
+        let mut st = self.conn.prepare(
+            "SELECT id, phash, width, height, size, pila FROM items
+              WHERE trashed = 0 AND phash IS NOT NULL",
+        )?;
+        let filas: Vec<Fila> = st
+            .query_map([], |r| {
+                Ok(Fila {
+                    id: r.get(0)?,
+                    huella: r.get::<_, i64>(1)? as u64,
+                    ancho: r.get(2)?,
+                    alto: r.get(3)?,
+                    peso: r.get::<_, i64>(4)? as u64,
+                    pila: r.get(5)?,
+                })
+            })?
+            .collect::<std::result::Result<_, _>>()?;
+
+        let mut cubos: std::collections::HashMap<(u8, u16), Vec<usize>> =
+            std::collections::HashMap::new();
+        for (i, f) in filas.iter().enumerate() {
+            if son_nuevos.contains(f.id.as_str()) {
+                continue;
+            }
+            for banda in 0..4u8 {
+                cubos
+                    .entry((banda, ((f.huella >> (banda * 16)) & 0xFFFF) as u16))
+                    .or_default()
+                    .push(i);
+            }
+        }
+        let vivos: HashSet<&str> = filas.iter().map(|f| f.id.as_str()).collect();
+        let misma_forma = |a: &Fila, b: &Fila| {
+            let x = a.ancho as u64 * b.alto as u64;
+            let y = b.ancho as u64 * a.alto as u64;
+            x.max(y) > 0 && x.abs_diff(y) * 50 <= x.max(y)
+        };
+
+        let mut out = Vec::new();
+        for n in filas.iter().filter(|f| son_nuevos.contains(f.id.as_str())) {
+            let mut mejor: Option<(u32, u64, usize)> = None;
+            for banda in 0..4u8 {
+                let clave = (banda, ((n.huella >> (banda * 16)) & 0xFFFF) as u16);
+                let Some(lista) = cubos.get(&clave) else { continue };
+                // Un cubo enorme es una huella degenerada (imágenes planas):
+                // todo se parece a todo y preguntar no ayudaría.
+                if lista.len() > TOPE_CUBO {
+                    continue;
+                }
+                for &j in lista {
+                    let e = &filas[j];
+                    let d = (n.huella ^ e.huella).count_ones();
+                    if d > distancia || !misma_forma(n, e) {
+                        continue;
+                    }
+                    if mejor.is_none_or(|(md, mp, _)| (d, std::cmp::Reverse(e.peso)) < (md, std::cmp::Reverse(mp))) {
+                        mejor = Some((d, e.peso, j));
+                    }
+                }
+            }
+            if let Some((d, _, j)) = mejor {
+                let e = &filas[j];
+                let existente = match &e.pila {
+                    Some(p) if vivos.contains(p.as_str()) => p.clone(),
+                    _ => e.id.clone(),
+                };
+                if n.pila.as_deref() == Some(existente.as_str()) {
+                    continue;
+                }
+                out.push(Parecido {
+                    nuevo: n.id.clone(),
+                    existente,
+                    distancia: d,
+                });
+            }
+        }
+        Ok(out)
+    }
+
     /// Cuántos hay en la papelera. Cuenta en SQL en vez de traerse los ids:
     /// la barra lateral solo quiere el número, y con la papelera llena de miles
     /// de elementos traérselos todos para hacer `len()` sería tonto.
@@ -806,7 +959,7 @@ impl Index {
         let mut q = q.clone();
         q.limit = 0;
         q.offset = 0;
-        let (sql, args) = build_sql(&q);
+        let (sql, args) = build_sql(&q, self.hay_pilas()?);
         let sql = format!("SELECT COUNT(*) FROM ({sql})");
         let n: i64 = self
             .conn
@@ -819,12 +972,28 @@ impl Index {
         if q.repetidos {
             return self.buscar_repetidos(q);
         }
-        let (sql, args) = build_sql(q);
+        let hay_pilas = self.hay_pilas()?;
+        let (sql, args) = build_sql(q, hay_pilas);
         let mut st = self.conn.prepare(&sql)?;
         let rows = st.query_map(params_from_iter(args.iter()), hit_from_row)?;
         let mut out = Vec::with_capacity(q.limit.min(4096));
         for r in rows {
             out.push(r?);
+        }
+
+        // El número de versiones va en una pasada aparte y no como subconsulta
+        // por fila: la malla pide la biblioteca entera, y cien mil subconsultas
+        // para encontrar las cuatro pilas que hay es pagar por todo para
+        // enterarse de casi nada. Esta recorre solo el índice de las versiones.
+        if hay_pilas && !q.papelera {
+            let pilas = self.pilas()?;
+            if !pilas.is_empty() {
+                for h in &mut out {
+                    if let Some(n) = pilas.get(&h.id) {
+                        h.versiones = *n;
+                    }
+                }
+            }
         }
 
         // La cercanía de color se resuelve fuera de SQL: el filtro por cubo ya
@@ -989,8 +1158,8 @@ where
         r#"INSERT INTO items
            (id,name,ext,size,width,height,hash,phash,imported_at,modified_at,
             source,stars,note,origin_mode,origin_path,thumb_off,thumb_len,
-            dom_r,dom_g,dom_b,color_bucket,trashed,kind,duration_ms,pages,adult)
-           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26)
+            dom_r,dom_g,dom_b,color_bucket,trashed,kind,duration_ms,pages,adult,pila)
+           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)
            ON CONFLICT(id) DO UPDATE SET
              name=excluded.name, ext=excluded.ext, size=excluded.size,
              width=excluded.width, height=excluded.height, hash=excluded.hash,
@@ -1002,7 +1171,7 @@ where
              dom_r=excluded.dom_r, dom_g=excluded.dom_g, dom_b=excluded.dom_b,
              color_bucket=excluded.color_bucket, trashed=excluded.trashed,
              kind=excluded.kind, duration_ms=excluded.duration_ms,
-             pages=excluded.pages, adult=excluded.adult
+             pages=excluded.pages, adult=excluded.adult, pila=excluded.pila
            RETURNING rowid"#,
     )?;
     let mut del_fts = conn.prepare_cached("DELETE FROM items_fts WHERE rowid = ?1")?;
@@ -1058,6 +1227,7 @@ where
                 item.duration_ms.map(|d| d as i64),
                 item.pages,
                 item.adult as i32,
+                item.pila,
             ],
             |r| r.get(0),
         )?;
@@ -1127,6 +1297,15 @@ pub struct Duplicados {
     /// Cubos que se dejaron sin comparar por ser demasiado grandes. Si esto no
     /// es cero, la respuesta está incompleta y hay que decirlo.
     pub saltados: usize,
+}
+
+/// Algo recién llegado que se parece a algo que ya estaba.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Parecido {
+    pub nuevo: String,
+    /// La principal de la pila a la que se parece, o el elemento suelto.
+    pub existente: String,
+    pub distancia: u32,
 }
 
 /// Un puñado de elementos que son el mismo o casi.
@@ -1207,10 +1386,27 @@ fn hit_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<QueryHit> {
             _ => None,
         },
         adulto: r.get::<_, i64>(17)? != 0,
+        // Lo rellena `search` aparte, de una vez para toda la vista.
+        versiones: 0,
     })
 }
 
-fn build_sql(q: &Query) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
+/// Lo que deja fuera a las versiones: un elemento se ve si no es versión de
+/// nadie, o si su principal ya no está —borrada, en la papelera, o un
+/// `item.json` editado a mano que apunta a nada—.
+///
+/// Lo segundo no es un adorno. Un elemento que apunta a una principal que no
+/// existe no tiene a nadie que lo enseñe, y sin esta condición desaparecería
+/// de la biblioteca sin estar borrado. El `NOT EXISTS` solo se evalúa para las
+/// filas con `pila`, que son pocas: al resto lo deja pasar el `IS NULL`.
+const A_LA_VISTA: &str = "(i.pila IS NULL OR NOT EXISTS \
+                          (SELECT 1 FROM items p WHERE p.id = i.pila AND p.trashed = 0))";
+
+/// `hay_pilas` dice si alguna fila es versión de otra. Si ninguna lo es —lo
+/// normal en una biblioteca que no usa pilas— la condición que las esconde no
+/// se escribe: no quitaría nada y costaba leer una columna más de cada fila al
+/// recorrer la biblioteca entera, uno o dos milisegundos con cien mil.
+fn build_sql(q: &Query, hay_pilas: bool) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
     let mut sql = format!("SELECT {SELECT_COLS} FROM items i");
     // El orden a mano necesita la posición de cada uno en este sitio. Va lo
@@ -1227,6 +1423,15 @@ fn build_sql(q: &Query) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
     } else {
         "i.trashed = 0".to_string()
     }];
+    // Las versiones viven debajo de su principal. En la papelera no hay
+    // pilas que valgan: ahí se ve todo lo tirado, uno por uno.
+    if let Some(p) = &q.pila {
+        wheres.push("(i.id = ? OR i.pila = ?)".into());
+        args.push(Box::new(p.clone()));
+        args.push(Box::new(p.clone()));
+    } else if !q.papelera && hay_pilas {
+        wheres.push(A_LA_VISTA.into());
+    }
     if let Some(a) = q.adulto {
         wheres.push(format!("i.adult = {}", if a { 1 } else { 0 }));
     }
@@ -1479,6 +1684,7 @@ mod tests {
             duracion_s: None,
             ruta_ref: None,
             adulto: false,
+            versiones: 0,
         }
     }
 

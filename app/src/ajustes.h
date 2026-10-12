@@ -43,6 +43,11 @@ class Ajustes : public QObject {
     /// Preguntar a la web, una vez al día, si hay una versión nueva. Ver
     /// `novedades.h`.
     Q_PROPERTY(bool buscarVersiones READ buscarVersiones WRITE setBuscarVersiones NOTIFY cambio)
+    /// Qué hacer al tirar una principal que tiene versiones debajo: "sola"
+    /// (su versión más pesada pasa a ser la principal), "todas" (la pila
+    /// entera a la papelera) o vacío, que es preguntar cada vez. Se recuerda
+    /// solo si quien contesta lo pide, y se vuelve a preguntar desde ajustes.
+    Q_PROPERTY(QString borrarPila READ borrarPila WRITE setBorrarPila NOTIFY cambio)
 
 public:
     explicit Ajustes(QObject *padre = nullptr);
@@ -57,6 +62,7 @@ public:
     qreal escala() const { return m_escala; }
     QString tema() const { return m_tema; }
     bool buscarVersiones() const { return m_buscarVersiones; }
+    QString borrarPila() const { return m_borrarPila; }
 
     void setAnchoLateral(qreal v);
     void setAnchoInspector(qreal v);
@@ -68,6 +74,7 @@ public:
     void setEscala(qreal v);
     void setTema(const QString &v);
     void setBuscarVersiones(bool v);
+    void setBorrarPila(const QString &v);
 
     /// Cómo se endereza un modelo 3D concreto: `vueltasX + 4 * vueltasZ`, 0
     /// si nunca se tocó. Es de quien lo mira, como el resto de esto: no cambia
@@ -92,4 +99,5 @@ private:
     qreal m_escala = 1.0;
     QString m_tema;
     bool m_buscarVersiones = true;
+    QString m_borrarPila;
 };

@@ -479,6 +479,21 @@ pub unsafe extern "C" fn grim_vista_adulto(v: *const Vista, i: usize) -> u8 {
     }
 }
 
+/// Cuántas versiones tiene debajo el elemento, o 0 si no es una pila.
+///
+/// # Safety
+/// `v` debe venir de `grim_vista`.
+#[no_mangle]
+pub unsafe extern "C" fn grim_vista_versiones(v: *const Vista, i: usize) -> u32 {
+    if v.is_null() {
+        return 0;
+    }
+    match (*v).hit(i) {
+        Some(h) => h.versiones,
+        None => 0,
+    }
+}
+
 /// Duración en segundos, o 0 si el archivo no dura.
 ///
 /// # Safety

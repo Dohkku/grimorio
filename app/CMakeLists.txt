@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.5 LANGUAGES CXX)
+project(grimorio VERSION 0.1.6 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -84,6 +84,20 @@ add_custom_command(
 )
 add_custom_target(puente DEPENDS "${PUENTE_A}")
 
+# `grim-recorte`, el programa aparte que quita fondos. No se enlaza: la
+# aplicación lo lanza como a ffmpeg. Se compila aquí para que, mientras se
+# desarrolla, esté donde la aplicación lo busca (la salida de cargo); los
+# paquetes lo dejan junto a `grimorio`.
+set(RECORTE_ARGS build --release -p grimorio-recorte)
+if(GRIMORIO_RUST_TARGET)
+    list(APPEND RECORTE_ARGS --target ${GRIMORIO_RUST_TARGET})
+endif()
+add_custom_target(recorte
+    COMMAND cargo ${RECORTE_ARGS}
+    WORKING_DIRECTORY "${RAIZ}"
+    COMMENT "cargo build -p grimorio-recorte"
+    VERBATIM)
+
 qt_add_executable(grimorio
     src/main.cpp
     src/nucleo.cpp
@@ -101,6 +115,9 @@ qt_add_executable(grimorio
     src/portapapeles.cpp
     src/traer.cpp
     src/captura.cpp
+    src/recorte.cpp
+    src/puerta.cpp
+    src/paquete.cpp
     src/portal.cpp
     src/bibliotecas.cpp
     src/exportar.cpp
@@ -109,7 +126,12 @@ qt_add_executable(grimorio
     src/visor3d.cpp
     src/novedades.cpp
 )
-add_dependencies(grimorio puente)
+add_dependencies(grimorio puente recorte)
+target_compile_definitions(grimorio PRIVATE GRIMORIO_CARGO_SALIDA="${CARGO_SALIDA}")
+# El modelo de quitar fondos, mientras se desarrolla: `modelos/` en la raíz del
+# código (ver herramientas/modelo/preparar.py). Los paquetes lo llevan al lado.
+target_compile_definitions(grimorio PRIVATE GRIMORIO_MODELOS="${RAIZ}/modelos")
+target_compile_definitions(grimorio PRIVATE GRIMORIO_NAVEGADOR="${RAIZ}/navegador")
 
 qt_add_resources(grimorio "interfaz"
     PREFIX "/"
@@ -137,6 +159,9 @@ qt_add_resources(grimorio "interfaz"
         qml/Inspector.qml
         qml/Etiquetas.qml
         qml/Confirmar.qml
+        qml/PreguntaPila.qml
+        qml/CrearVersion.qml
+        qml/SugerenciaPila.qml
         qml/Estrellas.qml
         qml/Boton.qml
         qml/Divisor.qml
@@ -275,6 +300,13 @@ qt_add_executable(prueba_version pruebas/version_test.cpp)
 target_include_directories(prueba_version PRIVATE src)
 target_link_libraries(prueba_version PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME version COMMAND prueba_version)
+
+# Lo que pone un paquete de Linux en su sitio al actualizar, y lo que completa
+# una instalación a la que le falta algo (ver src/paquete.h).
+qt_add_executable(prueba_paquete pruebas/paquete_test.cpp src/paquete.cpp)
+target_include_directories(prueba_paquete PRIVATE src)
+target_link_libraries(prueba_paquete PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME paquete COMMAND prueba_paquete)
 
 # El arrastre del árbol, con las filas de verdad y el ratón moviéndose. Es lo
 # único que caza que la carga llegue al otro lado y que las bandas caigan donde

@@ -98,7 +98,16 @@ jobs:
           set -e
           d=dist/Grimorio
           mkdir -p "$d/licencias"
-          cp app/build/grimorio.exe target/release/grim.exe "$d/"
+          cp app/build/grimorio.exe target/release/grim.exe target/release/grim-recorte.exe "$d/"
+          # La extensión del navegador, para cargarla desde Ajustes → navegador.
+          mkdir -p "$d/navegador"
+          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos "$d/navegador/"
+          # El modelo de quitar fondos va dentro. Sale de la release propia
+          # `modelo-isnet-1` y se comprueba su huella: ver herramientas/modelo.
+          mkdir -p "$d/modelos"
+          curl -fsSL -o "$d/modelos/isnet-general-use-pesos16.onnx" \
+            https://github.com/Dohkku/grimorio/releases/download/modelo-isnet-1/isnet-general-use-pesos16.onnx
+          echo "ed44f83dfa784f3c7a1a8cf7928e9ff348eaad4d8a4a2ac4421eeb013637b91e  $d/modelos/isnet-general-use-pesos16.onnx" | sha256sum -c -
           windeployqt --release --qmldir app/qml --no-translations "$d/grimorio.exe"
           if [ ! -f "$d/opengl32sw.dll" ]; then
             cp "$QT_ROOT_DIR/bin/opengl32sw.dll" "$d/"
@@ -269,9 +278,15 @@ jobs:
           v="${{ steps.version.outputs.version }}"
           d="dist/Grimorio-$v-linux-x64"
           mkdir -p "$d/icono"
-          cp app/build/grimorio target/release/grim LICENSE.md README.md "$d/"
+          cp app/build/grimorio target/release/grim target/release/grim-recorte LICENSE.md README.md "$d/"
+          mkdir -p "$d/navegador"
+          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos "$d/navegador/"
           cp app/icono/grimorio.svg app/icono/grimorio-256.png "$d/icono/"
-          strip "$d/grimorio" "$d/grim"
+          strip "$d/grimorio" "$d/grim" "$d/grim-recorte"
+          mkdir -p "$d/modelos"
+          curl -fsSL -o "$d/modelos/isnet-general-use-pesos16.onnx" \
+            https://github.com/Dohkku/grimorio/releases/download/modelo-isnet-1/isnet-general-use-pesos16.onnx
+          echo "ed44f83dfa784f3c7a1a8cf7928e9ff348eaad4d8a4a2ac4421eeb013637b91e  $d/modelos/isnet-general-use-pesos16.onnx" | sha256sum -c -
           tar -C dist -czf "dist/Grimorio-$v-linux-x64.tar.gz" "Grimorio-$v-linux-x64"
 
       - uses: actions/upload-artifact@v4

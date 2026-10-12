@@ -6,9 +6,9 @@ esta página cuenta cuáles son para que tu tiempo no se pierda.
 ## Antes de escribir código
 
 - **Abre un issue primero** para cualquier cosa que no sea un arreglo
-  pequeño. Una función nueva puede chocar con alguna de las cinco decisiones
+  pequeño. Una función nueva puede chocar con alguna de las cuatro decisiones
   del [README](README.md) (datos legibles, nada de webview, núcleo sin
-  ventana, estilo como dato, sin IA), y es mejor saberlo antes.
+  ventana, estilo como dato), y es mejor saberlo antes.
 - Los fallos, con pasos para reproducirlos, la versión (`Ctrl+,` → acerca de)
   y el sistema. Si es con un archivo concreto, `grim mirar ARCHIVO` dice qué
   ve el núcleo en él.

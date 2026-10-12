@@ -596,18 +596,16 @@ impl Library {
     /// deshacerlo es instantáneo y no depende de que el disco coopere, y un
     /// elemento en la papelera sigue teniendo sus etiquetas y sus carpetas por
     /// si vuelve.
+    ///
+    /// Una principal con versiones va sola, y la versión más pesada ocupa su
+    /// sitio: ver [`Library::tirar_pilas`] para llevarse la pila entera.
     pub fn tirar(
         &mut self,
         ids: &[String],
         dentro: bool,
         progreso: &(dyn Fn(usize, usize) + Sync),
     ) -> Result<(usize, usize)> {
-        let titulo = if dentro {
-            "mandar a la papelera"
-        } else {
-            "sacar de la papelera"
-        };
-        self.editar(ids, titulo, |_| Parche::papelera(dentro), progreso)
+        self.tirar_pilas(ids, dentro, false, progreso)
     }
 
     /// Borra de verdad todo lo que hay en la papelera. Devuelve cuántos.

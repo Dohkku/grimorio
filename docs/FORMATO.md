@@ -21,7 +21,8 @@ MiBiblioteca.grimorio/
 │   ├── tira/             fotogramas en rejilla para la barra del vídeo
 │   ├── onda/             onda y espectro de cada sonido (`.onda`)
 │   ├── pdf/              páginas dibujadas, por número y ancho
-│   └── malla/            modelos 3D listos para el visor (`.malla`)
+│   ├── malla/            modelos 3D listos para el visor (`.malla`)
+│   └── versiones/        temporal de una versión mientras se importa
 ├── thumbs/
 │   ├── grid.pack         miniaturas de 320 px concatenadas
 │   └── preview/01/…jpg   previsualizaciones de 1024 px
@@ -93,11 +94,52 @@ azar. Dos propiedades que usamos en todas partes:
 - `origin.inode` permite reencontrar un original en modo `ref` que alguien haya
   movido de sitio.
 - `durationMs` y `pages` van en lo que dura y en lo que tiene páginas.
+- `pila` y `receta` van en las versiones (ver «Pilas de versiones», abajo).
 - `triangles` y `sizeMm` van en los modelos 3D. `sizeMm` es ancho, fondo y
   alto en milímetros, y solo está si el formato dice sus unidades: STL (que se
   escribe en milímetros por costumbre), 3MF, glTF y lo que sale de Blender. OBJ
   y PLY no lo dicen, y ahí no se inventa.
 - Los campos vacíos se omiten al escribir. Un lector debe tolerar que falten.
+
+### Pilas de versiones
+
+La misma imagen con distinto peso —una exportación para la web, la copia que
+alguien mandó recomprimida— se guarda como una **pila**: una principal y sus
+versiones. Cada versión es un elemento completo, con su carpeta en `items/`, su
+original y su miniatura; lo único que la distingue es que apunta a su
+principal:
+
+```json
+{
+  "id": "01JKX9…",
+  "name": "estudio de iluminación nocturna (jpg 1600 px 82 %)",
+  "ext": "jpg",
+  "pila": "01JKX7Q2M8V3N4P5R6S7T8",
+  "receta": { "formato": "jpg", "calidad": 82, "lado": 1600 }
+}
+```
+
+- `pila` es el id de la principal. Solo lo llevan las versiones; la principal
+  no tiene lista de versiones, así que no hay dos sitios que puedan dejar de
+  coincidir. Las pilas son planas: una versión nunca es principal de otra.
+- `receta` solo está si la versión la hizo Grimorio: `formato` (`jpg`, `png`
+  o `webp`), `calidad` (de 1 a 100; cuenta en JPEG y en WebP, donde 100 es
+  sin pérdida) y `lado` (el lado mayor en píxeles; 0 deja el tamaño). Nunca
+  amplía. El original no se toca.
+- `receta.recorte`, si está, dice con qué modelo se quitó el fondo
+  (`isnet-general-use`): la versión es un PNG del mismo tamaño con
+  transparencia donde estaba el fondo.
+- Las etiquetas, carpetas, estrellas y nota son de la principal: es lo que se
+  ve en la malla. Las versiones no salen en la malla ni en los recuentos.
+- Una versión cuya principal no existe o está en la papelera se ve suelta:
+  apuntar a nada no puede esconder un archivo.
+
+Para sacar las pilas sin Grimorio:
+
+```sh
+find MiBiblioteca.grimorio/items -name item.json -exec cat {} + \
+  | jq -c 'select(.pila) | {version: .id, principal: .pila, receta}'
+```
 
 Toda escritura es atómica: archivo temporal en el mismo directorio y `rename`.
 Un corte de corriente deja el archivo anterior intacto, nunca uno a medias.
@@ -140,6 +182,11 @@ arreglar. Los lectores no necesitan cerrojo: el archivo solo crece.
 
 Derivado. Contiene `items`, `tags`, `item_tags`, `folders`, `item_folders`,
 `meta` y una tabla FTS5 `items_fts`.
+
+`items.pila` (desde la versión 5 del índice, `PRAGMA user_version`) copia el
+campo del `item.json` y tiene un índice parcial que solo lleva las versiones:
+en una biblioteca sin pilas está vacío, y entonces las consultas ni siquiera
+miran la columna.
 
 Detalle que importa: `items_fts` **no** tiene columna de id. Comparte `rowid`
 con `items`, de modo que borrar y unir son operaciones de clave primaria. En la

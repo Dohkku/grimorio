@@ -30,6 +30,7 @@
 // los apartados de las versiones que todavía no se habían visto; quien lo
 // instala por primera vez no ve nada, porque para él no hay «nuevo».
 #pragma once
+#include <functional>
 #include <QDateTime>
 #include <QObject>
 #include <QSettings>
@@ -116,13 +117,23 @@ signals:
     /// de cada día no tiene que contar nada si no hay nada nuevo.
     void aviso(const QString &mensaje, bool error);
     void progresoCambio();
+    /// Se han puesto piezas que faltaban junto al programa (ver
+    /// `completarSiHaceFalta`): quien las busca tiene que volver a mirar.
+    void completado();
 
 private:
     void alArrancar();
     void preguntar(bool aMano);
+    /// Baja `m_paquete` a la caché, en `sub`, y comprueba su huella. Al acabar
+    /// llama a `listo` con el archivo o a `mal` con lo que pasó.
+    void bajar(const QString &sub, bool conProgreso, std::function<void(const QString &)> listo,
+               std::function<void(const QString &)> mal);
     void bajado(const QString &archivo);
     void instalar(const QString &archivo);
     void fallo(const QString &mensaje);
+    /// Si al programa le falta algo de lo que trae su paquete, lo pone. Ver
+    /// paquete.h: es lo que deja completa una 0.1.5 actualizada a la 0.1.6.
+    void completarSiHaceFalta();
 
     Ajustes *m_ajustes;
     QString m_actual;
@@ -143,4 +154,5 @@ private:
     QString m_error;
     QString m_vistos; // la última versión cuyas novedades se enseñaron
     bool m_mostrarCambios = false;
+    bool m_completando = false;
 };

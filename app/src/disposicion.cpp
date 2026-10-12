@@ -184,6 +184,7 @@ QVariant Disposicion::data(const QModelIndex &idx, int papel) const
     case Familia: return m_modelo->familiaDe(r.indice);
     case Duracion: return m_modelo->duracionDe(r.indice);
     case Adulto: return r.indice >= 0 && m_modelo->adultoDe(r.indice);
+    case Versiones: return r.indice >= 0 ? m_modelo->versionesDe(r.indice) : 0;
     // Un solo papel y no la conjunción de dos en QML, por una razón medida.
     // Las propiedades de un delegado se actualizan de una en una, así que al
     // reasignar una ranura había un instante en que la celda ya estaba activa
@@ -207,6 +208,7 @@ QHash<int, QByteArray> Disposicion::roleNames() const
         { IdItem, "idItem" },       { Familia, "familia" },
         { Duracion, "duracion" },   { SinDibujo, "sinDibujo" },
         { Adulto, "adulto" },       { Nombre, "nombre" },
+        { Versiones, "versiones" },
     };
 }
 
@@ -299,7 +301,8 @@ static const QList<int> &papelesDeContenido()
                                   Disposicion::Elegido,   Disposicion::Estrellas,
                                   Disposicion::IdItem,    Disposicion::Familia,
                                   Disposicion::Duracion,  Disposicion::Adulto,
-                                  Disposicion::SinDibujo, Disposicion::Nombre };
+                                  Disposicion::Versiones, Disposicion::SinDibujo,
+                                  Disposicion::Nombre };
     return p;
 }
 

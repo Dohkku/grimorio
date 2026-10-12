@@ -1,6 +1,7 @@
 #include "novedades.h"
 
 #include "ajustes.h"
+#include "paquete.h"
 #include "version.h"
 
 #include <QCoreApplication>
@@ -63,6 +64,24 @@ QNetworkRequest peticion(const QUrl &url, int esperaMs)
     return req;
 }
 
+#if defined(Q_OS_LINUX)
+/// Descomprime el paquete de Linux al lado del archivo y devuelve la carpeta
+/// del programa de dentro, o vacía con el motivo en `error`.
+QString descomprimir(const QString &archivo, QString *error)
+{
+    const QString suelto = QFileInfo(archivo).absolutePath() + QStringLiteral("/paquete");
+    QDir(suelto).removeRecursively();
+    QDir().mkpath(suelto);
+    QProcess tar;
+    tar.start(QStringLiteral("tar"), { QStringLiteral("-xzf"), archivo, QStringLiteral("-C"), suelto });
+    if (!tar.waitForFinished(300000) || tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
+        *error = QObject::tr("no he podido abrir el paquete");
+        return {};
+    }
+    return paquete::raizDe(suelto);
+}
+#endif
+
 } // namespace
 
 Novedades::Novedades(Ajustes *ajustes, const QString &actual, bool activa, QObject *padre)
@@ -106,6 +125,9 @@ QString Novedades::nueva() const
 
 void Novedades::alArrancar()
 {
+    // Antes que nada, y aunque no se quiera el aviso de versiones: completar
+    // lo que falta es terminar una actualización que ya se pidió.
+    if (m_activa) completarSiHaceFalta();
     if (!m_activa || !m_ajustes->buscarVersiones()) return;
     const QDateTime ahora = QDateTime::currentDateTimeUtc();
     // Un reloj que se fue al futuro y volvió no puede dejar de preguntar para
@@ -162,6 +184,7 @@ void Novedades::preguntar(bool aMano)
         }
         m_disco.sync();
         emit cambio();
+        completarSiHaceFalta();
 
         if (aMano) {
             if (version::comparar(m_ultima, m_actual) > 0)
@@ -170,6 +193,42 @@ void Novedades::preguntar(bool aMano)
                 emit aviso(tr("tienes la última versión (%1)").arg(m_actual), false);
         }
     });
+}
+
+void Novedades::completarSiHaceFalta()
+{
+#if defined(GRIMORIO_PAQUETE) && defined(Q_OS_LINUX)
+    if (m_completando || !m_fase.isEmpty()) return;
+    const QDir dir(QCoreApplication::applicationDirPath());
+    if (paquete::faltan(dir).isEmpty()) return;
+    // Solo con el paquete de esta misma versión: el de otra traería otro
+    // programa. Quien viene de actualizar lo tiene guardado, con su huella.
+    if (version::comparar(m_ultima, m_actual) != 0 || m_paquete.isEmpty() || m_huella.isEmpty()) return;
+    if (!QFileInfo(dir.path()).isWritable()) return;
+
+    m_completando = true;
+    emit aviso(tr("terminando de instalar la versión %1: falta quitar fondos y la extensión del navegador")
+                   .arg(m_actual), false);
+    bajar(QStringLiteral("completar"), false,
+          [this, dir](const QString &archivo) {
+              QString error;
+              const QString raiz = descomprimir(archivo, &error);
+              QStringList puestos;
+              const bool bien = !raiz.isEmpty() && paquete::instalar(raiz, dir, true, &error, &puestos);
+              QDir(QFileInfo(archivo).absolutePath()).removeRecursively();
+              m_completando = false;
+              if (!bien) {
+                  emit aviso(tr("no he podido terminar de instalar: %1").arg(error), true);
+                  return;
+              }
+              emit completado();
+              emit aviso(tr("instalación completa: ya se pueden quitar fondos"), false);
+          },
+          [this](const QString &mensaje) {
+              m_completando = false;
+              emit aviso(tr("no he podido terminar de instalar: %1").arg(mensaje), true);
+          });
+#endif
 }
 
 void Novedades::ignorar()
@@ -216,29 +275,37 @@ void Novedades::actualizar()
         abrir();
         return;
     }
-    if (!m_red) m_red = new QNetworkAccessManager(this);
-
-    QDir cache(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
-    const QString sub = QStringLiteral("actualizacion");
-    QDir(cache.filePath(sub)).removeRecursively();
-    if (!cache.mkpath(sub)) {
-        fallo(tr("no puedo escribir en %1").arg(cache.filePath(sub)));
-        return;
-    }
-    const QString destino = QDir(cache.filePath(sub)).filePath(QFileInfo(m_paquete.path()).fileName());
-    auto archivo = std::make_shared<QFile>(destino);
-    if (!archivo->open(QIODevice::WriteOnly)) {
-        fallo(tr("no puedo escribir %1").arg(destino));
-        return;
-    }
-    auto huella = std::make_shared<QCryptographicHash>(QCryptographicHash::Sha256);
-    auto bytes = std::make_shared<qint64>(0);
-
     m_fase = QStringLiteral("bajando");
     m_progreso = -1;
     m_error.clear();
     emit cambio();
     emit progresoCambio();
+    bajar(QStringLiteral("actualizacion"), true,
+          [this](const QString &archivo) { bajado(archivo); },
+          [this](const QString &mensaje) { fallo(mensaje); });
+}
+
+void Novedades::bajar(const QString &sub, bool conProgreso, std::function<void(const QString &)> listo,
+                      std::function<void(const QString &)> mal)
+{
+    if (!m_red) m_red = new QNetworkAccessManager(this);
+
+    QDir cache(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    QDir(cache.filePath(sub)).removeRecursively();
+    if (!cache.mkpath(sub)) {
+        mal(tr("no puedo escribir en %1").arg(cache.filePath(sub)));
+        return;
+    }
+    const QString destino = QDir(cache.filePath(sub)).filePath(QFileInfo(m_paquete.path()).fileName());
+    auto archivo = std::make_shared<QFile>(destino);
+    if (!archivo->open(QIODevice::WriteOnly)) {
+        mal(tr("no puedo escribir %1").arg(destino));
+        return;
+    }
+    auto huella = std::make_shared<QCryptographicHash>(QCryptographicHash::Sha256);
+    auto bytes = std::make_shared<qint64>(0);
+    const QString esperada = m_huella;
+    const QString cual = m_ultima;
 
     QNetworkReply *r = m_red->get(peticion(m_paquete, 30000));
     connect(r, &QNetworkReply::readyRead, this, [r, archivo, huella, bytes] {
@@ -251,11 +318,14 @@ void Novedades::actualizar()
         huella->addData(trozo);
         archivo->write(trozo);
     });
-    connect(r, &QNetworkReply::downloadProgress, this, [this](qint64 llevo, qint64 total) {
-        m_progreso = total > 0 ? qreal(llevo) / qreal(total) : -1;
-        emit progresoCambio();
-    });
-    connect(r, &QNetworkReply::finished, this, [this, r, archivo, huella, bytes, destino] {
+    if (conProgreso) {
+        connect(r, &QNetworkReply::downloadProgress, this, [this](qint64 llevo, qint64 total) {
+            m_progreso = total > 0 ? qreal(llevo) / qreal(total) : -1;
+            emit progresoCambio();
+        });
+    }
+    connect(r, &QNetworkReply::finished, this,
+            [this, r, archivo, huella, bytes, destino, esperada, cual, listo, mal] {
         r->deleteLater();
         // Lo que quede por leer, que `readyRead` no siempre llega a avisar.
         const QByteArray resto = r->readAll();
@@ -267,16 +337,16 @@ void Novedades::actualizar()
         archivo->close();
         if (r->error() != QNetworkReply::NoError || *bytes > TOPE_PAQUETE) {
             QFile::remove(destino);
-            fallo(tr("no he podido bajar la versión %1: %2").arg(m_ultima, r->errorString()));
+            mal(tr("no he podido bajar la versión %1: %2").arg(cual, r->errorString()));
             return;
         }
         // Lo que se va a ejecutar tiene que ser lo publicado, bit a bit.
-        if (QString::fromLatin1(huella->result().toHex()) != m_huella) {
+        if (QString::fromLatin1(huella->result().toHex()) != esperada) {
             QFile::remove(destino);
-            fallo(tr("lo bajado no coincide con lo publicado; no se instala"));
+            mal(tr("lo bajado no coincide con lo publicado; no se instala"));
             return;
         }
-        bajado(destino);
+        listo(destino);
     });
 }
 
@@ -328,61 +398,18 @@ void Novedades::instalar(const QString &archivo)
     const QString exe = QCoreApplication::applicationFilePath();
     const QDir dir(QCoreApplication::applicationDirPath());
 
-    const QString suelto = QFileInfo(archivo).absolutePath() + QStringLiteral("/paquete");
-    QDir().mkpath(suelto);
-    QProcess tar;
-    tar.start(QStringLiteral("tar"), { QStringLiteral("-xzf"), archivo, QStringLiteral("-C"), suelto });
-    if (!tar.waitForFinished(120000) || tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
-        fallo(tr("no he podido abrir el paquete de la versión %1").arg(m_ultima));
-        return;
-    }
-    // Dentro va una carpeta «Grimorio-X.Y.Z-linux-x64» con los binarios.
-    QString raiz;
-    for (const QFileInfo &f : QDir(suelto).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        if (QFileInfo::exists(QDir(f.absoluteFilePath()).filePath(QStringLiteral("grimorio")))) {
-            raiz = f.absoluteFilePath();
-            break;
-        }
-    }
+    QString error;
+    const QString raiz = descomprimir(archivo, &error);
     if (raiz.isEmpty()) {
-        fallo(tr("el paquete de la versión %1 no trae el programa").arg(m_ultima));
+        fallo(error.isEmpty() ? tr("el paquete de la versión %1 no trae el programa").arg(m_ultima) : error);
         return;
     }
-
-    // Primero todo copiado al lado como «.nuevo»; solo entonces se cambia,
-    // cada uno con un renombrado, que es atómico. El de antes se queda como
-    // «.anterior», igual que hace el lanzador.
-    QStringList nombres;
-    for (const QString &n : { QStringLiteral("grimorio"), QStringLiteral("grim") }) {
-        const QString de = QDir(raiz).filePath(n);
-        if (!QFileInfo::exists(de)) continue;
-        const QString nuevo = dir.filePath(n + QStringLiteral(".nuevo"));
-        QFile::remove(nuevo);
-        if (!QFile::copy(de, nuevo)) {
-            fallo(tr("no he podido copiar %1 en %2").arg(n, dir.path()));
-            return;
-        }
-        QFile::setPermissions(nuevo, QFile(de).permissions() | QFileDevice::ExeOwner | QFileDevice::ReadOwner);
-        nombres << n;
-    }
-    QStringList hechos;
-    for (const QString &n : nombres) {
-        const QString puesto = dir.filePath(n);
-        const QString anterior = puesto + QStringLiteral(".anterior");
-        QFile::remove(anterior);
-        const bool habia = QFileInfo::exists(puesto);
-        if ((habia && !QFile::rename(puesto, anterior))
-            || !QFile::rename(puesto + QStringLiteral(".nuevo"), puesto)) {
-            // Deshacer lo cambiado: mejor la versión vieja entera que media.
-            if (habia && !QFileInfo::exists(puesto)) QFile::rename(anterior, puesto);
-            for (const QString &h : hechos) {
-                QFile::remove(dir.filePath(h));
-                QFile::rename(dir.filePath(h) + QStringLiteral(".anterior"), dir.filePath(h));
-            }
-            fallo(tr("no he podido cambiar %1 en %2").arg(n, dir.path()));
-            return;
-        }
-        hechos << n;
+    // El paquete entero y no solo los dos programas: la 0.1.5 cambiaba
+    // `grimorio` y `grim` y nada más, y lo que la 0.1.6 trajo nuevo (quitar
+    // fondos, la extensión) se quedaba fuera.
+    if (!paquete::instalar(raiz, dir, false, &error)) {
+        fallo(error);
+        return;
     }
     QDir(QFileInfo(archivo).absolutePath()).removeRecursively();
 

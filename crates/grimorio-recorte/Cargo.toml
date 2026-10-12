@@ -1,0 +1,17 @@
+[package]
+name = "grimorio-recorte"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Quitar el fondo de una imagen, en un proceso aparte: la única pieza de Grimorio con un modelo dentro."
+
+[[bin]]
+name = "grim-recorte"
+path = "src/main.rs"
+
+[dependencies]
+image.workspace = true
+tract-onnx = "0.23"
+# Solo por su ejecutor de varios hilos: sin él, el modelo usa un núcleo.
+tract-linalg = { version = "0.23", features = ["multithread-mm"] }

@@ -52,7 +52,16 @@ Dependencias directas del núcleo y el CLI:
 | `thiserror` | errores del núcleo | MIT/Apache-2 | |
 | `miniz_oxide` | inflar los zip de 3MF, y de `.kra`, `.ora` y `.sketch` (sin `unzip`, que en Windows no está) | MIT/Apache-2/Zlib | ya venía compilado dentro por el PNG de `image`; nombrarla no añade código |
 | `clap` | interfaz del CLI | MIT/Apache-2 | solo en el binario `grim` |
+| `webp` | WebP con pérdida para las versiones ligeras | MIT/Apache-2 | compila libwebp (BSD-3) dentro; `image` solo escribe WebP sin pérdida, y un codificador VP8 propio son meses |
+| `tract-onnx`, `tract-linalg` | ejecutar el modelo que quita fondos | MIT/Apache-2 | **solo en `grim-recorte`**, un binario aparte: el núcleo no lo enlaza. Rust puro, sin onnxruntime que empaquetar por sistema |
 | `tempfile` | pruebas | MIT/Apache-2 | solo `dev-dependencies` |
+
+El modelo de `grim-recorte` —ISNet, Apache-2.0— **viene con el programa**, en
+`modelos/` junto al ejecutable. Va con los pesos guardados en f16 (91 MB en vez
+de 179) y el mismo cálculo: `herramientas/modelo/preparar.py` lo rehace desde
+el original y comprueba las dos huellas. Los paquetes lo toman de la release
+propia `modelo-isnet-1`, no de la de otro proyecto. Lo que se compila desde el
+código sin él lo baja de ahí, preguntando antes.
 
 Solo en los spikes (no forman parte del producto):
 
@@ -121,6 +130,5 @@ cada pregunta.
   otro son decenas de megas y una superficie de seguridad nueva.
 - **Frameworks de UI web**: el punto entero del proyecto es no tener un
   navegador dentro.
-- **Bibliotecas de IA**: fuera por decisión de producto, no por licencia.
 - **Cajas de utilidades de una sola función** (`itertools`, `lazy_static` y
   compañía): la biblioteca estándar de Rust ya llega.

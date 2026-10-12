@@ -167,6 +167,7 @@ QVariant Modelo::data(const QModelIndex &idx, int papel) const
             return p->value(QStringLiteral("adulto")).toBool();
         return grim_vista_adulto(m_vista, u) != 0;
     }
+    case Versiones: return int(grim_vista_versiones(m_vista, u));
     case TieneMiniatura: {
         uint32_t len = 0;
         return grim_vista_thumb(m_vista, u, &len) != nullptr;
@@ -187,7 +188,7 @@ QHash<int, QByteArray> Modelo::roleNames() const
         { Nombre, "nombre" },       { Estrellas, "estrellas" },
         { TieneMiniatura, "tieneMiniatura" }, { Elegido, "elegido" },
         { Familia, "familia" },     { Duracion, "duracion" },
-        { Adulto, "adulto" },
+        { Adulto, "adulto" },       { Versiones, "versiones" },
     };
 }
 
@@ -239,6 +240,18 @@ int Modelo::estrellasDe(int i) const
 bool Modelo::adultoDe(int i) const
 {
     return data(index(i, 0), Adulto).toBool();
+}
+
+int Modelo::versionesDe(int i) const
+{
+    return data(index(i, 0), Versiones).toInt();
+}
+
+bool Modelo::hayPilasElegidas() const
+{
+    for (int i : indicesElegidos())
+        if (versionesDe(i) > 0) return true;
+    return false;
 }
 
 QUrl Modelo::urlDe(int i) const

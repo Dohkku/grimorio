@@ -103,6 +103,13 @@ void Nucleo::procesar(const QString &json)
         m_deshacer = ev.value(QStringLiteral("deshacer")).toString();
         m_rehacer = ev.value(QStringLiteral("rehacer")).toString();
         emit registroCambio();
+    } else if (tipo == QLatin1String("estimacion")) {
+        QVariantMap e = ev.toVariantMap();
+        e.remove(QStringLiteral("tipo"));
+        e.remove(QStringLiteral("cmd"));
+        emit estimacion(e);
+    } else if (tipo == QLatin1String("sugerencia_pila")) {
+        emit sugerenciaPila(ev.value(QStringLiteral("pares")).toArray().toVariantList());
     } else if (tipo == QLatin1String("progreso")) {
         emit progreso(ev.value(QStringLiteral("que")).toString(),
                       ev.value(QStringLiteral("hechos")).toInt(),
@@ -367,12 +374,79 @@ void Nucleo::renombrar(const QString &id, const QString &nombre)
              { QStringLiteral("nombre"), nombre.trimmed() } });
 }
 
-void Nucleo::papelera(const QStringList &ids, bool dentro)
+void Nucleo::papelera(const QStringList &ids, bool dentro, bool conVersiones)
 {
     if (ids.isEmpty()) return;
     mandar({ { QStringLiteral("cmd"), QStringLiteral("papelera") },
              { QStringLiteral("ids"), deLista(ids) },
-             { QStringLiteral("dentro"), dentro } });
+             { QStringLiteral("dentro"), dentro },
+             { QStringLiteral("con_versiones"), conVersiones } });
+}
+
+void Nucleo::apilar(const QString &principal, const QStringList &ids)
+{
+    if (principal.isEmpty() || ids.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("apilar") },
+             { QStringLiteral("principal"), principal },
+             { QStringLiteral("ids"), deLista(ids) } });
+}
+
+void Nucleo::desapilar(const QStringList &ids)
+{
+    if (ids.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("desapilar") },
+             { QStringLiteral("ids"), deLista(ids) } });
+}
+
+void Nucleo::hacerPrincipal(const QString &id)
+{
+    if (id.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("hacer_principal") },
+             { QStringLiteral("id"), id } });
+}
+
+void Nucleo::estimarVersion(const QString &id, const QString &formato, int calidad, int lado)
+{
+    if (id.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("estimar_version") },
+             { QStringLiteral("id"), id },
+             { QStringLiteral("formato"), formato },
+             { QStringLiteral("calidad"), qBound(1, calidad, 100) },
+             { QStringLiteral("lado"), qMax(0, lado) } });
+}
+
+void Nucleo::anadirVersion(const QString &id, const QString &ruta, const QString &recorte)
+{
+    if (id.isEmpty() || ruta.isEmpty()) return;
+    QJsonObject o { { QStringLiteral("cmd"), QStringLiteral("anadir_version") },
+                    { QStringLiteral("id"), id },
+                    { QStringLiteral("ruta"), ruta } };
+    if (!recorte.isEmpty()) o.insert(QStringLiteral("recorte"), recorte);
+    mandar(o);
+}
+
+void Nucleo::apilarGrupos(const QVariantList &grupos)
+{
+    if (grupos.isEmpty()) return;
+    QJsonArray lista;
+    for (const QVariant &g : grupos) {
+        const QVariantMap m = g.toMap();
+        lista.append(QJsonObject {
+            { QStringLiteral("principal"), m.value(QStringLiteral("principal")).toString() },
+            { QStringLiteral("ids"), deLista(m.value(QStringLiteral("ids")).toStringList()) } });
+    }
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("apilar_grupos") },
+             { QStringLiteral("grupos"), lista } });
+}
+
+void Nucleo::crearVersion(const QString &id, const QString &formato, int calidad, int lado)
+{
+    if (id.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("crear_version") },
+             { QStringLiteral("id"), id },
+             { QStringLiteral("formato"), formato },
+             { QStringLiteral("calidad"), qBound(1, calidad, 100) },
+             { QStringLiteral("lado"), qMax(0, lado) } });
 }
 
 void Nucleo::marcarAdulto(const QStringList &ids, bool si)

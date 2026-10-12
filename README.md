@@ -7,7 +7,7 @@
 <p align="center">
   Tu biblioteca visual, en tu disco.<br>
   Guarda, ordena y encuentra referencias: imágenes, vídeo, sonido, PDF y modelos 3D.<br>
-  Libre, nativa, para Linux y Windows. Sin nube, sin funciones de IA y sin un navegador dentro.
+  Libre, nativa, para Linux y Windows. Sin nube y sin un navegador dentro.
 </p>
 
 <p align="center">
@@ -40,6 +40,9 @@
 - **Con el teclado.** Estrellas con los números, `Ctrl+K` para etiquetar,
   `F2` para renombrar (también en lote, con patrón), `Ctrl+Z` para deshacer
   cualquier cosa.
+- **La misma imagen, en varios pesos.** Las versiones de una imagen se apilan
+  y en la galería se ve una sola. Puedes crear versiones más ligeras y quitar
+  el fondo, sin tocar el original.
 - **A tu manera.** Tema noche o papel, tamaño de la interfaz, modo seguro que
   difumina lo marcado como +18, repetidos, carpetas del disco vinculadas,
   capturas de pantalla, pegar desde el portapapeles o una URL.
@@ -64,7 +67,7 @@ La biblioteca es una carpeta. Cada elemento tiene su original y un
 se copia como cualquier otra. El formato está especificado en
 [docs/FORMATO.md](docs/FORMATO.md).
 
-## Las cinco decisiones
+## Las cuatro decisiones
 
 1. **Tus datos son tuyos y son legibles.** Un JSON por elemento; el índice se
    reconstruye.
@@ -73,7 +76,6 @@ se copia como cualquier otra. El formato está especificado en
    prueba sin escritorio; la interfaz y `grim` son clientes.
 4. **El estilo es dato.** Ni un color ni una medida a mano en la interfaz:
    todo sale de un tema JSON que se recarga al guardarlo.
-5. **Sin funciones de IA.**
 
 ## Instalar
 
@@ -148,7 +150,7 @@ Windows, an alternative to Eagle. It keeps images (including PSD, AI, EPS,
 Krita, Sketch and RAW previews), video, audio, PDFs and 3D models in a
 library you can search instantly, with tags, stars, colors, nested folders and
 dynamic folders that fill themselves from a filter. It is native (Rust core,
-Qt 6 interface), with no cloud, no AI features and no embedded browser.
+Qt 6 interface), with no cloud and no embedded browser.
 
 Your library is a plain folder with one readable `item.json` per item; the
 search index and thumbnails are derived and can be rebuilt with

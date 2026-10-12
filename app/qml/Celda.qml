@@ -20,6 +20,9 @@ Item {
     required property int familia
     required property int duracion
     required property bool adulto
+    /// Cuántas versiones tiene debajo. La celda es la principal de su pila;
+    /// las versiones no salen en la malla, se eligen al abrirla.
+    required property int versiones
     required property string nombre
     /// En lista la celda es una fila: miniatura pequeña a la izquierda y sus
     /// datos en columnas. La misma celda y no otra, para que elegir, arrastrar
@@ -280,6 +283,43 @@ Item {
                                                   celda.duracion)
                             color: tema.texto
                             font.pixelSize: tema.fuente * 0.8
+                        }
+                    }
+                }
+            }
+
+            // La pila: cuántas versiones hay debajo de esta. Arriba a la
+            // izquierda, la esquina que nadie más usa, y solo si las hay.
+            Loader {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.margins: tema.hueco * 0.5
+                active: celda.versiones > 0 && !celda.enLista
+                        && celda.celdaAlto > tema.fuente * 3
+                sourceComponent: Rectangle {
+                    width: filaPila.implicitWidth + tema.hueco * 0.8
+                    height: filaPila.implicitHeight + tema.hueco * 0.3
+                    radius: height / 2
+                    color: tema.fondo
+                    opacity: 0.82
+
+                    Row {
+                        id: filaPila
+                        anchors.centerIn: parent
+                        spacing: tema.hueco * 0.25
+                        Icono {
+                            anchors.verticalCenter: parent.verticalCenter
+                            nombre: "pila"
+                            width: Math.round(tema.fuente * 0.95)
+                            height: width
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            // Las versiones y la principal: la pila entera.
+                            text: celda.versiones + 1
+                            color: tema.texto
+                            font.pixelSize: tema.fuente * 0.8
+                            font.weight: Font.DemiBold
                         }
                     }
                 }

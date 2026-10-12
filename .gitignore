@@ -4,3 +4,8 @@ target/
 app/build/
 __pycache__/
 dist/
+# El modelo de quitar fondos: 91 MB que no van en git. Ver herramientas/modelo.
+/modelos/
+
+# Las dependencias de las pruebas de la extensión.
+navegador/node_modules/

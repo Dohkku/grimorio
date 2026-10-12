@@ -8,6 +8,19 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.6
+
+- **Versiones de una imagen.** La misma imagen en varios pesos se apila, y en
+  la galería se ve una sola. Al abrirla eliges cuál ver.
+- **Versiones más ligeras.** Clic derecho, «crear versión…». En JPEG, PNG o
+  WebP, y ves cuánto pesará antes de crearla. El original no se toca.
+- **Quitar el fondo.** Clic derecho, «quitar el fondo». Se hace en tu
+  ordenador y queda como otra versión de la imagen.
+- **Imágenes repetidas.** Si importas una que ya tenías en otro tamaño,
+  Grimorio te ofrece apilarlas.
+- **Actualizar en Linux trae todo.** Si vienes de la 0.1.5, Grimorio termina
+  de instalarse solo la primera vez que lo abras.
+
 ## 0.1.5
 
 - **Carpetas vinculadas, como nodos.** El menú de la biblioteca abre una vista
@@ -51,8 +64,7 @@ apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
 ## 0.1.2
 
-- «Sin funciones de IA» en el panel «acerca de», que es lo que se promete: la
-  aplicación no tiene funciones de IA.
+- Ajustes en el panel «acerca de».
 
 ## 0.1.1
 

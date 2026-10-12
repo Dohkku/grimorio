@@ -1,0 +1,11 @@
+{
+  "name": "grimorio-navegador",
+  "private": true,
+  "description": "La extensión de Grimorio para el navegador. Solo hace falta npm para las pruebas.",
+  "scripts": {
+    "test": "node --test \"pruebas/*.test.mjs\""
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

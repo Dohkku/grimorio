@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font: 13px/1.4 system-ui, sans-serif; color: #e9e6df; background: #17171a;
+      margin: 0; padding: 14px 16px; width: 260px;
+    }
+    h1 { font-size: 14px; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+    h1 img { width: 18px; height: 18px; }
+    .estado { color: #a9a59c; margin-bottom: 12px; }
+    .estado.mal { color: #e08a7f; }
+    label { display: block; color: #a9a59c; font-size: 12px; margin-bottom: 4px; }
+    select {
+      width: 100%; background: #222227; color: #e9e6df; border: 1px solid #3a3a42;
+      border-radius: 6px; padding: 6px;
+    }
+    code { background: #222227; padding: 1px 4px; border-radius: 4px; }
+    .pista { color: #8d8a83; font-size: 12px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1><img src="iconos/32.png" alt="">Grimorio</h1>
+  <div class="estado" id="estado">mirando…</div>
+  <div id="destino" hidden>
+    <label for="carpeta">guardar en</label>
+    <select id="carpeta"></select>
+  </div>
+  <p class="pista">Clic derecho en una imagen → «Guardar en Grimorio». En Instagram, el botón sale al pasar por encima de una foto.</p>
+  <script src="ventana.js"></script>
+</body>
+</html>

@@ -303,6 +303,23 @@ QQuickImageResponse *Proveedor::requestImageResponse(const QString &id, const QS
         return resp;
     }
 
+    // Un archivo por su ruta, sin pasar por la vista: las versiones de una pila
+    // no salen en la malla, así que la vista no las conoce y por id no se
+    // encontraban —el visor se quedaba en negro al elegir una—. La ruta viene
+    // en base64url (ver `Nucleo::imagenDeRuta`) para que ni un «#» ni un «%»
+    // en el nombre la partan por el camino.
+    if (id.startsWith(QLatin1String("archivo/"))) {
+        const QString ruta = QString::fromUtf8(QByteArray::fromBase64(
+            id.mid(8).toLatin1(),
+            QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+        if (ruta.isEmpty() || !QFile::exists(ruta)) {
+            resp->fallar(QStringLiteral("no existe: %1").arg(ruta));
+            return resp;
+        }
+        QThreadPool::globalInstance()->start(new TareaOriginal(resp, ruta));
+        return resp;
+    }
+
     // Una sola vista para todo lo que viene: buscar la posición y decodificar.
     //
     // Antes se buscaba la posición en la vista que hubiera publicada y luego

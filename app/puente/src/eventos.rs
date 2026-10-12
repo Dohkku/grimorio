@@ -114,7 +114,23 @@ pub enum Evento<'a> {
         paleta: Vec<MuestraJson>,
         /// De dónde se importó, tal como estaba en el disco entonces.
         procedencia: Option<&'a str>,
+        /// La pila a la que pertenece, de la más pesada a la más ligera, con
+        /// la principal marcada. Vacía si no es de ninguna: un elemento suelto
+        /// no tiene versiones que elegir.
+        versiones: Vec<VersionJson>,
     },
+    /// Lo que pesaría una versión, antes de crearla.
+    Estimacion {
+        cmd: u64,
+        id: &'a str,
+        peso: u64,
+        ancho: u32,
+        alto: u32,
+        original: u64,
+    },
+    /// Lo recién importado que se parece a algo que ya estaba: la interfaz
+    /// pregunta si apilarlo.
+    SugerenciaPila { pares: Vec<SugerenciaJson> },
     /// Las etiquetas que hay, para el autocompletado.
     Etiquetas { cmd: u64, lista: Vec<EtiquetaJson> },
     /// Qué se puede deshacer y qué se puede rehacer, con su nombre.
@@ -150,6 +166,31 @@ pub struct EtiquetaJson {
 pub struct MuestraJson {
     pub color: String,
     pub peso: f32,
+}
+
+#[derive(Serialize)]
+pub struct SugerenciaJson {
+    pub nuevo: String,
+    pub nombre_nuevo: String,
+    pub peso_nuevo: u64,
+    pub existente: String,
+    pub nombre_existente: String,
+    pub peso_existente: u64,
+}
+
+#[derive(Serialize)]
+pub struct VersionJson {
+    pub id: String,
+    pub nombre: String,
+    pub ext: String,
+    pub peso: u64,
+    pub ancho: u32,
+    pub alto: u32,
+    /// La ruta del archivo, para enseñarlo, copiarlo o arrastrarlo tal cual.
+    pub ruta: String,
+    pub principal: bool,
+    /// Con qué se hizo, si la hizo Grimorio: «jpg · 1600 px · 82 %».
+    pub receta: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -310,6 +351,92 @@ pub fn item(aviso: &Aviso, cmd: u64, it: &grimorio_core::Item) {
     );
 }
 
+/// La pila entera de `it`, para la ficha. Una consulta por el índice parcial
+/// de las versiones y una lectura de `item.json` por versión: las pilas son de
+/// unas pocas, y la receta y la ruta solo están ahí.
+fn versiones(lib: &Library, it: &grimorio_core::Item) -> Vec<VersionJson> {
+    let Ok(principal) = lib.principal_de(&it.id) else {
+        return Vec::new();
+    };
+    let q = grimorio_core::Query {
+        pila: Some(principal.clone()),
+        papelera: false,
+        sort: grimorio_core::SortBy::SizeDesc,
+        limit: 0,
+        ..Default::default()
+    };
+    let hits = lib.index().search(&q).unwrap_or_default();
+    if hits.len() < 2 {
+        return Vec::new();
+    }
+    hits.into_iter()
+        .filter_map(|h| lib.load_item(&h.id).ok())
+        .map(|v| VersionJson {
+            ruta: lib.original_path(&v).to_string_lossy().into_owned(),
+            principal: v.id == principal,
+            receta: v.receta.as_ref().map(|r| {
+                if r.recorte.is_some() {
+                    return "sin fondo".to_string();
+                }
+                let mut s = r.formato.clone();
+                if r.lado > 0 {
+                    s.push_str(&format!(" · {} px", r.lado));
+                }
+                if grimorio_core::pilas::con_perdida(r) {
+                    s.push_str(&format!(" · {} %", r.calidad));
+                }
+                s
+            }),
+            id: v.id,
+            nombre: v.name,
+            ext: v.ext,
+            peso: v.size,
+            ancho: v.width,
+            alto: v.height,
+        })
+        .collect()
+}
+
+pub fn estimacion(aviso: &Aviso, cmd: u64, id: &str, e: &grimorio_core::pilas::Estimacion) {
+    manda(
+        aviso,
+        &Evento::Estimacion {
+            cmd,
+            id,
+            peso: e.peso,
+            ancho: e.ancho,
+            alto: e.alto,
+            original: e.original,
+        },
+    );
+}
+
+/// Como mucho estas: después de importar mil fotos de un disco que ya estaba,
+/// una lista de mil preguntas no la contesta nadie.
+const TOPE_SUGERENCIAS: usize = 50;
+
+pub fn sugerencia_pila(aviso: &Aviso, lib: &Library, pares: &[grimorio_core::index::Parecido]) {
+    let pares: Vec<SugerenciaJson> = pares
+        .iter()
+        .take(TOPE_SUGERENCIAS)
+        .filter_map(|p| {
+            let n = lib.load_item(&p.nuevo).ok()?;
+            let e = lib.load_item(&p.existente).ok()?;
+            Some(SugerenciaJson {
+                nuevo: n.id,
+                nombre_nuevo: n.name,
+                peso_nuevo: n.size,
+                existente: e.id,
+                nombre_existente: e.name,
+                peso_existente: e.size,
+            })
+        })
+        .collect();
+    if !pares.is_empty() {
+        manda(aviso, &Evento::SugerenciaPila { pares });
+    }
+}
+
 pub fn ficha(aviso: &Aviso, cmd: u64, lib: &Library, it: &grimorio_core::Item) {
     manda(
         aviso,
@@ -346,6 +473,7 @@ pub fn ficha(aviso: &Aviso, cmd: u64, lib: &Library, it: &grimorio_core::Item) {
                 })
                 .collect(),
             procedencia: it.origin.path.as_deref(),
+            versiones: versiones(lib, it),
         },
     );
 }

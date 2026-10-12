@@ -37,6 +37,15 @@ public:
     /// Pregunta qué archivos importar (diálogo del escritorio) y los importa.
     Q_INVOKABLE void elegirEImportar(const QString &carpeta);
 
+    /// Lo que llega del navegador (ver puerta.h). `origen` es la página de la
+    /// que sale —el post de Instagram, no la dirección de la imagen, que
+    /// caduca—; `nombre`, cómo se llamará si se sabe algo mejor que la URL.
+    void traerDesde(const QUrl &url, const QString &origen, const QString &carpeta);
+    /// Lo mismo cuando el navegador ya trae los bytes: lo que solo se puede
+    /// bajar con la sesión de quien mira, o lo que ya estaba en pantalla.
+    bool guardarDatos(const QByteArray &datos, const QString &tipo, const QString &nombre,
+                      const QString &carpeta, const QString &origen);
+
 signals:
     /// Para la barra de estado.
     void aviso(const QString &mensaje, bool error);

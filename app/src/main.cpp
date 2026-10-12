@@ -9,6 +9,8 @@
 
 #include "ajustes.h"
 #include "captura.h"
+#include "recorte.h"
+#include "puerta.h"
 #include "banco.h"
 #include "bibliotecas.h"
 #include "derivados.h"
@@ -430,6 +432,11 @@ int main(int argc, char **argv)
     Portapapeles portapapeles;
     Traer traer(&nucleo);
     Captura captura(&nucleo);
+    Recorte recorte(&nucleo, !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
+    // La puerta del navegador. Las pasadas automáticas no la abren: un
+    // recorrido de pruebas no puede quedarse con lo que mande el navegador de
+    // quien está usando el programa de verdad.
+    Puerta puerta(&nucleo, &traer, QStringLiteral(GRIMORIO_VERSION), !automatica);
     // Lo que el proceso nuevo hereda al cambiar de biblioteca: el tema.
     QStringList heredados;
     if (!args.tema.isEmpty()) heredados << QStringLiteral("--tema") << args.tema;
@@ -444,6 +451,9 @@ int main(int argc, char **argv)
                         !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
     novedades.setRelanzar(heredados + QStringList{ QStringLiteral("--lib"), args.lib });
     novedades.prepararCambios(yaSeUsaba, !automatica);
+    // Una instalación que se completa sola (ver novedades.h) trae `grim-recorte`
+    // y su modelo: quitar fondos aparece sin tener que reiniciar.
+    QObject::connect(&novedades, &Novedades::completado, &recorte, &Recorte::refrescar);
 
     // El visor 3D pinta con OpenGL dentro de la escena de Qt Quick, y eso solo
     // funciona si la escena entera va por OpenGL. En Linux ya es lo que elige
@@ -470,6 +480,8 @@ int main(int argc, char **argv)
     ctx->setContextProperty(QStringLiteral("portapapeles"), &portapapeles);
     ctx->setContextProperty(QStringLiteral("traer"), &traer);
     ctx->setContextProperty(QStringLiteral("captura"), &captura);
+    ctx->setContextProperty(QStringLiteral("recorte"), &recorte);
+    ctx->setContextProperty(QStringLiteral("puerta"), &puerta);
     ctx->setContextProperty(QStringLiteral("bibliotecas"), &bibliotecas);
     ctx->setContextProperty(QStringLiteral("exportar"), &exportar);
     ctx->setContextProperty(QStringLiteral("vigilancia"), &vigilancia);

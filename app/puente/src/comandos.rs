@@ -108,6 +108,49 @@ pub enum Comando {
         ids: Vec<String>,
         #[serde(default)]
         dentro: bool,
+        /// Si una principal con versiones se lleva su pila entera. Sin esto
+        /// va sola y su versión más pesada pasa a ser la principal.
+        #[serde(default)]
+        con_versiones: bool,
+    },
+    /// Mete `ids` como versiones en la pila de `principal`.
+    Apilar {
+        principal: String,
+        ids: Vec<String>,
+    },
+    /// Saca de su pila; de una principal, suelta todas sus versiones.
+    Desapilar {
+        ids: Vec<String>,
+    },
+    /// Hace de una versión la principal de su pila.
+    HacerPrincipal {
+        id: String,
+    },
+    /// Saca una versión nueva de `id` y la mete en su pila. El original no
+    /// se toca.
+    CrearVersion {
+        id: String,
+        #[serde(flatten)]
+        receta: grimorio_core::Receta,
+    },
+    /// Cuánto pesaría esa versión, sin crearla.
+    EstimarVersion {
+        id: String,
+        #[serde(flatten)]
+        receta: grimorio_core::Receta,
+    },
+    /// Mete un archivo hecho fuera del núcleo —un recorte sin fondo— como
+    /// versión en la pila de `id`.
+    AnadirVersion {
+        id: String,
+        ruta: String,
+        /// El modelo con el que se quitó el fondo.
+        #[serde(default)]
+        recorte: Option<String>,
+    },
+    /// Varias pilas de una vez, como una sola cosa que se deshace.
+    ApilarGrupos {
+        grupos: Vec<GrupoPila>,
     },
     /// Pide la lista entera de etiquetas para el gestor.
     TodasEtiquetas,
@@ -226,6 +269,12 @@ pub enum Comando {
     AbrirFuera {
         id: String,
     },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GrupoPila {
+    principal: String,
+    ids: Vec<String>,
 }
 
 /// Cuántas etiquetas se ofrecen si nadie dice otra cosa. Un desplegable más
@@ -797,25 +846,30 @@ pub fn ejecutar(
             );
         }
 
-        Comando::Papelera { ids, dentro } => {
+        Comando::Papelera {
+            ids,
+            dentro,
+            con_versiones,
+        } => {
             let titulo = if *dentro {
                 "mandar a la papelera"
             } else {
                 "sacar de la papelera"
             };
-            // `en_lote` ya rehace la vista aunque sea un solo elemento: tirar
-            // algo lo saca de lo que se está mirando, y dejarlo en la malla
-            // sería enseñar algo que ya no está ahí.
-            let (tocados, _) = en_lote(
-                lib,
-                ids,
-                id_cmd,
-                aviso,
-                vista,
-                titulo,
-                Toca::papelera(),
-                |_| Parche::papelera(*dentro),
-            )?;
+            // Tirar algo lo saca de lo que se está mirando, así que la vista se
+            // rehace aunque sea un solo elemento: dejarlo en la malla sería
+            // enseñar algo que ya no está ahí.
+            let menudo = ids.len() <= LOTE_MENUDO;
+            let a = Mutex::new(*aviso);
+            let (tocados, ilegibles) =
+                lib.tirar_pilas(ids, *dentro, *con_versiones, &|hechos, total| {
+                    if !menudo {
+                        if let Ok(av) = a.lock() {
+                            eventos::progreso(&av, id_cmd, titulo, hechos, total);
+                        }
+                    }
+                })?;
+            avisar(lib, ids, id_cmd, aviso, vista, Toca::papelera(), ilegibles)?;
             eventos::carpetas(aviso, lib);
             eventos::hecho(
                 aviso,
@@ -825,6 +879,83 @@ pub fn ejecutar(
                 } else {
                     format!("{tocados} recuperado{}", plural(tocados))
                 },
+            );
+        }
+
+        Comando::Apilar { principal, ids } => {
+            let n = lib.apilar(principal, ids)?;
+            pila_cambiada(lib, principal, id_cmd, aviso, vista)?;
+            eventos::hecho(
+                aviso,
+                id_cmd,
+                format!("{n} versi{} en la pila", if n == 1 { "ón" } else { "ones" }),
+            );
+        }
+
+        Comando::Desapilar { ids } => {
+            let n = lib.desapilar(ids)?;
+            let foco = ids.first().cloned().unwrap_or_default();
+            pila_cambiada(lib, &foco, id_cmd, aviso, vista)?;
+            eventos::hecho(aviso, id_cmd, format!("{n} fuera de la pila"));
+        }
+
+        Comando::HacerPrincipal { id } => {
+            lib.hacer_principal(id)?;
+            pila_cambiada(lib, id, id_cmd, aviso, vista)?;
+            eventos::hecho(aviso, id_cmd, "ahora es la principal".to_string());
+        }
+
+        Comando::CrearVersion { id, receta } => {
+            let nuevo = lib.crear_version(id, receta)?;
+            let v = lib.load_item(&nuevo)?;
+            let fuente = lib.load_item(id)?;
+            pila_cambiada(lib, id, id_cmd, aviso, vista)?;
+            // Pasa con lo que ya venía muy comprimido: reducirlo con más
+            // calidad de la que tenía puede pesar más. Se dice, no se esconde:
+            // la versión se queda, por si es lo que se quería.
+            let mensaje = if v.size >= fuente.size {
+                format!(
+                    "versión creada: {}, pesa más que el original ({}); prueba con menos calidad o menos lado",
+                    humano(v.size),
+                    humano(fuente.size)
+                )
+            } else {
+                format!("versión creada: {} (el original, {})", humano(v.size), humano(fuente.size))
+            };
+            eventos::hecho_con_id(aviso, id_cmd, mensaje, nuevo);
+        }
+
+        Comando::EstimarVersion { id, receta } => {
+            let e = lib.estimar_version(id, receta)?;
+            eventos::estimacion(aviso, id_cmd, id, &e);
+        }
+
+        Comando::AnadirVersion { id, ruta, recorte } => {
+            let receta = grimorio_core::Receta {
+                formato: "png".into(),
+                calidad: 100,
+                lado: 0,
+                recorte: recorte.clone(),
+            };
+            let nuevo = lib.anadir_version(id, std::path::Path::new(ruta), &receta)?;
+            let v = lib.load_item(&nuevo)?;
+            pila_cambiada(lib, id, id_cmd, aviso, vista)?;
+            let que = if recorte.is_some() { "fondo quitado" } else { "versión añadida" };
+            eventos::hecho_con_id(aviso, id_cmd, format!("{que}: {}", humano(v.size)), nuevo);
+        }
+
+        Comando::ApilarGrupos { grupos } => {
+            let grupos: Vec<(String, Vec<String>)> = grupos
+                .iter()
+                .map(|g| (g.principal.clone(), g.ids.clone()))
+                .collect();
+            let n = lib.apilar_grupos(&grupos)?;
+            let foco = grupos.first().map(|g| g.0.clone()).unwrap_or_default();
+            pila_cambiada(lib, &foco, id_cmd, aviso, vista)?;
+            eventos::hecho(
+                aviso,
+                id_cmd,
+                format!("{n} versi{} en su pila", if n == 1 { "ón" } else { "ones" }),
             );
         }
 
@@ -914,7 +1045,7 @@ pub fn ejecutar(
                             }
                         }
                     }
-                    if arbol || toca.carpetas || toca.adulto || toca.papelera {
+                    if arbol || toca.carpetas || toca.adulto || toca.papelera || toca.pila {
                         eventos::carpetas(aviso, lib);
                     }
                     if toca.etiquetas {
@@ -1008,6 +1139,15 @@ pub fn ejecutar(
             );
             eventos::registro(aviso, lib);
             eventos::hecho(aviso, id_cmd, resumen_import(&informe));
+            // Lo que acaba de entrar y ya estaba en otro peso: se pregunta si
+            // apilarlo. Preguntar y no hacerlo solo, porque «casi igual» a
+            // veces es un recorte o un retoque que se quiere aparte.
+            if !informe.ids.is_empty() {
+                let parecidos = lib.index().parecidos(&informe.ids, 3)?;
+                if !parecidos.is_empty() {
+                    eventos::sugerencia_pila(aviso, lib, &parecidos);
+                }
+            }
         }
 
         Comando::Ficha { id } => {
@@ -1048,6 +1188,7 @@ const LOTE_MENUDO: usize = 64;
 struct Toca {
     papelera: bool,
     adulto: bool,
+    pila: bool,
     carpetas: bool,
     etiquetas: bool,
     estrellas: bool,
@@ -1118,6 +1259,7 @@ impl Toca {
             t.nombre |= p.nombre.is_some();
             t.nota |= p.nota.is_some();
             t.adulto |= p.adulto.is_some();
+            t.pila |= p.pila.is_some();
             t.orden |= p.orden.is_some();
         }
         t
@@ -1134,7 +1276,10 @@ impl Toca {
 fn cambia_la_vista(q: &Query, t: Toca) -> bool {
     // Tirar algo saca de todas las vistas menos de la papelera, y sacarlo de la
     // papelera lo saca de esa. En los dos casos hay que rehacer.
+    // Cambiar de pila cambia qué se ve siempre: una versión sale de la malla
+    // al entrar en una pila y vuelve al salir.
     t.papelera
+        || t.pila
         || (t.carpetas && q.folder.is_some())
         || (t.etiquetas && (!q.tags.is_empty() || q.text.is_some()))
         || (t.estrellas
@@ -1184,7 +1329,23 @@ fn en_lote(
             }
         }
     })?;
+    avisar(lib, ids, id_cmd, aviso, vista, toca, ilegibles)?;
+    Ok((tocados, ilegibles))
+}
 
+/// La mitad de [`en_lote`] que cuenta lo que pasó, para los cambios que no
+/// salen de un solo parche por elemento —tirar una pila decide uno distinto
+/// para cada miembro— y llaman al motor por su cuenta.
+fn avisar(
+    lib: &mut Library,
+    ids: &[String],
+    id_cmd: u64,
+    aviso: &Aviso,
+    vista: &Arc<Mutex<Arc<Vista>>>,
+    toca: Toca,
+    ilegibles: usize,
+) -> Result<()> {
+    let menudo = ids.len() <= LOTE_MENUDO;
     let q = consulta_actual(vista);
     if menudo && !cambia_la_vista(&q, toca) {
         // Releer sesenta y cuatro `item.json` cuesta menos de un milisegundo y
@@ -1206,7 +1367,40 @@ fn en_lote(
             &format!("{ilegibles} elemento{} no se pudo leer", plural(ilegibles)),
         );
     }
-    Ok((tocados, ilegibles))
+    Ok(())
+}
+
+/// Lo que hay que contar después de cambiar una pila: la vista entera, porque
+/// lo que se ve en la malla es justo lo que cambió; los números de la barra,
+/// que no cuentan las versiones; y la ficha de la pila, que es donde se están
+/// mirando sus versiones.
+fn pila_cambiada(
+    lib: &mut Library,
+    id: &str,
+    id_cmd: u64,
+    aviso: &Aviso,
+    vista: &Arc<Mutex<Arc<Vista>>>,
+) -> Result<()> {
+    let q = consulta_actual(vista);
+    republicar(lib, q, id_cmd, aviso, vista)?;
+    eventos::carpetas(aviso, lib);
+    eventos::registro(aviso, lib);
+    if let Ok(it) = lib.load_item(id) {
+        eventos::ficha(aviso, id_cmd, lib, &it);
+    }
+    Ok(())
+}
+
+/// «1,4 MB», «380 KB»: para decir lo que pesa una versión recién hecha.
+fn humano(bytes: u64) -> String {
+    let b = bytes as f64;
+    if b >= 1024.0 * 1024.0 {
+        format!("{:.1} MB", b / (1024.0 * 1024.0)).replace('.', ",")
+    } else if b >= 1024.0 {
+        format!("{:.0} KB", b / 1024.0)
+    } else {
+        format!("{bytes} B")
+    }
 }
 
 /// Rehace la vista y la publica. Es lo único que sustituye la vista viva.
@@ -1295,6 +1489,33 @@ mod tests {
             }
             otro => panic!("salió {otro:?}"),
         }
+    }
+
+    #[test]
+    fn los_comandos_de_pilas_se_leen_del_json() {
+        match parse(r#"{"cmd":"crear_version","id":"x","formato":"jpg","calidad":70,"lado":1600}"#) {
+            Comando::CrearVersion { id, receta } => {
+                assert_eq!(id, "x");
+                assert_eq!((receta.formato.as_str(), receta.calidad, receta.lado), ("jpg", 70, 1600));
+            }
+            otro => panic!("salió {otro:?}"),
+        }
+        match parse(r#"{"cmd":"crear_version","id":"x","formato":"webp"}"#) {
+            Comando::CrearVersion { receta, .. } => {
+                assert_eq!(receta.lado, 0, "sin lado, el tamaño se queda");
+            }
+            otro => panic!("salió {otro:?}"),
+        }
+        match parse(r#"{"cmd":"papelera","ids":["a"],"dentro":true}"#) {
+            Comando::Papelera { con_versiones, .. } => {
+                assert!(!con_versiones, "por defecto la principal va sola");
+            }
+            otro => panic!("salió {otro:?}"),
+        }
+        assert!(matches!(
+            parse(r#"{"cmd":"apilar","principal":"a","ids":["b"]}"#),
+            Comando::Apilar { .. }
+        ));
     }
 
     #[test]

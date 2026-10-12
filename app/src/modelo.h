@@ -60,6 +60,7 @@ public:
         Familia,
         Duracion,
         Adulto,
+        Versiones,
     };
 
     explicit Modelo(Nucleo *nucleo, QObject *padre = nullptr);
@@ -150,6 +151,11 @@ public slots:
     QColor dominanteDe(int i) const;
     bool tieneMiniaturaDe(int i) const;
     Q_INVOKABLE bool adultoDe(int i) const;
+    /// Cuántas versiones tiene debajo; 0 si no es una pila.
+    Q_INVOKABLE int versionesDe(int i) const;
+    /// Si entre lo elegido hay alguna principal con versiones: lo que decide
+    /// si tirar lo elegido tiene que preguntar qué pasa con ellas.
+    Q_INVOKABLE bool hayPilasElegidas() const;
     bool elegidoDe(int i) const;
 
 signals:

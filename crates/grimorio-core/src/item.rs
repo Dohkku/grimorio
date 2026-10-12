@@ -116,6 +116,46 @@ pub struct Item {
     /// vive aquí porque es de quien está delante y no del elemento.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub adult: bool,
+    /// Si es una versión de otro elemento, el id de ese otro: la principal de
+    /// su pila.
+    ///
+    /// La misma imagen con menos peso —una exportación para la web, la copia
+    /// que alguien mandó recomprimida— no es un elemento más en la malla sino
+    /// otra cara del mismo. Se apunta aquí, en la versión, y no en la
+    /// principal: así apilar y desapilar tocan un solo archivo por versión y
+    /// no hay una lista que pueda desincronizarse de lo que dicen las demás.
+    ///
+    /// Las pilas son planas: una versión nunca es principal de nadie.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pila: Option<String>,
+    /// Con qué se hizo, si la versión la generó Grimorio. Las que llegaron de
+    /// fuera no la tienen.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receta: Option<Receta>,
+}
+
+/// Cómo se saca una versión ligera de un original. El original no se toca
+/// nunca: la versión es un archivo nuevo que entra en la pila.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Receta {
+    /// `jpg`, `png` o `webp`.
+    pub formato: String,
+    /// Calidad de 1 a 100. Cuenta en JPEG y en WebP, donde 100 es sin
+    /// pérdida; PNG siempre sale sin pérdida.
+    #[serde(default = "calidad_por_defecto")]
+    pub calidad: u8,
+    /// El lado mayor en píxeles, o 0 para dejar el tamaño como está. Nunca
+    /// amplía.
+    #[serde(default)]
+    pub lado: u32,
+    /// Si es un recorte, con qué modelo se quitó el fondo. Un recorte sale
+    /// siempre en PNG, a su tamaño, con la transparencia donde estaba el fondo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recorte: Option<String>,
+}
+
+fn calidad_por_defecto() -> u8 {
+    82
 }
 
 impl Item {
@@ -152,6 +192,8 @@ impl Item {
             },
             trashed: false,
             adult: false,
+            pila: None,
+            receta: None,
         }
     }
 

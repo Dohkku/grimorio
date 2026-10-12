@@ -211,6 +211,16 @@ Rectangle {
     }
 
     Connections {
+        target: recorte
+        function onAviso(mensaje, error) { estado.avisar(mensaje, error) }
+        function onCambio() {
+            if (recorte.bajando)
+                estado.avisar(qsTr("bajando el modelo para quitar fondos… %1 %")
+                              .arg(Math.round(recorte.progreso * 100)), false)
+        }
+    }
+
+    Connections {
         target: bibliotecas
         function onAviso(mensaje, error) { estado.avisar(mensaje, error) }
     }

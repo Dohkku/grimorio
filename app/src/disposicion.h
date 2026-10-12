@@ -66,6 +66,7 @@ public:
         Familia,
         Duracion,
         Adulto,
+        Versiones,
         SinDibujo,
         Nombre,
     };
