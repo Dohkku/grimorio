@@ -79,11 +79,15 @@ function contenedorDelPost(el) {
   return el.closest("article") || el.closest('[role="dialog"]') || el.closest("main") || null;
 }
 
-const RE_POST = /^\/(?:[^/]+\/)?(p|reel|tv)\/([^/?#]+)/;
+// «/reels/CODIGO/» es la pestaña de Reels mientras se pasan: ahí no hay
+// `article` ni enlace al post, solo la dirección de la página. Se guarda
+// como «/reel/», que es el enlace permanente.
+const RE_POST = /^\/(?:[^/]+\/)?(p|reels?|tv)\/([^/?#]+)/;
 
 function enlaceDe(href, loc) {
   const m = new URL(href, loc.href).pathname.match(RE_POST);
-  return m ? `https://www.instagram.com/${m[1]}/${m[2]}/` : null;
+  if (!m || (m[1] === "reels" && m[2] === "audio")) return null;
+  return `https://www.instagram.com/${m[1] === "reels" ? "reel" : m[1]}/${m[2]}/`;
 }
 
 /// El enlace permanente del post, que es lo que se guarda como origen: la

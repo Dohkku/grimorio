@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Grimorio",
-  "description": "Guarda imágenes en tu biblioteca de Grimorio: con el clic derecho en cualquier web y con un botón en Instagram.",
+  "description": "Guarda imágenes en tu biblioteca de Grimorio: con el clic derecho en cualquier web y con un botón en Instagram, TikTok y 4chan.",
   "version": "0.1.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvIpFJ2WN4AKZl4jANUFWcr1/nLpoULf6cqnlU/nT/pBfsrUJG7A//lBUBum7MY87mIx8QkQv1OxZ+UWPf30dElmWFiv6TD3eu+CO/BCXrvYUtpF6FvTIlPk+xtjZXuGnRPHa3zuBpC0YY7LrB6OhwcmytktHbdV64kFXHdGTF75tUw+qBxhD/u/HznaC+zYzPSNDZchF6PVQZRix/mZ3yXguzuAfgBMqVUpxFg3xhzfHUjoC3iIoyMzABef3k5YS3hUwFbUUn6pxqP42Czh0rzAjVze53TRdWcC67idLB9QqckJv7z0iUTpr+wU5b8WI9+0AN58CanS32ZvHH/A8CwIDAQAB",
   "icons": {
@@ -39,6 +39,32 @@
         "aviso.js",
         "elegir.js",
         "instagram.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.tiktok.com/*"
+      ],
+      "js": [
+        "aviso.js",
+        "elegir.js",
+        "boton.js",
+        "tiktok-datos.js",
+        "tiktok.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://boards.4chan.org/*",
+        "https://boards.4channel.org/*"
+      ],
+      "js": [
+        "aviso.js",
+        "boton.js",
+        "4chan-datos.js",
+        "4chan.js"
       ],
       "run_at": "document_idle"
     }

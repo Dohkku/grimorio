@@ -58,8 +58,17 @@ Flickable {
         else if (!espera.running) espera.start()
     }
 
+    // Con el visor abierto, ninguno. La malla sigue debajo y el ratón sigue
+    // pasando por encima de sus celdas, así que el vídeo de la celda que
+    // quedaba bajo el cursor arrancaba detrás del visor y sonaba con él: el
+    // mismo vídeo dos veces, uno al abrirlo y otro al mover el ratón.
     function repartirVideos() {
-        videos.sitio = ajustes.videoAlPasar ? videoEncima : undefined
+        videos.sitio = ajustes.videoAlPasar && !ventana.visorAbierto ? videoEncima : undefined
+    }
+
+    Connections {
+        target: ventana
+        function onVisorAbiertoChanged() { malla.repartirVideos() }
     }
 
     function marcarPasada(dentro, indice, x, y, ancho, alto) {

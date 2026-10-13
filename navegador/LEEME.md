@@ -18,6 +18,18 @@ Guarda imágenes en tu biblioteca sin descargarlas antes:
   y cómo: «guardada · 1080×1350 · original», o «lo ya bajado (la API contestó
   403)». El origen que queda apuntado es el enlace del post, que no caduca; la
   dirección de la imagen sí.
+- **En TikTok:** el mismo botón «a Grimorio» encima de cada vídeo, en el feed
+  y en las cuadrículas, y el clic derecho guarda lo que hay bajo el ratón. El
+  vídeo se reproduce desde un `blob:`, que no se puede bajar, así que se pide
+  la página del post, que trae dentro dónde está el vídeo entero: se guarda la
+  versión más grande —a menudo 1080p en H.265—, sin marca de agua. De un
+  carrusel de fotos, la que se ve. Si la página no trae los datos (pide
+  iniciar sesión, está borrado), una foto se guarda como se ve y un vídeo no.
+- **En 4chan:** al pasar por encima de una miniatura sale «a Grimorio», y el
+  clic derecho guarda lo mismo: el archivo entero —imagen, gif o webm—, no la
+  miniatura «…s.jpg» que se ve, con su nombre original (también si va con
+  spoiler) y el enlace al post («/po/thread/123#p456»). En el catálogo solo
+  hay miniatura, y se guarda esa con el asunto del hilo.
 - **Dónde:** el botón de la extensión enseña si Grimorio está abierto y deja
   elegir la carpeta en la que entra todo.
 
@@ -63,4 +75,7 @@ cd navegador && npm install && npm test
 
 Prueban `elegir.js` —qué imagen hay bajo el ratón atravesando las capas, cuál
 es el tamaño mayor, el enlace del post, el nombre— contra un HTML con la forma
-del de Instagram, sin sus clases, igual que el código.
+del de Instagram, sin sus clases, igual que el código; y `tiktok-datos.js`
+—de qué post es cada vídeo, qué versión bajar— con la forma de lo que sirve
+TikTok; y `4chan-datos.js` —el original detrás de cada miniatura, su nombre y
+su post— con el HTML de un hilo.

@@ -16,8 +16,9 @@ const PROGRAMA = "com.grimorio.puerta";
 const TOPE_BYTES = 40 * 1024 * 1024;
 
 // Una sola entrada para todo: en una imagen o un vídeo guarda ese archivo; en
-// una página o un enlace, la imagen que los representa; en Instagram, lo que
-// hay bajo el ratón, que el navegador no ve porque está tapado por capas.
+// una página o un enlace, la imagen que los representa; en Instagram y en
+// TikTok, lo que hay bajo el ratón, que el navegador no ve porque está tapado
+// por capas.
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -54,23 +55,34 @@ function base64(bytes) {
 /// Baja la imagen aquí, con la sesión de quien mira, y manda los bytes. Si no
 /// se puede —demasiado grande, o algo que no es una imagen—, manda la
 /// dirección y que la baje Grimorio.
-async function guardarUno({ url, origen, nombre }, carpeta) {
+///
+/// Con `alternativas`, si la primera dirección no da el archivo se prueban
+/// las demás: TikTok da cada vídeo en varios servidores, y desde aquí unos
+/// contestan 403 y otros no.
+async function guardarUno({ url, alternativas, origen, nombre }, carpeta) {
   const pedido = { accion: "traer", origen: origen || "", nombre: nombre || "", carpeta: carpeta || "" };
-  try {
-    const r = await fetch(url, { credentials: "include" });
-    const tipo = (r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-    const largo = Number(r.headers.get("content-length") || 0);
-    if (r.ok && /^(image|video)\//.test(tipo) && largo <= TOPE_BYTES) {
-      const bytes = new Uint8Array(await r.arrayBuffer());
-      if (bytes.length <= TOPE_BYTES) {
-        return hablar({ ...pedido, datos: base64(bytes), tipo });
+  let grande = null;
+  for (const u of [url, ...(alternativas || [])]) {
+    try {
+      const r = await fetch(u, { credentials: "include" });
+      const tipo = (r.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+      const largo = Number(r.headers.get("content-length") || 0);
+      if (!r.ok || !/^(image|video)\//.test(tipo)) continue;
+      if (largo <= TOPE_BYTES) {
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        if (bytes.length <= TOPE_BYTES) {
+          return hablar({ ...pedido, datos: base64(bytes), tipo });
+        }
       }
+      // Demasiado grande para mandarla: esta es la dirección que funciona.
+      grande = grande || u;
+    } catch (_) {
+      // Sin poder bajarla aquí, que lo intente Grimorio con la dirección.
     }
-  } catch (_) {
-    // Sin poder bajarla aquí, que lo intente Grimorio con la dirección.
   }
-  if (!/^https?:/.test(url)) return { ok: false, error: "esa imagen no tiene dirección que bajar" };
-  return hablar({ ...pedido, url });
+  const direccion = grande || url;
+  if (!/^https?:/.test(direccion)) return { ok: false, error: "esa imagen no tiene dirección que bajar" };
+  return hablar({ ...pedido, url: direccion });
 }
 
 async function carpetaElegida() {
@@ -125,12 +137,15 @@ async function marcar(tabId, bien) {
   setTimeout(() => chrome.action.setBadgeText({ text: "", tabId }), 3000);
 }
 
-const RE_INSTAGRAM = /^https:\/\/www\.instagram\.com\//;
+/// Las webs con script propio: el clic derecho lo atiende él, que sabe qué
+/// había bajo el ratón —Instagram y TikTok lo tapan con capas— o dónde está
+/// el original —4chan enseña una miniatura—.
+const RE_CON_BOTON = /^https:\/\/(www\.(instagram|tiktok)\.com|boards\.4chan(nel)?\.org)\//;
 
 /// Lo que hace la entrada del clic derecho. Aparte del oyente para poder
 /// llamarla en las pruebas sin abrir un menú de verdad.
 async function alPulsarMenu(info, tab) {
-  if (tab && RE_INSTAGRAM.test(info.pageUrl || tab.url || "")) {
+  if (tab && RE_CON_BOTON.test(info.pageUrl || tab.url || "")) {
     // Lo guarda la pestaña, que sabe qué había bajo el ratón y dónde está el
     // original entero; el aviso sale allí, como con el botón.
     try {

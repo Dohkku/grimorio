@@ -8,6 +8,11 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.8
+
+- **Arreglado:** un vídeo podía sonar dos veces a la vez. Pasaba al elegirlo
+  y al abrirlo en grande con doble clic: seguía sonando también debajo.
+
 ## 0.1.7
 
 - **Borrar para siempre.** En la papelera, Supr o el botón borran del disco

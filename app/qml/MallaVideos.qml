@@ -43,7 +43,10 @@ Item {
 
         enPantalla: sitio !== undefined
         conMandos: false
+        // Callado y además sin volumen: en la malla no tiene que sonar nunca,
+        // y no se fía todo a una sola propiedad del motor de multimedia.
         silencio: true
+        volumen: 0
         bucle: true
     }
 }

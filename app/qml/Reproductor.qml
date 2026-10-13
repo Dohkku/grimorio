@@ -158,6 +158,12 @@ Item {
         // interfaz. Pausado no decodifica nada y vuelve al instante. Lo que sí
         // hace `stop` es soltar la memoria, y de eso se encarga `soltar`.
         if (!enPantalla) {
+            // Y se olvida el arranque pendiente: si no, el medio que acaba de
+            // cargar lo cumplía detrás del visor. Era el panel de detalle
+            // sonando debajo del visor abierto con doble clic: el primer clic
+            // le daba el vídeo, el segundo abría el visor y lo pausaba, y a
+            // los cien milisegundos el vídeo terminaba de cargar y arrancaba.
+            pendiente = false
             reproduccion.pause()
         } else if (cambio.running) {
             // La fuente nueva está en camino: arrancar la vieja sería oírla un
@@ -209,7 +215,7 @@ Item {
         // —sonido, vídeo, el mismo sonido— daba la petición por hecha con la
         // onda ya borrada, y el panel se quedaba en «analizando» para siempre.
         claveOnda = ""
-        pendiente = String(fuente).length > 0
+        pendiente = String(fuente).length > 0 && enPantalla
         if (String(efectiva).length === 0) {
             aplicarFuente()
         } else {
@@ -241,7 +247,13 @@ Item {
         const hecha = idElemento.length > 0 ? derivados.hecho("proxy:" + idElemento) : ({})
         usandoCopia = hecha.ok === true
         efectiva = usandoCopia ? derivados.url(hecha.ruta) : fuente
-        pendiente = String(fuente).length > 0
+        // Fuera de pantalla se carga pero no se arranca. El visor cerrado
+        // tiene su reproductor vivo —ver `hizoFalta` en Visor.qml— y le llega
+        // cada vídeo que se elige en la malla: arrancando aquí sonaba por
+        // detrás a la vez que el del panel de detalle, el mismo vídeo dos
+        // veces, y solo se callaba al elegir algo que no fuera un vídeo.
+        // Ya arrancará `onEnPantallaChanged` cuando se vea.
+        pendiente = String(fuente).length > 0 && enPantalla
         if (pendiente) reproduccion.play()
     }
 
@@ -294,8 +306,8 @@ Item {
                     reproductor.usandoCopia = true
                     reproductor.textoError = ""
                     reproductor.efectiva = derivados.url(r.ruta)
-                    reproductor.pendiente = true
-                    reproduccion.play()
+                    reproductor.pendiente = reproductor.enPantalla
+                    if (reproductor.enPantalla) reproduccion.play()
                 } else {
                     reproductor.errorCopia = r.error
                 }
@@ -405,9 +417,9 @@ Item {
                     && mediaStatus !== MediaPlayer.BufferedMedia) return
             // Si ha cargado, un error de antes ya no es de este medio.
             reproductor.textoError = ""
-            const debe = reproductor.conMandos
+            const debe = reproductor.enPantalla && (reproductor.conMandos
                          ? reproductor.pendiente
-                         : (reproductor.enPantalla && String(reproductor.fuente).length > 0)
+                         : String(reproductor.fuente).length > 0)
             reproductor.pendiente = false
             if (debe && playbackState !== MediaPlayer.PlayingState) play()
         }

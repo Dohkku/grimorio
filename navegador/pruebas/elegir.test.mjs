@@ -69,6 +69,19 @@ test("el origen es el enlace permanente del post, también desde el feed", () =>
   assert.equal(e.enlaceDelPost(enPost.doc.querySelector(".f1"), enPost.loc), "https://www.instagram.com/p/C9xYz12AbC/");
 });
 
+test("en la pestaña de Reels el post es el de la página, con su enlace permanente", () => {
+  const reels = pagina("https://www.instagram.com/reels/DPq3xYzAbCd/");
+  reels.doc.querySelector('a[href^="/p/"]').remove();
+  const v = reels.doc.createElement("video");
+  reels.doc.body.append(v);
+  assert.equal(e.enlaceDelPost(v, reels.loc), "https://www.instagram.com/reel/DPq3xYzAbCd/");
+  assert.equal(e.codigoDelEnlace(e.enlaceDelPost(v, reels.loc)), "DPq3xYzAbCd");
+  // Las páginas de un audio de Reels no son un post.
+  const audio = pagina("https://www.instagram.com/reels/audio/1234567890/");
+  audio.doc.querySelector('a[href^="/p/"]').remove();
+  assert.equal(e.enlaceDelPost(audio.doc.body, audio.loc), "https://www.instagram.com/reels/audio/1234567890/");
+});
+
 test("el nombre lleva el autor y el texto alternativo sin la coletilla automática", () => {
   const { doc, loc } = pagina();
   assert.equal(e.nombreDelMedio(doc.querySelector(".f1"), loc), "@fotografa.luz · una calle mojada de noche");
