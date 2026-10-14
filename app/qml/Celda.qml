@@ -471,6 +471,9 @@ Item {
             id: raton
             /// Si ya se dijo, en este arrastre, que son demasiados para sacarlos.
             property bool avisadoFuera: false
+            /// Se apretó con Mayús y todavía no se sabe si es un tramo (clic)
+            /// o un reordenar (arrastre): se decide al soltar o al arrastrar.
+            property bool mayusPendiente: false
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton
@@ -480,11 +483,14 @@ Item {
             onContainsMouseChanged: celda.pasada(containsMouse, celda.celdaIndice,
                                                  celda.celdaX, celda.celdaY,
                                                  celda.celdaAncho, celda.celdaAlto)
-            // Con Ctrl o Mayús, la selección ya cambió al apretar (abajo); aquí
-            // solo el clic a secas, que deja elegida esta y nada más.
+            // Con Ctrl, la selección ya cambió al apretar (abajo). Mayús espera
+            // hasta aquí: solo un clic sin arrastre es un tramo, porque
+            // Mayús+arrastrar es reordenar.
             onClicked: function (evento) {
-                if (!(evento.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)))
+                if (raton.mayusPendiente) modelo.elegirHasta(celda.celdaIndice)
+                else if (!(evento.modifiers & Qt.ControlModifier))
                     modelo.elegir(celda.celdaIndice)
+                raton.mayusPendiente = false
             }
             onDoubleClicked: {
                 modelo.elegir(celda.celdaIndice)
@@ -501,13 +507,15 @@ Item {
                 // apretar; al soltar ya se ha movido todo.
                 celda.elegida(celda.celdaX, celda.celdaY, celda.celdaAncho, celda.celdaAlto)
                 raton.avisadoFuera = false
-                // Ctrl y Mayús deciden aquí y no al soltar. Antes se elegía
-                // esta sola al apretar y luego Ctrl la alternaba al soltar: la
-                // quitaba, y Ctrl+clic dejaba la selección vacía; Mayús hacía
-                // un tramo desde ella misma.
-                if (evento.modifiers & Qt.ShiftModifier) modelo.elegirHasta(celda.celdaIndice)
-                else if (evento.modifiers & Qt.ControlModifier) modelo.alternar(celda.celdaIndice)
-                else if (!celda.elegido) modelo.elegir(celda.celdaIndice)
+                // Ctrl decide aquí y no al soltar. Antes se elegía esta sola al
+                // apretar y luego Ctrl la alternaba al soltar: la quitaba, y
+                // Ctrl+clic dejaba la selección vacía. Mayús no toca nada hasta
+                // saber si es clic (tramo) o arrastre (reordenar).
+                raton.mayusPendiente = (evento.modifiers & Qt.ShiftModifier) !== 0
+                if (!raton.mayusPendiente) {
+                    if (evento.modifiers & Qt.ControlModifier) modelo.alternar(celda.celdaIndice)
+                    else if (!celda.elegido) modelo.elegir(celda.celdaIndice)
+                }
                 fantasma.seguir(evento.x, evento.y)
                 // De dónde salen, además de cuáles son. Soltarlos en otra
                 // carpeta los mueve, y para moverlos hay que saber de dónde:
@@ -520,10 +528,22 @@ Item {
             onPositionChanged: function (evento) {
                 if (!raton.drag.active) return
                 fantasma.seguir(evento.x, evento.y)
-                // Dentro de la malla, arrastrar reordena: el hueco va donde
-                // caería y las demás se apartan. Fuera (sobre una carpeta), el
-                // hueco vuelve a su sitio y el arrastre es el de siempre.
-                if (ventana.permiteReorden()) {
+                // Mayús+arrastrar mueve esta y solo esta: lo que hubiera
+                // elegido antes no viaja con ella.
+                if (raton.mayusPendiente) {
+                    raton.mayusPendiente = false
+                    modelo.elegir(celda.celdaIndice)
+                    ventana.arrastrarElementos(modelo.seleccion,
+                                               ventana.enPapelera ? "" : ventana.carpetaActual)
+                }
+                // Con Mayús, dentro de la malla, arrastrar reordena: el hueco
+                // va donde caería y las demás se apartan. Sin Mayús no:
+                // arrastrar a secas es para sacarla a otra aplicación o a una
+                // carpeta, y que la malla se moviera por el camino estorbaba.
+                // Fuera de la malla, o al soltar Mayús a medias, el hueco
+                // vuelve a su sitio y el arrastre es el de siempre.
+                const conMayus = (evento.modifiers & Qt.ShiftModifier) !== 0
+                if (conMayus && ventana.permiteReorden()) {
                     const enMalla = raton.mapToItem(malla, evento.x, evento.y)
                     const dentro = enMalla.x >= 0 && enMalla.y >= 0
                                    && enMalla.x <= malla.width && enMalla.y <= malla.height
@@ -534,6 +554,8 @@ Item {
                     } else if (disposicion.reordenando) {
                         disposicion.devolverReorden()
                     }
+                } else if (disposicion.reordenando) {
+                    disposicion.devolverReorden()
                 }
                 // Salir de la ventana arrastrando es querer llevárselo a otra
                 // aplicación. Ahí el arrastre de dentro ya no sirve —ninguna

@@ -147,6 +147,7 @@ Arrastrar tiene el sentido que espera quien arrastra:
 | la selección | una carpeta | la **mueve**: entra en la de destino y sale de la de origen, en una sola operación que se deshace de una vez |
 | la selección | «Todo» o una búsqueda | la **añade**, sin sacarla de nada |
 | la selección | cualquier sitio, al hueco de debajo del árbol | la saca de la carpeta en la que se estaba mirando |
+| un elemento, con `Mayús` | la malla, dentro de ella | lo **reordena**: las demás se apartan y queda donde se suelta. Sin `Mayús` la malla no se mueve, para poder sacarlo a otra aplicación sin estorbos. `Mayús+clic` sin arrastrar sigue eligiendo un tramo |
 | una carpeta | el hueco de debajo del árbol | vuelve a la raíz |
 
 Una carpeta soltada sobre otra fila hace una cosa u otra según **dónde** de la
