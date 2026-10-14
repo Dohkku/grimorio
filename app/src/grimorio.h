@@ -56,6 +56,8 @@ enum GrimFamilia {
 uint8_t grim_vista_familia(const GrimVista *v, size_t i);
 /// 1 si está marcado como contenido adulto.
 uint8_t grim_vista_adulto(const GrimVista *v, size_t i);
+/// Con qué giro se mira, en grados: 0, 90, 180 o 270.
+uint16_t grim_vista_giro(const GrimVista *v, size_t i);
 /// Cuántas versiones tiene debajo; 0 si no es una pila.
 uint32_t grim_vista_versiones(const GrimVista *v, size_t i);
 /// La extensión, apuntando dentro de la vista. No copia.

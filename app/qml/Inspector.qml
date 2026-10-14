@@ -92,6 +92,17 @@ Rectangle {
         }
     }
 
+    /// Si hay un vídeo o un sonido en el panel que se pueda parar y seguir.
+    /// El reproductor cargado, o null. Como `var`: es de un archivo que
+    /// importa QtMultimedia, y qmllint no ve lo que tiene.
+    readonly property var rep: reproductor.status === Loader.Ready ? reproductor.item : null
+    readonly property bool hayReproductor: hayQueReproducir && reproductor.status === Loader.Ready
+
+    /// Parar o seguir el del panel. Lo usa el espacio con el visor cerrado.
+    function alternarReproduccion() {
+        if (hayReproductor && rep) rep.alternar()
+    }
+
     function renombrar() {
         if (cuantos === 1) nombre.editar()
     }
@@ -237,7 +248,12 @@ Rectangle {
                 clip: true
 
                 Image {
-                    anchors.fill: parent
+                    // Con el giro guardado del elemento, como en la malla.
+                    readonly property bool deLado: modelo.giroFoco % 180 !== 0
+                    anchors.centerIn: parent
+                    width: deLado ? parent.height : parent.width
+                    height: deLado ? parent.width : parent.height
+                    rotation: modelo.giroFoco
                     visible: inspector.foco >= 0 && inspector.mosaico.length === 0
                     source: inspector.idFoco.length > 0
                             ? "image://grim/" + inspector.idFoco : ""
@@ -346,6 +362,31 @@ Rectangle {
                     property: "bucle"
                     value: true
                     when: reproductor.status === Loader.Ready
+                }
+                Binding {
+                    target: reproductor.item
+                    property: "giro"
+                    value: modelo.giroFoco
+                    when: reproductor.status === Loader.Ready
+                }
+                // Callado salvo que se pida sonido. Su botón cambia el
+                // ajuste, para que el siguiente vídeo venga igual.
+                Binding {
+                    target: reproductor.item
+                    property: "silencio"
+                    value: !ajustes.sonidoPanel
+                    when: reproductor.status === Loader.Ready
+                }
+                Connections {
+                    target: reproductor.item
+                    ignoreUnknownSignals: true
+                    function onSilencioChanged() {
+                        const r = inspector.rep
+                        if (r && ajustes.sonidoPanel === r.silencio) ajustes.sonidoPanel = !r.silencio
+                    }
+                    // Doble clic sobre el vídeo, al visor: lo mismo que en
+                    // una foto o en la malla.
+                    function onDobleClic() { if (inspector.foco >= 0) ventana.visorAbierto = true }
                 }
 
                 // Doble clic, a pantalla completa: lo mismo que en la malla.
@@ -705,7 +746,9 @@ Rectangle {
                         width: (parent.width - parent.spacing) / 2
                         icono: "papelera"
                         texto: ventana.enPapelera ? qsTr("recuperar") : qsTr("papelera")
-                        onPulsado: ventana.enPapelera ? nucleo.papelera(modelo.seleccion, false)
+                        pista: ventana.enPapelera ? qsTr("sacar de la papelera")
+                                                  : qsTr("a la papelera (Supr)")
+                        onPulsado: ventana.enPapelera ? ventana.recuperar()
                                                       : ventana.tirar()
                     }
                 }
@@ -732,6 +775,10 @@ Rectangle {
                             altura: Math.round(tema.fuente * 1.9)
                             icono: modelData.icono
                             texto: modelData.texto
+                            // El atajo, que en el botón no cabe; el texto
+                            // también, porque recortado puede no leerse entero.
+                            pista: modelData.atajo ? modelData.texto + " (" + modelData.atajo + ")"
+                                                   : modelData.texto
                             activo: modelData.valor === "adulto" && modelo.adultoFoco
                             onPulsado: ventana.hacerConElemento(modelData.valor)
                         }

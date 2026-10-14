@@ -195,6 +195,10 @@ pub struct QueryHit {
     /// celda al pintarse: preguntarlo elemento a elemento sería una consulta
     /// por celda y por fotograma.
     pub adulto: bool,
+    /// El giro con el que se mira, en grados (ver `Item::rotation`). Viaja en
+    /// la vista por lo mismo que la marca de +18: lo mira cada celda.
+    #[serde(default)]
+    pub giro: u16,
     /// Cuántas versiones tiene debajo, sin contarse a sí mismo. Cero en casi
     /// todo; la celda lo enseña como una insignia cuando no lo es.
     #[serde(default)]

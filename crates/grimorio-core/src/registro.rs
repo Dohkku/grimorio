@@ -38,6 +38,9 @@ pub struct Parche {
     pub papelera: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adulto: Option<bool>,
+    /// El giro de la vista, en grados (ver `Item::rotation`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub giro: Option<u16>,
     /// El mapa de orden entero (ver `Item::orden`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orden: Option<std::collections::BTreeMap<String, f64>>,
@@ -91,6 +94,12 @@ impl Parche {
             ..Default::default()
         }
     }
+    pub fn giro(grados: i32) -> Self {
+        Parche {
+            giro: Some(crate::item::giro_normal(grados)),
+            ..Default::default()
+        }
+    }
     pub fn orden(v: std::collections::BTreeMap<String, f64>) -> Self {
         Parche {
             orden: Some(v),
@@ -122,6 +131,7 @@ impl Parche {
             nombre: molde.nombre.as_ref().map(|_| item.name.clone()),
             papelera: molde.papelera.map(|_| item.trashed),
             adulto: molde.adulto.map(|_| item.adult),
+            giro: molde.giro.map(|_| item.rotation),
             orden: molde.orden.as_ref().map(|_| item.orden.clone()),
             pila: molde
                 .pila
@@ -193,6 +203,13 @@ impl Parche {
             if item.adult != v {
                 atras.adulto = Some(item.adult);
                 item.adult = v;
+            }
+        }
+        if let Some(v) = self.giro {
+            let v = crate::item::giro_normal(v as i32);
+            if item.rotation != v {
+                atras.giro = Some(item.rotation);
+                item.rotation = v;
             }
         }
         if let Some(p) = &self.pila {
@@ -369,6 +386,25 @@ impl Registro {
 mod tests {
     use super::*;
     use crate::item::OriginMode;
+
+    #[test]
+    fn el_giro_se_normaliza_y_se_deshace() {
+        let mut it = item();
+        // Cualquier giro cae en un cuarto de vuelta: 450 es 90 y -90 es 270.
+        let atras = Parche::giro(450).aplicar(&mut it);
+        assert_eq!(it.rotation, 90);
+        assert_eq!(atras.giro, Some(0));
+        Parche::giro(-90).aplicar(&mut it);
+        assert_eq!(it.rotation, 270);
+        // Lo mismo otra vez no cambia nada, y no deja nada que deshacer.
+        assert!(Parche::giro(270).aplicar(&mut it).vacio());
+        // Sin girar, no se escribe en el item.json.
+        atras.aplicar(&mut it);
+        let json = serde_json::to_string(&it).unwrap();
+        assert!(!json.contains("rotation"));
+        Parche::giro(180).aplicar(&mut it);
+        assert!(serde_json::to_string(&it).unwrap().contains("\"rotation\":180"));
+    }
 
     fn item() -> Item {
         Item::new(

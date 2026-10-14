@@ -23,6 +23,10 @@ class Ajustes : public QObject {
     /// cinco costaban 0,88 GB y un tercio de un núcleo contra los 0,19 GB del
     /// programa sin vídeo. Ver app/README.md.
     Q_PROPERTY(bool videoAlPasar READ videoAlPasar WRITE setVideoAlPasar NOTIFY cambio)
+    /// Si el vídeo del panel de detalle suena. Callado de fábrica: se pone en
+    /// marcha solo al elegirlo, y un sonido que salta al pasar con las flechas
+    /// por la galería sorprende. Se cambia con su botón o en ajustes.
+    Q_PROPERTY(bool sonidoPanel READ sonidoPanel WRITE setSonidoPanel NOTIFY cambio)
     /// Con el modo seguro puesto, lo marcado como +18 sale difuminado.
     Q_PROPERTY(bool modoSeguro READ modoSeguro WRITE setModoSeguro NOTIFY cambio)
     /// El nombre de cada elemento debajo de su celda. Apagado de fábrica:
@@ -55,6 +59,7 @@ public:
     qreal anchoLateral() const { return m_anchoLateral; }
     qreal anchoInspector() const { return m_anchoInspector; }
     bool videoAlPasar() const { return m_videoAlPasar; }
+    bool sonidoPanel() const { return m_sonidoPanel; }
     bool modoSeguro() const { return m_modoSeguro; }
     bool verNombres() const { return m_verNombres; }
     bool verInspector() const { return m_verInspector; }
@@ -67,6 +72,7 @@ public:
     void setAnchoLateral(qreal v);
     void setAnchoInspector(qreal v);
     void setVideoAlPasar(bool v);
+    void setSonidoPanel(bool v);
     void setModoSeguro(bool v);
     void setVerNombres(bool v);
     void setVerInspector(bool v);
@@ -92,6 +98,7 @@ private:
     qreal m_anchoLateral = 0;
     qreal m_anchoInspector = 0;
     bool m_videoAlPasar = true;
+    bool m_sonidoPanel = false;
     bool m_modoSeguro = true;
     bool m_verNombres = false;
     bool m_verInspector = true;

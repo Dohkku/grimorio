@@ -16,7 +16,11 @@ Rectangle {
     property var rep: null
     /// Solo parar, tiempo y barra: para el panel de la derecha.
     property bool compacto: false
+    /// Fuera de la vista: el vídeo corre y el ratón lleva un rato quieto.
+    property bool escondido: false
 
+    /// El ratón está encima de los mandos.
+    readonly property bool encima: raton.containsMouse || barraRaton.containsMouse
     readonly property bool hayRep: rep !== null && rep !== undefined
     readonly property real dur: hayRep ? rep.duracion : 0
     readonly property real pos: hayRep ? rep.posicion : 0
@@ -25,8 +29,10 @@ Rectangle {
 
     height: barra.height + fila + tema.hueco * 1.5
     color: tema.panel
-    opacity: raton.containsMouse || barraRaton.containsMouse || !(hayRep && rep.enMarcha)
+    opacity: escondido ? 0
+             : raton.containsMouse || barraRaton.containsMouse || !(hayRep && rep.enMarcha)
              ? 0.96 : 0.55
+    enabled: opacity > 0
     Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
 
     MouseArea {
@@ -173,30 +179,36 @@ Rectangle {
             spacing: tema.hueco / 2
 
             Boton {
-                texto: "−5 s"
+                texto: "−10 s"
+                pista: qsTr("10 segundos atrás (Mayús+←)")
                 visible: !transporte.compacto
-                onPulsado: transporte.rep.irA(transporte.pos - 5000)
+                onPulsado: transporte.rep.saltar(-10)
             }
             Boton {
                 visible: !transporte.compacto
                 // Un fotograma atrás. En el sonido no hay fotogramas: una décima.
                 texto: transporte.esVideo ? "‹ 1" : "‹ 0,1 s"
+                pista: transporte.esVideo ? qsTr("un fotograma atrás (,)") : qsTr("una décima atrás (,)")
                 onPulsado: transporte.esVideo ? transporte.rep.paso(-1) : transporte.rep.irA(transporte.pos - 100)
             }
             Boton {
                 texto: transporte.hayRep && transporte.rep.enMarcha ? "❚❚" : "▶"
                 principal: true
+                pista: transporte.hayRep && transporte.rep.enMarcha ? qsTr("pausa (Espacio)")
+                                                                    : qsTr("reproducir (Espacio)")
                 onPulsado: transporte.rep.alternar()
             }
             Boton {
                 visible: !transporte.compacto
                 texto: transporte.esVideo ? "1 ›" : "0,1 s ›"
+                pista: transporte.esVideo ? qsTr("un fotograma adelante (.)") : qsTr("una décima adelante (.)")
                 onPulsado: transporte.esVideo ? transporte.rep.paso(1) : transporte.rep.irA(transporte.pos + 100)
             }
             Boton {
                 visible: !transporte.compacto
-                texto: "+5 s"
-                onPulsado: transporte.rep.irA(transporte.pos + 5000)
+                texto: "+10 s"
+                pista: qsTr("10 segundos adelante (Mayús+→)")
+                onPulsado: transporte.rep.saltar(10)
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
@@ -206,6 +218,15 @@ Rectangle {
                 color: tema.textoTenue
                 font.pixelSize: tema.fuente * 0.95
                 font.family: "monospace"
+            }
+            // En el panel, el sonido sí: es lo que más se cambia ahí, y el
+            // resto de la fila no cabe.
+            Boton {
+                visible: transporte.compacto && transporte.esVideo
+                discreto: true
+                texto: transporte.hayRep && transporte.rep.silencio ? "🔇" : "🔊"
+                pista: transporte.hayRep && transporte.rep.silencio ? qsTr("con sonido") : qsTr("silencio")
+                onPulsado: transporte.rep.silencio = !transporte.rep.silencio
             }
         }
 
@@ -222,6 +243,7 @@ Rectangle {
                 readonly property real v: transporte.hayRep ? transporte.rep.velocidad : 1
                 texto: String(v).replace(".", ",") + "×"
                 activo: v !== 1
+                pista: qsTr("velocidad: clic sube, clic derecho baja, rueda ([ y ])")
                 onPulsado: transporte.rep.cambiarVelocidad(1)
                 MouseArea {
                     anchors.fill: parent
@@ -238,21 +260,25 @@ Rectangle {
 
             Boton {
                 texto: "A"
+                pista: qsTr("principio del tramo que se repite (I)")
                 activo: transporte.hayRep && transporte.rep.puntoA >= 0
                 onPulsado: transporte.rep.marcar("a")
             }
             Boton {
                 texto: "B"
+                pista: qsTr("final del tramo que se repite (O)")
                 activo: transporte.hayRep && transporte.rep.puntoB >= 0
                 onPulsado: transporte.rep.marcar("b")
             }
             Boton {
                 texto: "×"
+                pista: qsTr("quitar el tramo (X)")
                 visible: transporte.hayRep && (transporte.rep.puntoA >= 0 || transporte.rep.puntoB >= 0)
                 onPulsado: transporte.rep.quitarTramo()
             }
             Boton {
                 texto: qsTr("bucle")
+                pista: qsTr("volver a empezar al terminar (L)")
                 activo: transporte.hayRep && transporte.rep.bucle
                 onPulsado: transporte.rep.bucle = !transporte.rep.bucle
             }
@@ -262,6 +288,7 @@ Rectangle {
             Boton {
                 texto: transporte.hayRep && (transporte.rep.silencio || transporte.rep.volumen === 0)
                        ? "🔇" : "🔊"
+                pista: transporte.hayRep && transporte.rep.silencio ? qsTr("con sonido (M)") : qsTr("silencio (M)")
                 onPulsado: transporte.rep.silencio = !transporte.rep.silencio
             }
             // El volumen: arrastrar, o la rueda encima.
@@ -300,6 +327,29 @@ Rectangle {
                             transporte.rep.volumen + (r.angleDelta.y > 0 ? 0.05 : -0.05)))
                     }
                 }
+            }
+
+            Item { width: tema.hueco / 2; height: 1 }
+
+            BotonIcono {
+                visible: transporte.esVideo
+                icono: "girarIzq"
+                pista: qsTr("girar a la izquierda (Mayús+R)")
+                onPulsado: transporte.rep.girar(-1)
+            }
+            BotonIcono {
+                visible: transporte.esVideo
+                icono: "girarDer"
+                pista: qsTr("girar a la derecha (R)")
+                onPulsado: transporte.rep.girar(1)
+            }
+            Boton {
+                icono: "pantalla"
+                activo: transporte.hayRep && transporte.rep.enPantallaCompleta
+                pista: transporte.hayRep && transporte.rep.enPantallaCompleta
+                       ? qsTr("salir de pantalla completa (F o Esc)")
+                       : qsTr("pantalla completa (F o doble clic)")
+                onPulsado: transporte.rep.pedirPantallaCompleta()
             }
         }
     }

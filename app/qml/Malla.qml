@@ -27,6 +27,23 @@ Flickable {
         pedirReparto()
     }
 
+    // Ctrl y la rueda, el tamaño de las miniaturas. Ctrl y ± es el de la
+    // interfaz entera, como en un navegador. Se cuenta por muescas: un panel
+    // táctil manda la rueda a trocitos, y cada trocito un paso sería un salto
+    // de golpe hasta el tope.
+    WheelHandler {
+        acceptedModifiers: Qt.ControlModifier
+        target: null
+        property real acumulado: 0
+        onWheel: function (e) {
+            acumulado += e.angleDelta.y
+            while (Math.abs(acumulado) >= 120) {
+                ventana.pasoCelda(acumulado > 0 ? 1 : -1)
+                acumulado -= acumulado > 0 ? 120 : -120
+            }
+        }
+    }
+
     /// Qué vídeo se mueve y dónde: `{indice, x, y, ancho, alto}`, o nada.
     ///
     /// Uno. Hubo un modo que movía todos los que se veían y se quitó midiendo:

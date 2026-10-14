@@ -461,6 +461,14 @@ void Nucleo::marcarAdulto(const QStringList &ids, bool si)
              { QStringLiteral("si"), si } });
 }
 
+void Nucleo::girar(const QStringList &ids, int grados)
+{
+    if (ids.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("girar") },
+             { QStringLiteral("ids"), deLista(ids) },
+             { QStringLiteral("grados"), grados } });
+}
+
 void Nucleo::borrarParaSiempre(const QStringList &ids)
 {
     if (ids.isEmpty()) return;

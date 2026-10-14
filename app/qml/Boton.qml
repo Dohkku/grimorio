@@ -30,6 +30,9 @@ Item {
     /// sitio y solo para esa —el play de los mandos—. Uno por zona; dos ya no
     /// mandan.
     property bool principal: false
+    /// Lo que hace, dicho con palabras, y su atajo si lo tiene. Sale en una
+    /// pista al quedarse encima medio segundo.
+    property string pista: ""
     signal pulsado()
 
     width: Math.max(altura, contenido.implicitWidth + (texto.length > 0 ? tema.hueco * 2 : 0))
@@ -120,6 +123,27 @@ Item {
             }
         }
     }
+
+    Timer {
+        id: espera
+        interval: 500
+        running: boton.encima && boton.pista.length > 0
+    }
+
+    // Pulsado, la pista sobra —ya se sabe qué hace— y además se metía debajo
+    // del menú que el botón abre. Vuelve al salir y entrar otra vez.
+    property bool pistaUsada: false
+    onEncimaChanged: if (!encima) pistaUsada = false
+    onPulsado: pistaUsada = true
+
+    // La pista se pinta en la capa de pistas de la ventana, no aquí: dentro
+    // del botón la tapaba la malla. Ver `Pista.qml`.
+    readonly property bool conPista: boton.encima && !espera.running
+                                      && boton.pista.length > 0 && !boton.pistaUsada
+    onConPistaChanged: conPista ? ventana.pistas.mostrar(boton, boton.pista)
+                                : ventana.pistas.ocultar(boton)
+    onPistaChanged: if (conPista) ventana.pistas.mostrar(boton, boton.pista)
+    Component.onDestruction: ventana.pistas.ocultar(boton)
 
     MouseArea {
         id: raton

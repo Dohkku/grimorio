@@ -145,6 +145,9 @@ public:
     Q_INVOKABLE void apilarGrupos(const QVariantList &grupos);
     /// Marca o desmarca lo elegido como contenido adulto.
     Q_INVOKABLE void marcarAdulto(const QStringList &ids, bool si);
+    /// Pone el giro de la vista de `ids` a `grados` (0, 90, 180 o 270). Solo
+    /// cómo se mira: el archivo no se toca. Se deshace como lo demás.
+    Q_INVOKABLE void girar(const QStringList &ids, int grados);
     Q_INVOKABLE void vaciarPapelera();
     /// Borra de verdad lo elegido dentro de la papelera. No se deshace.
     Q_INVOKABLE void borrarParaSiempre(const QStringList &ids);

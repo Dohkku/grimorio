@@ -44,6 +44,8 @@ class Modelo : public QAbstractListModel {
     /// Si el elemento en foco está marcado como +18. Igual que las estrellas:
     /// propiedad y no función, para que el panel se entere cuando cambie.
     Q_PROPERTY(bool adultoFoco READ adultoFoco NOTIFY focoCambio)
+    /// Con qué giro se mira el elemento en foco, en grados.
+    Q_PROPERTY(int giroFoco READ giroFoco NOTIFY focoCambio)
 
 public:
     enum Papel {
@@ -61,6 +63,7 @@ public:
         Duracion,
         Adulto,
         Versiones,
+        Giro,
     };
 
     explicit Modelo(Nucleo *nucleo, QObject *padre = nullptr);
@@ -76,6 +79,7 @@ public:
     int actual() const { return m_actual; }
     int estrellasFoco() const { return m_actual >= 0 ? estrellasDe(m_actual) : 0; }
     bool adultoFoco() const { return m_actual >= 0 && adultoDe(m_actual); }
+    int giroFoco() const { return m_actual >= 0 ? giroDe(m_actual) : 0; }
     void setActual(int i);
 
     /// La vista viva, solo para mirar dentro del mismo fotograma.
@@ -153,6 +157,8 @@ public slots:
     QColor dominanteDe(int i) const;
     bool tieneMiniaturaDe(int i) const;
     Q_INVOKABLE bool adultoDe(int i) const;
+    /// Con qué giro se mira, en grados: 0, 90, 180 o 270.
+    Q_INVOKABLE int giroDe(int i) const;
     /// Cuántas versiones tiene debajo; 0 si no es una pila.
     Q_INVOKABLE int versionesDe(int i) const;
     /// Si entre lo elegido hay alguna principal con versiones: lo que decide
@@ -166,6 +172,9 @@ signals:
     void actualCambio();
     /// El elemento en foco cambió: o es otro, o le han cambiado algo.
     void focoCambio();
+    /// Un elemento cambió de forma —se giró un cuarto—: la malla tiene que
+    /// volver a repartir las filas.
+    void formaCambio();
 
 private:
     void soltarVista();
@@ -174,6 +183,10 @@ private:
 
     Nucleo *m_nucleo = nullptr;
     QHash<QString, QVariantMap> m_parche;
+    /// Los giros recién cambiados, por índice de la vista actual. Aparte del
+    /// parche porque los lee la disposición entera en cada reparto: buscar
+    /// por id cada elemento de cien mil sería construir cien mil cadenas.
+    QHash<int, int> m_giros;
     const GrimVista *m_vista = nullptr;
     /// Solo para cambiar `m_vista` y para clonarla desde otro hilo. Leerla en
     /// el hilo de la interfaz no lo necesita: es el único que la cambia.

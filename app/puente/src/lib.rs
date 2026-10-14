@@ -479,6 +479,18 @@ pub unsafe extern "C" fn grim_vista_adulto(v: *const Vista, i: usize) -> u8 {
     }
 }
 
+/// Con qué giro se mira el elemento, en grados: 0, 90, 180 o 270.
+///
+/// # Safety
+/// `v` debe venir de `grim_vista`.
+#[no_mangle]
+pub unsafe extern "C" fn grim_vista_giro(v: *const Vista, i: usize) -> u16 {
+    if v.is_null() {
+        return 0;
+    }
+    (*v).hit(i).map(|h| h.giro).unwrap_or(0)
+}
+
 /// Cuántas versiones tiene debajo el elemento, o 0 si no es una pila.
 ///
 /// # Safety

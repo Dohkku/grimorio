@@ -438,14 +438,14 @@ Rectangle {
             BotonIcono {
                 icono: "menos"
                 visible: disposicion.modo !== 2
-                pista: qsTr("celdas más pequeñas (Ctrl+−)")
-                onPulsado: ventana.celda = Math.max(80, ventana.celda - 20)
+                pista: qsTr("celdas más pequeñas (Ctrl+rueda)")
+                onPulsado: ventana.pasoCelda(-1)
             }
             BotonIcono {
                 icono: "mas"
                 visible: disposicion.modo !== 2
-                pista: qsTr("celdas más grandes (Ctrl+=)")
-                onPulsado: ventana.celda = Math.min(420, ventana.celda + 20)
+                pista: qsTr("celdas más grandes (Ctrl+rueda)")
+                onPulsado: ventana.pasoCelda(1)
             }
         }
     }

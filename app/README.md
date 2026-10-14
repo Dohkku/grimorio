@@ -47,13 +47,18 @@ Para una biblioteca de pruebas: `grim synth ~/bench.grimorio --items 100000`.
 | `Ctrl+L` | pasar por las tres vistas: justificado, cuadrícula y lista |
 | `Ctrl+I` | plegar o abrir el panel de detalle |
 | `Ctrl+,` | ajustes: tema, tamaño de la interfaz, malla; y «acerca de» |
-| `Ctrl+±` | tamaño de celda |
+| `Ctrl+±` · `Ctrl+0` | tamaño de la interfaz; `Ctrl+0` la deja al 100 % |
+| `Ctrl`+rueda | sobre la malla: tamaño de las miniaturas |
 | `0`…`5` | estrellas a lo elegido |
 | `Intro` | abrir el visor |
 | `Espacio` | en el visor: siguiente, o parar y seguir si se reproduce |
-| rueda · `+` `−` · `Z` | en el visor, con una foto: acercar y alejar hasta el píxel; encajar ⇄ 100 % |
+| `Espacio` | fuera del visor, con un vídeo en el panel de detalle: pararlo y seguir |
+| `F` · doble clic en un vídeo | en el visor: pantalla completa; `Esc` sale de ella sin cerrar el visor |
+| rueda · `Z` | en el visor, con un vídeo: acercarlo sin pararlo (arrastrar mueve el encuadre); `Z` lo devuelve |
+| rueda · `+` `−` · `Z` | en el visor, con una foto: acercar y alejar hasta el píxel; ajustar a la ventana ⇄ 100 % |
 | `C` | en el visor, con una foto: copiar el color del píxel bajo el ratón |
-| `Mayús+←/→` | en el visor: cinco segundos atrás o adelante |
+| `R` / `Mayús+R` | en el visor, con una foto o un vídeo: girarlo a la derecha o a la izquierda. Se queda girado —en la malla, el panel y el visor— y se deshace con `Ctrl+Z`; el archivo no se toca |
+| `Mayús+←/→` | en el visor: diez segundos atrás o adelante |
 | `,` / `.` | en el visor: un fotograma atrás o adelante (se para primero) |
 | `[` / `]` | en el visor: más lento o más rápido, de 0,1× a 2× |
 | `I` / `O` | en el visor: principio y final del tramo que se repite |

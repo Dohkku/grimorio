@@ -37,6 +37,11 @@ var trazos = {
     "estrella":    "M12 3.8 L14.5 9 L20.2 9.7 L16 13.6 L17.1 19.3 L12 16.5 L6.9 19.3 L8 13.6 L3.8 9.7 L9.5 9 Z",
     "forma":       "M3.5 7 H14 V17 H3.5 Z M17 9 H20.5 V15 H17 Z",
     "orden":       "M7 4 V20 M4 16.8 L7 19.8 L10 16.8 M17 20 V4 M14 7.2 L17 4.2 L20 7.2",
+    // Las cuatro esquinas, abiertas hacia fuera: ocupar la pantalla entera.
+    "pantalla":    "M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15",
+    // Un arco por encima con la punta al final: girar un cuarto.
+    "girarDer":    "M5.5 15 A7 7 0 1 1 18.5 15 M18.5 15 L15.4 14.3 M18.5 15 L19.7 12",
+    "girarIzq":    "M18.5 15 A7 7 0 1 0 5.5 15 M5.5 15 L8.6 14.3 M5.5 15 L4.3 12",
     "repetidos":   "M8.5 8.5 H20 V20 H8.5 Z M4 15.5 V4 H15.5",
     "cerrar":      "M6 6 L18 18 M18 6 L6 18",
     "lapiz":       "M4 20 H8 L19.5 8.5 L15.5 4.5 L4 16 Z M13.5 6.5 L17.5 10.5",

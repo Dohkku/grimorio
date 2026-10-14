@@ -50,6 +50,9 @@ void Modelo::recoger()
     }
     m_n = m_vista ? int(grim_vista_n(m_vista)) : 0;
     m_elegidos.clear();
+    // La vista nueva ya trae los giros: los apuntados por índice eran de la
+    // vieja, donde cada índice podía ser otro elemento.
+    m_giros.clear();
     m_ancla = -1;
     for (const QString &id : elegidosAntes) {
         const QByteArray b = id.toUtf8();
@@ -89,8 +92,18 @@ void Modelo::refrescarItem(const QString &id, const QVariantMap &estado)
     // ahora no enseña— y eso no es un error: el parche se guarda igual por si
     // vuelve.
     if (i == SIZE_MAX) return;
+    bool otraForma = false;
+    if (estado.contains(QStringLiteral("giro"))) {
+        const int antes = giroDe(int(i));
+        const int ahora = estado.value(QStringLiteral("giro")).toInt();
+        if (antes != ahora) {
+            m_giros.insert(int(i), ahora);
+            otraForma = (antes % 180) != (ahora % 180);
+        }
+    }
     const QModelIndex idx = index(int(i), 0);
     emit dataChanged(idx, idx);
+    if (otraForma) emit formaCambio();
     if (int(i) == m_actual) emit focoCambio();
 }
 
@@ -168,6 +181,7 @@ QVariant Modelo::data(const QModelIndex &idx, int papel) const
         return grim_vista_adulto(m_vista, u) != 0;
     }
     case Versiones: return int(grim_vista_versiones(m_vista, u));
+    case Giro: return giroDe(i);
     case TieneMiniatura: {
         uint32_t len = 0;
         return grim_vista_thumb(m_vista, u, &len) != nullptr;
@@ -189,6 +203,7 @@ QHash<int, QByteArray> Modelo::roleNames() const
         { TieneMiniatura, "tieneMiniatura" }, { Elegido, "elegido" },
         { Familia, "familia" },     { Duracion, "duracion" },
         { Adulto, "adulto" },       { Versiones, "versiones" },
+        { Giro, "giro" },
     };
 }
 
@@ -249,6 +264,13 @@ int Modelo::estrellasDe(int i) const
 bool Modelo::adultoDe(int i) const
 {
     return data(index(i, 0), Adulto).toBool();
+}
+
+int Modelo::giroDe(int i) const
+{
+    if (!m_vista || i < 0 || i >= m_n) return 0;
+    const auto g = m_giros.constFind(i);
+    return g != m_giros.constEnd() ? g.value() : int(grim_vista_giro(m_vista, size_t(i)));
 }
 
 int Modelo::versionesDe(int i) const

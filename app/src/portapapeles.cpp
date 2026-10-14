@@ -72,7 +72,14 @@ bool Portapapeles::arrastrarFuera(QQuickItem *agarre, const QList<QUrl> &urls,
     agarre->ungrabMouse();
 
     auto *drag = new QDrag(agarre);
-    drag->setMimeData(paquete(urls));
+    QMimeData *m = paquete(urls);
+    // La clave de los arrastres de dentro: las carpetas de la barra lateral la
+    // buscan entre los formatos, y así este arrastre del sistema también se
+    // puede soltar en ellas. La carga no importa —los ids siguen yendo por la
+    // ventana—, pero no va vacía, para que ningún sistema la descarte. Sirve
+    // además para que la ventana no importe lo que sale de ella misma.
+    m->setData(QStringLiteral("application/x-grimorio-ids"), QByteArrayLiteral("grimorio"));
+    drag->setMimeData(m);
     // Lo que va pegado al cursor: la previa pequeña, que es lo que se está
     // arrastrando. Sin nada, el gestor de archivos pone un icono genérico y
     // no se sabe qué se lleva.

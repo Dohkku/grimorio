@@ -116,6 +116,13 @@ pub struct Item {
     /// vive aquí porque es de quien está delante y no del elemento.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub adult: bool,
+    /// Cuánto se mira girado, en grados a la derecha: 0, 90, 180 o 270.
+    ///
+    /// Es de la vista, no del archivo: el original no se toca, y quien lo
+    /// arrastre a otra aplicación o lo exporte se lo lleva como era. Grimorio
+    /// lo enseña girado en la malla, el panel y el visor.
+    #[serde(default, skip_serializing_if = "es_cero")]
+    pub rotation: u16,
     /// Si es una versión de otro elemento, el id de ese otro: la principal de
     /// su pila.
     ///
@@ -192,6 +199,7 @@ impl Item {
             },
             trashed: false,
             adult: false,
+            rotation: 0,
             pila: None,
             receta: None,
         }
@@ -355,4 +363,13 @@ mod tests {
         assert!(p.ends_with("ab/__/ab"));
         assert!(shard_dir(Path::new("/lib/items"), "").ends_with("__/__"));
     }
+}
+
+fn es_cero(v: &u16) -> bool {
+    *v == 0
+}
+
+/// Un giro cualquiera llevado a 0, 90, 180 o 270.
+pub fn giro_normal(grados: i32) -> u16 {
+    (((grados / 90) % 4 + 4) % 4 * 90) as u16
 }

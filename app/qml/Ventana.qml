@@ -340,7 +340,7 @@ Window {
         case "sacar": nucleo.sacarDeCarpeta(modelo.seleccion, carpetaActual); break
         case "adulto": nucleo.marcarAdulto(modelo.seleccion, !modelo.adultoFoco); break
         case "papelera": tirar(); break
-        case "recuperar": nucleo.papelera(modelo.seleccion, false); break
+        case "recuperar": recuperar(); break
         case "apilar": {
             const principal = modelo.idDe(modelo.actual)
             nucleo.apilar(principal, modelo.seleccion.filter(function (x) { return x !== principal }))
@@ -389,6 +389,7 @@ Window {
     function tirar() {
         const ids = modelo.seleccion
         if (ids.length === 0) return
+        apuntarSitio()
         if (enPapelera) {
             // Dentro de la papelera, borrar es borrar de verdad. Se pregunta
             // siempre: es lo único que no tiene vuelta atrás.
@@ -405,6 +406,70 @@ Window {
         case "sola": nucleo.papelera(ids, true, false); break
         case "todas": nucleo.papelera(ids, true, true); break
         default: preguntaPila.preguntar(ids)
+        }
+    }
+
+    /// Los pasos del tamaño de la interfaz. Sueltos y no un deslizador: entre
+    /// 100 y 103 % no se ve diferencia y el deslizador invita a buscarla.
+    readonly property var escalas: [0.8, 0.9, 1.0, 1.1, 1.2, 1.35, 1.5]
+
+    /// Un paso más grande (1), más pequeño (-1) o de vuelta al 100 % (0).
+    function pasoEscala(dir) {
+        if (dir === 0) {
+            ajustes.escala = 1
+        } else {
+            const e = ajustes.escala
+            let i = 0
+            for (let k = 0; k < escalas.length; k++)
+                if (Math.abs(escalas[k] - e) < Math.abs(escalas[i] - e)) i = k
+            i = Math.max(0, Math.min(escalas.length - 1, i + dir))
+            ajustes.escala = escalas[i]
+        }
+        estado.avisar(qsTr("interfaz al %1 %").arg(Math.round(ajustes.escala * 100)))
+    }
+
+    /// El tamaño de las miniaturas, un paso arriba o abajo.
+    function pasoCelda(dir) {
+        celda = Math.max(80, Math.min(420, celda + 20 * dir))
+    }
+
+    /// Sacar de la papelera lo elegido.
+    function recuperar() {
+        if (modelo.elegidos === 0) return
+        apuntarSitio()
+        nucleo.papelera(modelo.seleccion, false)
+    }
+
+    /// Dónde estaba lo que se está quitando de la vista, o -1.
+    ///
+    /// Al tirar, borrar o recuperar, lo que estaba en foco desaparece de la
+    /// vista y el modelo se queda sin elegido. Con eso el visor no tenía qué
+    /// enseñar y las flechas volvían al principio, porque se movían desde
+    /// «ninguno». Se apunta el sitio antes de quitarlo y, cuando llega la
+    /// vista nueva —por el bus, no en el mismo paso—, se elige la que ha
+    /// ocupado su lugar, o la anterior si era la última: como pasar página.
+    /// Se apunta al pedirlo y no en `tirar` a secas porque las preguntas
+    /// (pilas, borrar para siempre) se pueden cancelar.
+    property int sitioQuitado: -1
+
+    function apuntarSitio() { sitioQuitado = modelo.actual }
+
+    Connections {
+        target: modelo
+        function onTotalCambio() {
+            const sitio = ventana.sitioQuitado
+            ventana.sitioQuitado = -1
+            if (sitio < 0) return
+            // Después y no aquí: el modelo avisa del total antes que del foco.
+            // Eligiendo aquí, el foco pasaba de 2 a 2 sin que nadie lo viera
+            // cambiar, y el visor seguía enseñando la imagen ya tirada.
+            Qt.callLater(function () {
+                // Si lo que estaba en foco sigue —no se pudo quitar, o la
+                // vista cambió por otra cosa—, no hay nada que recolocar.
+                if (modelo.actual >= 0) return
+                if (modelo.total === 0) { ventana.visorAbierto = false; return }
+                modelo.elegir(Math.min(sitio, modelo.total - 1))
+            })
         }
     }
 
@@ -611,7 +676,15 @@ Window {
         id: soltarAqui
         anchors.fill: parent
         keys: ["text/uri-list"]
+        // Lo que sale de la propia malla también trae `text/uri-list`: es un
+        // arrastre del sistema para poder soltarlo en otra aplicación. Volver
+        // a soltarlo aquí no es importarlo otra vez; se rechaza al entrar, y
+        // así ni se enciende el velo.
+        onEntered: function (caida) {
+            if (caida.formats.indexOf("application/x-grimorio-ids") >= 0) caida.accepted = false
+        }
         onDropped: function (caida) {
+            if (caida.formats.indexOf("application/x-grimorio-ids") >= 0) return
             if (caida.hasUrls) {
                 // Salir de la papelera antes de importar: lo que entra no está
                 // tirado, así que se quedaría fuera de la vista y parecería que
@@ -769,6 +842,7 @@ Window {
     Confirmar {
         id: confirmarBorrado
         onAceptado: {
+            ventana.apuntarSitio()
             nucleo.borrarParaSiempre(ventana.borrarPendiente)
             ventana.borrarPendiente = []
         }
@@ -788,6 +862,7 @@ Window {
         id: preguntaPila
         onElegido: function (ids, conVersiones, recordar) {
             if (recordar) ajustes.borrarPila = conVersiones ? "todas" : "sola"
+            ventana.apuntarSitio()
             nucleo.papelera(ids, true, conVersiones)
         }
     }
@@ -978,6 +1053,9 @@ Window {
             else if (panelAjustes.abierto) panelAjustes.cerrar()
             else if (panelVinculos.abierto) panelVinculos.cerrar()
             else if (panelNovedades.abierto) panelNovedades.cerrar()
+            // A pantalla completa, Esc sale de ella y deja el visor abierto,
+            // como en cualquier reproductor; el siguiente Esc ya lo cierra.
+            else if (ventana.visorAbierto && visor.pantallaCompleta) visor.alternarPantallaCompleta()
             else if (ventana.visorAbierto) ventana.visorAbierto = false
             else if (modelo.elegidos > 0) modelo.limpiarSeleccion()
         }
@@ -1039,17 +1117,33 @@ Window {
         sequence: "Ctrl+,"
         onActivated: panelAjustes.abierto ? panelAjustes.cerrar() : ventana.abrirAjustes()
     }
+    // Ctrl y ± agrandan o achican la interfaz entera, como en un navegador,
+    // y Ctrl+0 la devuelve a su tamaño. El de las miniaturas va con Ctrl y la
+    // rueda sobre la malla (`Malla.qml`). Con el visor abierto no: ahí + y −
+    // acercan la foto, y la interfaz cambiando detrás sería una sorpresa al
+    // salir.
     Shortcut {
-        sequence: "Ctrl+="
-        // Con el visor abierto, + y − acercan la foto: el tamaño de las
-        // celdas no se ve y cambiarlo a ciegas sería una sorpresa al salir.
+        sequences: [StandardKey.ZoomIn, "Ctrl+=", "Ctrl++"]
         enabled: !ventana.visorAbierto
-        onActivated: ventana.celda = Math.min(420, ventana.celda + 20)
+        onActivated: ventana.pasoEscala(1)
     }
     Shortcut {
-        sequence: "Ctrl+-"
+        sequences: [StandardKey.ZoomOut, "Ctrl+-"]
         enabled: !ventana.visorAbierto
-        onActivated: ventana.celda = Math.max(80, ventana.celda - 20)
+        onActivated: ventana.pasoEscala(-1)
+    }
+    // El espacio para y sigue el vídeo del panel de detalle, como en el
+    // visor. Solo encendido cuando hay uno: si no, el espacio no es de nadie
+    // aquí y no hay por qué quitárselo a quien lo quiera.
+    Shortcut {
+        sequence: "Space"
+        enabled: !ventana.visorAbierto && !ventana.escribiendo && inspector.hayReproductor
+        onActivated: inspector.alternarReproduccion()
+    }
+    Shortcut {
+        sequence: "Ctrl+0"
+        enabled: !ventana.visorAbierto
+        onActivated: ventana.pasoEscala(0)
     }
     // Las estrellas del 0 al 5, como en cualquier gestor de fotos.
     Repeater {

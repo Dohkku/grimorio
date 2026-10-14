@@ -12,6 +12,7 @@ Disposicion::Disposicion(Modelo *modelo, QObject *padre)
     // crecer obliga a un reset del modelo.
     m_ranuras.resize(384);
     connect(modelo, &Modelo::totalCambio, this, &Disposicion::recalcular);
+    connect(modelo, &Modelo::formaCambio, this, &Disposicion::recalcular);
     connect(modelo, &QAbstractItemModel::dataChanged, this, &Disposicion::refrescarFilas);
     // Una vista nueva cambia **qué** hay en cada sitio aunque los sitios sean
     // los mismos. `repartir` solo avisa de las ranuras cuya posición o medida
@@ -155,7 +156,9 @@ Filas::Proporcion Disposicion::proporcion() const
     return [this](int p) {
         const int i = enPosicion(p);
         const uint32_t h = m_modelo->altoDe(i);
-        return h == 0 ? 1.0 : qreal(m_modelo->anchoDe(i)) / qreal(h);
+        const qreal prop = h == 0 ? 1.0 : qreal(m_modelo->anchoDe(i)) / qreal(h);
+        // Girado un cuarto, la celda tiene la forma girada.
+        return m_modelo->giroDe(i) % 180 != 0 && prop > 0 ? 1.0 / prop : prop;
     };
 }
 
@@ -194,6 +197,7 @@ QVariant Disposicion::data(const QModelIndex &idx, int papel) const
     // La cadena solo se construye si alguien la lee: la celda la mira cuando
     // hay pie o lista, no en la malla desnuda.
     case Nombre: return r.indice >= 0 ? m_modelo->nombreDe(r.indice) : QString();
+    case Giro: return r.indice >= 0 ? m_modelo->giroDe(r.indice) : 0;
     default: return {};
     }
 }
@@ -208,7 +212,7 @@ QHash<int, QByteArray> Disposicion::roleNames() const
         { IdItem, "idItem" },       { Familia, "familia" },
         { Duracion, "duracion" },   { SinDibujo, "sinDibujo" },
         { Adulto, "adulto" },       { Nombre, "nombre" },
-        { Versiones, "versiones" },
+        { Versiones, "versiones" }, { Giro, "giro" },
     };
 }
 
@@ -302,7 +306,7 @@ static const QList<int> &papelesDeContenido()
                                   Disposicion::IdItem,    Disposicion::Familia,
                                   Disposicion::Duracion,  Disposicion::Adulto,
                                   Disposicion::Versiones, Disposicion::SinDibujo,
-                                  Disposicion::Nombre };
+                                  Disposicion::Nombre,    Disposicion::Giro };
     return p;
 }
 

@@ -145,9 +145,9 @@ Item {
                 font.pixelSize: tema.fuente
             }
         }
-        Boton { texto: "−"; onPulsado: pdf.zoom(1 / 1.25) }
-        Boton { texto: Math.round(pdf.escala * 100) + " %"; onPulsado: pdf.escala = 1 }
-        Boton { texto: "+"; onPulsado: pdf.zoom(1.25) }
+        Boton { texto: "−"; pista: qsTr("alejar"); onPulsado: pdf.zoom(1 / 1.25) }
+        Boton { texto: Math.round(pdf.escala * 100) + " %"; pista: qsTr("a tamaño real"); onPulsado: pdf.escala = 1 }
+        Boton { texto: "+"; pista: qsTr("acercar"); onPulsado: pdf.zoom(1.25) }
     }
 
     Text {

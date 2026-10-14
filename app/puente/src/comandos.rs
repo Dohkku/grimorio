@@ -215,6 +215,13 @@ pub enum Comando {
         #[serde(default)]
         si: bool,
     },
+    /// Gira la vista de lo elegido: lo pone a `grados` (0, 90, 180 o 270).
+    /// Solo cómo se mira; el archivo no se toca.
+    Girar {
+        ids: Vec<String>,
+        #[serde(default)]
+        grados: i32,
+    },
     /// Borra de verdad lo que hay en la papelera. No tiene vuelta.
     VaciarPapelera,
     /// Borra de verdad lo elegido dentro de la papelera. No tiene vuelta.
@@ -969,6 +976,24 @@ pub fn ejecutar(
             );
         }
 
+        Comando::Girar { ids, grados } => {
+            let (tocados, _) = en_lote(
+                lib,
+                ids,
+                id_cmd,
+                aviso,
+                vista,
+                "girar",
+                Toca::giro(),
+                |_| Parche::giro(*grados),
+            )?;
+            eventos::hecho(
+                aviso,
+                id_cmd,
+                if tocados == 1 { "girada".to_string() } else { format!("{tocados} giradas") },
+            );
+        }
+
         Comando::Adulto { ids, si } => {
             let titulo = if *si {
                 "marcar como +18"
@@ -1231,6 +1256,7 @@ const LOTE_MENUDO: usize = 64;
 struct Toca {
     papelera: bool,
     adulto: bool,
+    giro: bool,
     pila: bool,
     carpetas: bool,
     etiquetas: bool,
@@ -1283,6 +1309,12 @@ impl Toca {
             ..Default::default()
         }
     }
+    fn giro() -> Toca {
+        Toca {
+            giro: true,
+            ..Default::default()
+        }
+    }
     fn orden() -> Toca {
         Toca {
             orden: true,
@@ -1302,6 +1334,7 @@ impl Toca {
             t.nombre |= p.nombre.is_some();
             t.nota |= p.nota.is_some();
             t.adulto |= p.adulto.is_some();
+            t.giro |= p.giro.is_some();
             t.pila |= p.pila.is_some();
             t.orden |= p.orden.is_some();
         }

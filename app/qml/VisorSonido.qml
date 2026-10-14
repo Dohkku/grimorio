@@ -116,9 +116,9 @@ Item {
         anchors.verticalCenter: cabecera.verticalCenter
         visible: !sonido.compacto
         spacing: tema.hueco / 2
-        Boton { texto: "−"; onPulsado: sonido.acercar(2, sonido.desde + sonido.ancho / 2) }
-        Boton { texto: "+"; onPulsado: sonido.acercar(0.5, sonido.ancho < 1 ? sonido.desde + sonido.ancho / 2 : sonido.avance) }
-        Boton { texto: qsTr("entero"); activo: sonido.ancho >= 1; onPulsado: sonido.entero() }
+        Boton { texto: "−"; pista: qsTr("alejar (rueda)"); onPulsado: sonido.acercar(2, sonido.desde + sonido.ancho / 2) }
+        Boton { texto: "+"; pista: qsTr("acercar (rueda)"); onPulsado: sonido.acercar(0.5, sonido.ancho < 1 ? sonido.desde + sonido.ancho / 2 : sonido.avance) }
+        Boton { texto: qsTr("entero"); pista: qsTr("ver el sonido entero"); activo: sonido.ancho >= 1; onPulsado: sonido.entero() }
     }
 
     // ------------------------------------------------- la onda y el espectro

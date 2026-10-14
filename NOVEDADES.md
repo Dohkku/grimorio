@@ -8,6 +8,28 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.10
+
+- **Girar fotos y vídeos.** En el visor, R gira a la derecha y Mayús + R a la
+  izquierda, o con sus botones. Se queda girado en la galería, el panel y el
+  visor, y se deshace con Ctrl + Z. El archivo no se toca.
+- **Vídeo a pantalla completa.** F, doble clic o su botón. Con el ratón quieto,
+  los mandos se apartan y solo queda el vídeo.
+- **Acercar un vídeo sin pararlo.** La rueda lo acerca hasta ver los píxeles,
+  como en las fotos; Z lo devuelve. Los saltos con Mayús + flecha son ahora de
+  10 segundos.
+- **Tamaño de la interfaz con el teclado.** Ctrl + «+» y Ctrl + «−», como en
+  un navegador; Ctrl + 0 la deja al 100 %. El tamaño de las miniaturas pasa a
+  Ctrl + rueda.
+- **El vídeo del panel de detalle, callado.** Tiene su botón de sonido y un
+  ajuste para que suene siempre. Espacio lo para y lo sigue, y doble clic lo
+  abre en grande.
+- **Los botones dicen su atajo** al dejar el ratón encima.
+- **Arrastrar una imagen a otra aplicación** funciona aunque Grimorio ocupe la
+  pantalla entera.
+- **Arreglado:** con el visor abierto, Supr dejaba el visor sin nada y las
+  flechas volvían al principio. Ahora pasa a la siguiente.
+
 ## 0.1.9
 
 - **Reordenar con Mayús.** Para cambiar de sitio una imagen en la biblioteca,

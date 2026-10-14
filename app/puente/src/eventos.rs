@@ -73,6 +73,7 @@ pub enum Evento<'a> {
         nota: Option<&'a str>,
         carpetas: &'a [String],
         adulto: bool,
+        giro: u16,
     },
     /// Algo largo va por la mitad.
     Progreso {
@@ -360,6 +361,7 @@ pub fn item(aviso: &Aviso, cmd: u64, it: &grimorio_core::Item) {
             nota: it.note.as_deref(),
             carpetas: &it.folders,
             adulto: it.adult,
+            giro: it.rotation,
         },
     );
 }

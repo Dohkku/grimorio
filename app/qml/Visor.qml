@@ -5,6 +5,7 @@
 // decodificada en el caché, y encima la previsualización de 1024 px cuando
 // llega. Nunca hay un rectángulo vacío esperando al disco.
 import QtQuick
+import QtQuick.Window
 import "textos.js" as Textos
 
 Item {
@@ -57,17 +58,80 @@ Item {
     /// le cambia la fuente no pasa por ahí nunca.
     property bool hizoFalta: false
 
+    // ------------------------------------------------- pantalla completa
+    /// La ventana entera a pantalla completa y lo que se mira de borde a
+    /// borde. Cerrar el visor la devuelve como estaba.
+    property bool pantallaCompleta: false
+    property int visibilidadAntes: Window.Windowed
+
+    function alternarPantallaCompleta() {
+        if (!pantallaCompleta) {
+            visibilidadAntes = ventana.visibility
+            ventana.visibility = Window.FullScreen
+            pantallaCompleta = true
+        } else {
+            ventana.visibility = visibilidadAntes === Window.FullScreen ? Window.Windowed
+                                                                        : visibilidadAntes
+            pantallaCompleta = false
+        }
+        despertar()
+    }
+
+    // ---------------------------------------------- la interfaz se aparta
+    /// Con un vídeo en marcha y el ratón quieto un rato, los mandos, las
+    /// estrellas, el nombre y el cursor se apartan: lo que se mira es el
+    /// vídeo. Mover el ratón o tocar una tecla los trae de vuelta. Antes los
+    /// mandos solo bajaban a medio transparentar y nunca se iban.
+    property bool quietoRaton: false
+    readonly property bool interfazFuera: quietoRaton && visible && hayQueReproducir && !esSonido
+        && rep !== null && rep.enMarcha && !rep.ratonEnMandos
+    /// El reproductor cargado, o null. Como `var`: sus propiedades son de un
+    /// archivo que importa QtMultimedia, y qmllint no las ve.
+    readonly property var rep: reproductor.status === Loader.Ready ? reproductor.item : null
+
+    function despertar() {
+        quietoRaton = false
+        reposo.restart()
+    }
+
+    /// Dónde estaba el ratón la última vez que se movió de verdad.
+    property point ultimoRaton: Qt.point(-1, -1)
+
+    /// Qt Quick vuelve a mandar el «ratón encima» en cada fotograma que pinta,
+    /// aunque el ratón no se mueva, y con un vídeo en marcha eso son treinta
+    /// avisos por segundo: la cuenta no llegaba nunca al final. Solo cuenta
+    /// moverse de verdad, unos píxeles.
+    function ratonEn(x, y) {
+        if (Math.abs(x - ultimoRaton.x) + Math.abs(y - ultimoRaton.y) < 3) return
+        ultimoRaton = Qt.point(x, y)
+        despertar()
+    }
+
+    Timer {
+        id: reposo
+        interval: 2500
+        onTriggered: visor.quietoRaton = true
+    }
+
+    // El ratón fuera del vídeo —en los márgenes— lo ve este; encima del
+    // vídeo lo ve el reproductor, que se queda el ratón, y avisa.
+    HoverHandler {
+        onPointChanged: visor.ratonEn(point.scenePosition.x, point.scenePosition.y)
+    }
+
     focus: visible
     // Cerrado, el original decodificado para el cuentagotas sobra: puede ser
     // mucha memoria.
     onVisibleChanged: {
         if (visible) {
             forceActiveFocus()
+            despertar()
             // Sin el panel de detalle nadie habría pedido la ficha, y es la
             // que dice qué versiones hay.
             if (idFoco.length > 0 && nucleo.ficha.id !== idFoco) nucleo.pedirFicha(idFoco)
         } else {
             pixeles.soltar()
+            if (pantallaCompleta) alternarPantallaCompleta()
         }
     }
     onHayQueReproducirChanged: if (hayQueReproducir && !hizoFalta) espera.restart()
@@ -88,40 +152,52 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: tema.fondo
-        opacity: 0.97
+        opacity: visor.pantallaCompleta ? 1 : 0.97
     }
 
     Rectangle {
         id: lienzo
         anchors.centerIn: parent
-        width: parent.width - tema.margen * 4
-        height: parent.height - tema.margen * 6
+        width: parent.width - (visor.pantallaCompleta ? 0 : tema.margen * 4)
+        height: parent.height - (visor.pantallaCompleta ? 0 : tema.margen * 6)
         color: "transparent"
 
-        Image {
-            id: borrosa
-            anchors.fill: parent
-            visible: grande.status !== Image.Ready && !visorPropio.listo
-            source: visor.visible && visor.idFoco.length > 0 ? "image://grim/" + visor.idFoco : ""
-            asynchronous: true
-            cache: true
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-        }
+        // La portada, con el giro guardado del elemento. Es lo que se ve
+        // mientras arranca el vídeo o llega la previa de una foto: sin girar,
+        // al pasar con las flechas a algo girado se veía un momento de pie y
+        // luego se daba la vuelta.
+        Item {
+            readonly property bool deLado: modelo.giroFoco % 180 !== 0
+            anchors.centerIn: parent
+            width: deLado ? parent.height : parent.width
+            height: deLado ? parent.width : parent.height
+            rotation: modelo.giroFoco
 
-        Image {
-            id: grande
-            anchors.fill: parent
-            source: visor.visible && visor.idFoco.length > 0 ? "image://grim/previa/" + visor.idFoco : ""
-            asynchronous: true
-            cache: true
-            fillMode: Image.PreserveAspectFit
-            // Con una foto la pinta `VisorImagen`, que la acerca; esta se
-            // sigue cargando —comparten caché— porque el banco del visor mide
-            // cuándo llega.
-            visible: !visorPropio.listo && !visor.esImagen
-            opacity: status === Image.Ready ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
+            Image {
+                id: borrosa
+                anchors.fill: parent
+                visible: grande.status !== Image.Ready && !visorPropio.listo
+                source: visor.visible && visor.idFoco.length > 0 ? "image://grim/" + visor.idFoco : ""
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            Image {
+                id: grande
+                anchors.fill: parent
+                source: visor.visible && visor.idFoco.length > 0 ? "image://grim/previa/" + visor.idFoco : ""
+                asynchronous: true
+                cache: true
+                fillMode: Image.PreserveAspectFit
+                // Con una foto la pinta `VisorImagen`, que la acerca; esta se
+                // sigue cargando —comparten caché— porque el banco del visor mide
+                // cuándo llega.
+                visible: !visorPropio.listo && !visor.esImagen
+                opacity: status === Image.Ready ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
+            }
         }
     }
 
@@ -140,6 +216,8 @@ Item {
                     : nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.ancho || 0) : 0
         altoPista: visor.version ? visor.version.alto
                    : nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.alto || 0) : 0
+        giro: modelo.giroFoco
+        onPedirGiro: function (grados) { visor.guardarGiro(grados) }
         onSiguiente: visor.mover(1)
         onCerrar: visor.cerrar()
     }
@@ -194,6 +272,31 @@ Item {
     }
     Binding {
         target: reproductor.item
+        property: "giro"
+        value: modelo.giroFoco
+        when: reproductor.status === Loader.Ready
+    }
+    Binding {
+        target: reproductor.item
+        property: "mandosOcultos"
+        value: visor.interfazFuera
+        when: reproductor.status === Loader.Ready
+    }
+    Binding {
+        target: reproductor.item
+        property: "enPantallaCompleta"
+        value: visor.pantallaCompleta
+        when: reproductor.status === Loader.Ready
+    }
+    Connections {
+        target: reproductor.item
+        ignoreUnknownSignals: true
+        function onPedirPantallaCompleta() { visor.alternarPantallaCompleta() }
+        function onActividad(x, y) { visor.ratonEn(x, y) }
+        function onPedirGiro(grados) { visor.guardarGiro(grados) }
+    }
+    Binding {
+        target: reproductor.item
         property: "caratula"
         value: visor.idFoco.length > 0 ? "image://grim/" + visor.idFoco : ""
         when: reproductor.status === Loader.Ready
@@ -211,6 +314,9 @@ Item {
         onLoaded: visor.darVisorPropio()
     }
     onIdFocoChanged: {
+        // La cuenta para apartar la interfaz empieza también al cambiar de
+        // elemento: con el ratón quieto desde antes no empezaba nunca.
+        despertar()
         idVersion = ""
         if (visible && idFoco.length > 0) nucleo.pedirFicha(idFoco)
         darVisorPropio()
@@ -265,6 +371,8 @@ Item {
         anchors.bottomMargin: tema.hueco
         spacing: tema.hueco * 0.5
         visible: visor.esImagen && visor.pila.length > 1
+        opacity: visor.interfazFuera ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
 
         Repeater {
             model: versiones.visible ? visor.pila : []
@@ -320,6 +428,7 @@ Item {
 
         Boton {
             icono: "copiar"
+            pista: qsTr("copiar esta versión")
             onPulsado: {
                 const v = visor.version
                 const ruta = v ? v.ruta : ""
@@ -353,14 +462,26 @@ Item {
               : ""
         color: tema.textoTenue
         font.pixelSize: tema.fuente
+        // Pegado al vídeo a pantalla completa, y fuera mientras se mira.
+        opacity: visor.interfazFuera || visor.pantallaCompleta && visor.hayQueReproducir ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
     }
 
     Estrellas {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: tema.margen
+        opacity: visor.interfazFuera ? 0 : 1
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
         valor: modelo.estrellasFoco
         onElegido: function (n) { nucleo.estrellas(modelo.seleccion, n) }
+    }
+
+    /// El giro se guarda en el elemento: se queda al volver a verlo, en la
+    /// malla y en el panel, y se deshace con Ctrl+Z como lo demás.
+    function guardarGiro(grados) {
+        if (idFoco.length > 0) nucleo.girar([idFoco], grados)
     }
 
     function mover(paso) {
@@ -394,7 +515,25 @@ Item {
     }
 
     Keys.onPressed: function (evento) {
+        despertar()
         const conMayus = (evento.modifiers & Qt.ShiftModifier) !== 0
+        if (evento.key === Qt.Key_F && !(evento.modifiers & Qt.ControlModifier)) {
+            alternarPantallaCompleta()
+            evento.accepted = true
+            return
+        }
+        // R gira también un vídeo, como una foto.
+        if (evento.key === Qt.Key_R && hayQueReproducir && !esSonido && rep !== null) {
+            rep.girar(conMayus ? -1 : 1)
+            evento.accepted = true
+            return
+        }
+        // Z, con un vídeo acercado, lo devuelve a su tamaño.
+        if (evento.key === Qt.Key_Z && hayQueReproducir && rep !== null && rep.zoom > 1) {
+            rep.quitarZoom()
+            evento.accepted = true
+            return
+        }
         // Las teclas de los mandos. Son las de los editores de vídeo —coma y
         // punto para el fotograma, I y O para entrada y salida— para que la
         // mano vaya sola.
@@ -419,7 +558,8 @@ Item {
             case Qt.Key_Plus:
             case Qt.Key_Equal: imagen.acercar(1.25); break
             case Qt.Key_Minus: imagen.acercar(0.8); break
-            case Qt.Key_Z: imagen.alternar(imagen.width / 2, imagen.height / 2); break
+            case Qt.Key_Z: imagen.alternarCentro(); break
+            case Qt.Key_R: imagen.girar(conMayus ? -1 : 1); break
             case Qt.Key_C: hecho = imagen.copiarColor(); break
             default: hecho = false
             }
@@ -436,16 +576,16 @@ Item {
         }
         switch (evento.key) {
         case Qt.Key_Escape: visor.cerrar(); break
-        // Mayúsculas y flecha rebobina cinco segundos. Sin mayúsculas sigue
+        // Mayúsculas y flecha salta diez segundos. Sin mayúsculas sigue
         // siendo pasar de elemento: dentro del visor eso es lo que más se hace,
         // también cuando lo que se está viendo es un vídeo.
         case Qt.Key_Left:
-            if (conMayus && visor.saltar(-5)) break
+            if (conMayus && visor.saltar(-10)) break
             visor.mover(-1); break
         case Qt.Key_Up:
         case Qt.Key_Backspace: visor.mover(-1); break
         case Qt.Key_Right:
-            if (conMayus && visor.saltar(5)) break
+            if (conMayus && visor.saltar(10)) break
             visor.mover(1); break
         case Qt.Key_Down: visor.mover(1); break
         // El espacio pasa a la siguiente foto, salvo si lo que hay delante se

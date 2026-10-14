@@ -32,6 +32,8 @@ Item {
         // vuelve a tocarle el mismo vídeo no cuesta nada.
         onSitioChanged: if (sitio !== undefined) {
             idElemento = modelo.idDe(sitio.indice)
+            // Girado como su celda.
+            giro = modelo.giroDe(sitio.indice)
             fuente = modelo.urlDe(sitio.indice)
         }
 

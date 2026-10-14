@@ -69,6 +69,7 @@ public:
         Versiones,
         SinDibujo,
         Nombre,
+        Giro,
     };
 
     explicit Disposicion(Modelo *modelo, QObject *padre = nullptr);

@@ -34,6 +34,75 @@ Item {
     /// Mandos de lo justo —parar, tiempo y barra— para el panel de la
     /// derecha, donde la fila entera no cabe. El sonido se queda en carátula.
     property bool compacto: false
+    /// Esconder los mandos y el cursor: lo pide el visor cuando el vídeo
+    /// corre y el ratón lleva un rato quieto.
+    property bool mandosOcultos: false
+    /// Si la ventana está a pantalla completa, para el botón que la alterna.
+    property bool enPantallaCompleta: false
+    signal pedirPantallaCompleta()
+    /// El ratón se ha movido encima del vídeo: quien esconde los mandos
+    /// tiene que volver a enseñarlos.
+    signal actividad(real x, real y)
+    /// Si el ratón está sobre los mandos: ahí no se esconden.
+    readonly property bool ratonEnMandos: transporte.encima
+    /// Doble clic donde no hay pantalla completa que pedir (el panel de
+    /// detalle): quien lo enseña decide, y el panel abre el visor.
+    signal dobleClic()
+
+    // ---------------------------------------------------- zoom del vídeo
+    /// En el visor, la rueda acerca el vídeo sin pararlo, alrededor del
+    /// ratón; acercado, arrastrar mueve el encuadre. Como en las fotos, hasta
+    /// ver los píxeles: el tope es el mismo, 64 de pantalla por cada uno del
+    /// vídeo, y de 2× en adelante se pinta sin suavizar.
+    readonly property bool conZoom: conMandos && !compacto && !soloSonido
+    property real zoom: 1
+    property real despX: 0
+    property real despY: 0
+    /// Lo que ocupa un píxel del vídeo en pantalla, ajustado, sin zoom.
+    readonly property real escalaAjustada: salidaVideo.sourceRect.width > 0
+        ? salidaVideo.contentRect.width / salidaVideo.sourceRect.width : 1
+    /// La escala sobre el vídeo, como el número de las fotos: 100 % es un
+    /// píxel del vídeo por píxel de pantalla.
+    readonly property real escalaReal: zoom * escalaAjustada
+    readonly property real zoomMax: Math.max(8, 64 / Math.max(0.01, escalaAjustada))
+
+    /// Cuánto está girado el vídeo, en grados: 0, 90, 180 o 270. Lo pone
+    /// quien lo enseña, con el giro guardado del elemento: es solo la vista,
+    /// el archivo no se toca.
+    property int giro: 0
+    readonly property bool girado: giro % 180 !== 0
+    onGiroChanged: quitarZoom()
+    /// Girar es pedirlo: quien enseña el reproductor lo guarda en el
+    /// elemento, y el giro nuevo vuelve por `giro`.
+    signal pedirGiro(int grados)
+
+    /// Un cuarto de vuelta: 1 a la derecha, -1 a la izquierda.
+    function girar(sentido) {
+        pedirGiro((giro + 90 * sentido + 360) % 360)
+    }
+
+    // Las cuentas del zoom van en las medidas del marco que gira (`marcoVideo`):
+    // girado un cuarto, su ancho es el alto del reproductor.
+    function limitarZoom() {
+        const mx = (zoom - 1) * marcoVideo.width / 2
+        const my = (zoom - 1) * marcoVideo.height / 2
+        despX = Math.max(-mx, Math.min(mx, despX))
+        despY = Math.max(-my, Math.min(my, despY))
+    }
+
+    /// Lleva el zoom a `nuevo` dejando quieto lo que hay bajo (px, py).
+    function zoomA(nuevo, px, py) {
+        nuevo = Math.max(1, Math.min(zoomMax, nuevo))
+        const cx = marcoVideo.width / 2, cy = marcoVideo.height / 2
+        const k = nuevo / zoom
+        despX = (px - cx) - (px - cx - despX) * k
+        despY = (py - cy) - (py - cy - despY) * k
+        zoom = nuevo
+        if (zoom <= 1.0001) quitarZoom()
+        else limitarZoom()
+    }
+
+    function quitarZoom() { zoom = 1; despX = 0; despY = 0 }
 
     readonly property bool enMarcha: reproduccion.playbackState === MediaPlayer.PlayingState
     /// Roto de verdad: con error y sin una copia reproducible en camino. Mientras
@@ -133,7 +202,7 @@ Item {
 
 
     /// Adelantar o atrasar. Se pide en segundos porque es lo que piensa quien
-    /// mira: «un poco atrás» son cinco segundos, no cinco mil milisegundos.
+    /// mira: «un poco atrás» son diez segundos, no cinco mil milisegundos.
     function saltar(segundos) {
         // `setPosition` y no `position = ...`: en Qt 6 la posición es de solo
         // lectura y asignarla no da error, simplemente no hace nada.
@@ -204,6 +273,8 @@ Item {
     // Y de paso, una ráfaga de cambios —pasar el ratón por varias celdas
     // seguidas— solo paga el último.
     onFuenteChanged: {
+        quitarZoom()
+        hayFotograma = false
         rescate.intentos = 0
         quitarTramo()
         preparando = false
@@ -239,6 +310,8 @@ Item {
     property url fuenteCargada
 
     function aplicarFuente() {
+        hayFotograma = false
+        fotogramasAntes = fotogramas.cuenta(salidaVideo.videoSink)
         idCargado = idElemento
         fuenteCargada = fuente
         textoError = ""
@@ -463,23 +536,138 @@ Item {
         when: sonidoVisto.status === Loader.Ready
     }
 
-    VideoOutput {
-        id: salidaVideo
+    // Si ya se ve algún fotograma del vídeo cargado ahora. Hasta entonces,
+    // debajo se ve la portada que pone quien enseña el reproductor; desde
+    // entonces, un fondo liso. Sin él, las franjas que deja un vídeo que no
+    // tiene la forma del hueco son transparentes, y por ellas asomaba lo de
+    // debajo: en el panel, un vídeo apaisado con trozos de una portada
+    // vertical arriba y abajo.
+    property bool hayFotograma: false
+    property int fotogramasAntes: 0
+    Timer {
+        interval: 40
+        repeat: true
+        running: reproductor.conMandos && !reproductor.soloSonido
+                 && !reproductor.hayFotograma && reproductor.enPantalla
+                 && String(reproductor.efectiva).length > 0
+        onTriggered: if (!cambio.running
+                         && fotogramas.cuenta(salidaVideo.videoSink) > reproductor.fotogramasAntes)
+                         reproductor.hayFotograma = true
+    }
+    Rectangle {
         anchors.fill: parent
-        // Escondido mientras llega la fuente nueva: en la malla el reproductor
-        // ya está en la celda nueva, y enseñaría el vídeo viejo encima. Debajo
-        // queda la portada.
-        visible: !reproductor.soloSonido && !cambio.running
-        fillMode: VideoOutput.PreserveAspectFit
+        color: tema.fondo
+        visible: reproductor.conMandos && !reproductor.soloSonido
+                 && reproductor.hayFotograma && !cambio.running
+    }
+
+    // Recortado solo con zoom: sin él el vídeo cabe entero y recortar es
+    // pagar por nada en cada celda de la malla.
+    Item {
+        anchors.fill: parent
+        clip: reproductor.zoom > 1
+
+        // Lo que gira: el vídeo con su zoom. Girado un cuarto, con las
+        // medidas cambiadas, para que el vídeo ajuste al hueco de pie.
+        Item {
+            id: marcoVideo
+            anchors.centerIn: parent
+            width: reproductor.girado ? parent.height : parent.width
+            height: reproductor.girado ? parent.width : parent.height
+            rotation: reproductor.giro
+
+            VideoOutput {
+                id: salidaVideo
+                anchors.fill: parent
+                // Escondido mientras llega la fuente nueva: en la malla el reproductor
+                // ya está en la celda nueva, y enseñaría el vídeo viejo encima. Debajo
+                // queda la portada.
+                visible: !reproductor.soloSonido && !cambio.running
+                fillMode: VideoOutput.PreserveAspectFit
+                smooth: reproductor.escalaReal < 2
+                transform: [
+                    Scale {
+                        origin.x: salidaVideo.width / 2
+                        origin.y: salidaVideo.height / 2
+                        xScale: reproductor.zoom
+                        yScale: reproductor.zoom
+                    },
+                    Translate { x: reproductor.despX; y: reproductor.despY }
+                ]
+            }
+        }
+    }
+
+    // Cuánto está acercado, mientras lo está.
+    Rectangle {
+        anchors { left: parent.left; top: parent.top; margins: tema.margen }
+        visible: reproductor.zoom > 1 && !reproductor.mandosOcultos
+        width: textoZoom.implicitWidth + tema.hueco * 1.6
+        height: textoZoom.implicitHeight + tema.hueco * 0.8
+        radius: tema.radio
+        color: tema.panel
+        border.color: tema.borde
+        border.width: 1
+        opacity: 0.9
+        z: 1
+        Text {
+            id: textoZoom
+            anchors.centerIn: parent
+            text: Math.round(reproductor.escalaReal * 100) + " %  ·  " + qsTr("Z vuelve")
+            color: tema.texto
+            font.pixelSize: tema.fuente * 0.9
+            font.family: "monospace"
+        }
     }
 
     MouseArea {
+        id: ratonVideo
         anchors.fill: parent
         // Apagado en la malla: ahí el clic es de la celda, que elige y arrastra.
         // Un `MouseArea` encima que no hace nada tampoco deja pasar el ratón.
         // Con la onda delante, el clic es suyo: elige el momento, no pausa.
         enabled: reproductor.conMandos && !reproductor.soloSonido
-        onClicked: reproductor.alternar()
+        hoverEnabled: reproductor.conZoom
+        cursorShape: reproductor.mandosOcultos ? Qt.BlankCursor
+                     : reproductor.zoom > 1 ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
+                     : Qt.ArrowCursor
+        property real x0: 0
+        property real y0: 0
+        property real dx0: 0
+        property real dy0: 0
+        property bool movido: false
+        onPressed: function (e) {
+            x0 = e.x; y0 = e.y
+            dx0 = reproductor.despX; dy0 = reproductor.despY
+            movido = false
+        }
+        onPositionChanged: function (e) {
+            const g = mapToItem(null, e.x, e.y)
+            reproductor.actividad(g.x, g.y)
+            if (!pressed || reproductor.zoom <= 1) return
+            if (Math.abs(e.x - x0) + Math.abs(e.y - y0) > 4) movido = true
+            // El arrastre, en el sentido del vídeo girado.
+            const a = mapToItem(marcoVideo, x0, y0)
+            const b = mapToItem(marcoVideo, e.x, e.y)
+            reproductor.despX = dx0 + b.x - a.x
+            reproductor.despY = dy0 + b.y - a.y
+            reproductor.limitarZoom()
+        }
+        onClicked: if (!movido) reproductor.alternar()
+        // Doble clic, pantalla completa, como en cualquier reproductor. El
+        // primer clic del doble ya pausó: se deshace.
+        onDoubleClicked: {
+            reproductor.alternar()
+            if (reproductor.conZoom) reproductor.pedirPantallaCompleta()
+            else reproductor.dobleClic()
+        }
+        // En el panel la rueda es del panel, que se desplaza.
+        onWheel: function (r) {
+            if (!reproductor.conZoom) { r.accepted = false; return }
+            const d = r.angleDelta.y !== 0 ? r.angleDelta.y : r.angleDelta.x
+            const p = mapToItem(marcoVideo, r.x, r.y)
+            reproductor.zoomA(reproductor.zoom * Math.pow(1.0015, d), p.x, p.y)
+        }
     }
 
     // Un triángulo en medio cuando está parado. Es la única señal de que eso
@@ -542,6 +730,7 @@ Item {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         rep: reproductor
         compacto: reproductor.compacto
+        escondido: reproductor.mandosOcultos
         visible: reproductor.conMandos && !reproductor.roto
     }
 }

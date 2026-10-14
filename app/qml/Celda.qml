@@ -20,6 +20,8 @@ Item {
     required property int familia
     required property int duracion
     required property bool adulto
+    /// Con qué giro se mira, en grados: 0, 90, 180 o 270.
+    required property int giro
     /// Cuántas versiones tiene debajo. La celda es la principal de su pila;
     /// las versiones no salen en la malla, se eligen al abrirla.
     required property int versiones
@@ -123,7 +125,14 @@ Item {
             }
 
             Image {
-                anchors.fill: parent
+                // Girada, con las medidas de la celda cambiadas: la celda ya
+                // tiene la forma girada (la disposición la da la vuelta), y la
+                // imagen se pinta de pie y luego se gira entera.
+                readonly property bool deLado: celda.giro % 180 !== 0
+                anchors.centerIn: parent
+                width: deLado ? parent.height : parent.width
+                height: deLado ? parent.width : parent.height
+                rotation: celda.giro
                 // Por id y no por índice: el caché de Qt tiene por clave la URL, y
                 // con la posición dentro, filtrar hacía que una celda sirviera la
                 // miniatura de la que ocupaba ese sitio en la vista anterior.
@@ -557,22 +566,32 @@ Item {
                 } else if (disposicion.reordenando) {
                     disposicion.devolverReorden()
                 }
-                // Salir de la ventana arrastrando es querer llevárselo a otra
-                // aplicación. Ahí el arrastre de dentro ya no sirve —ninguna
-                // otra sabe qué es un id de Grimorio— y se cambia por uno del
-                // sistema con los archivos. Dentro de la ventana todo sigue
-                // igual: carpetas, bandas, soltar en el hueco.
+                // Arrastrar sin Mayús es un arrastre del sistema desde el
+                // primer momento, con los archivos: se puede soltar en otra
+                // aplicación aunque esté encima de Grimorio o Grimorio ocupe
+                // la pantalla entera. Antes solo pasaba al cruzar el borde de
+                // la ventana, y maximizada no había borde que cruzar. Las
+                // carpetas de la barra lateral lo siguen aceptando: ver
+                // `Portapapeles::arrastrarFuera`.
                 const p = raton.mapToItem(null, evento.x, evento.y)
-                if (p.x < 0 || p.y < 0 || p.x > ventana.width || p.y > ventana.height) {
-                    // Demasiados: se avisa una vez por arrastre y el arrastre
-                    // de dentro sigue, para que volver a la ventana y soltar en
-                    // una carpeta funcione igual. Ver `maxArrastreFuera`.
+                const fuera = p.x < 0 || p.y < 0 || p.x > ventana.width || p.y > ventana.height
+                if (!conMayus || fuera) {
+                    // Demasiados: el arrastre de dentro sigue, para que soltar
+                    // en una carpeta funcione igual, y al salir de la ventana
+                    // se avisa una vez por arrastre. Ver `maxArrastreFuera`.
                     if (modelo.elegidos > ventana.maxArrastreFuera) {
-                        if (!raton.avisadoFuera) ventana.avisarArrastreGrande()
-                        raton.avisadoFuera = true
+                        if (fuera && !raton.avisadoFuera) ventana.avisarArrastreGrande()
+                        if (fuera) raton.avisadoFuera = true
+                        return
                     }
+                    if (disposicion.reordenando) disposicion.acabarReorden(false)
+                    // El fantasma de la ventana se queda quieto mientras manda
+                    // el sistema, que ya pinta la estampa pegada al cursor.
+                    ventana.arrastrando = false
                     // Censurada, sin estampa: el sistema la pintaría nítida.
-                    else if (portapapeles.arrastrarFuera(raton, modelo.urlsElegidas(),
+                    // Bloquea hasta soltar; la caída en una carpeta lee los
+                    // ids de la ventana, así que se limpia después.
+                    if (portapapeles.arrastrarFuera(raton, modelo.urlsElegidas(),
                                                     celda.censurado ? ""
                                                     : modelo.previaDe(celda.celdaIndice)))
                         ventana.acabarArrastre()

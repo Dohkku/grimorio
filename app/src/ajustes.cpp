@@ -5,6 +5,7 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_anchoLateral = m_disco.value(QStringLiteral("paneles/lateral"), 0.0).toReal();
     m_anchoInspector = m_disco.value(QStringLiteral("paneles/inspector"), 0.0).toReal();
     m_videoAlPasar = m_disco.value(QStringLiteral("video/alPasar"), true).toBool();
+    m_sonidoPanel = m_disco.value(QStringLiteral("video/sonidoPanel"), false).toBool();
     m_modoSeguro = m_disco.value(QStringLiteral("seguro/puesto"), true).toBool();
     m_verNombres = m_disco.value(QStringLiteral("malla/nombres"), false).toBool();
     m_verInspector = m_disco.value(QStringLiteral("paneles/verInspector"), true).toBool();
@@ -45,6 +46,13 @@ void Ajustes::setVideoAlPasar(bool v)
     guardar("video/alPasar", v);
 }
 
+
+void Ajustes::setSonidoPanel(bool v)
+{
+    if (m_sonidoPanel == v) return;
+    m_sonidoPanel = v;
+    guardar("video/sonidoPanel", v);
+}
 
 void Ajustes::setModoSeguro(bool v)
 {

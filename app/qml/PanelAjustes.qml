@@ -28,18 +28,6 @@ Item {
         abierto = false
     }
 
-    /// Los pasos del tamaño de la interfaz. Sueltos y no un deslizador: entre
-    /// 100 y 103 % no se ve diferencia y el deslizador invita a buscarla.
-    readonly property var escalas: [0.8, 0.9, 1.0, 1.1, 1.2, 1.35, 1.5]
-    function pasoEscala(dir) {
-        const e = ajustes.escala
-        let i = 0
-        for (let k = 0; k < escalas.length; k++)
-            if (Math.abs(escalas[k] - e) < Math.abs(escalas[i] - e)) i = k
-        i = Math.max(0, Math.min(escalas.length - 1, i + dir))
-        ajustes.escala = escalas[i]
-    }
-
     // Un interruptor con su rótulo y su explicación debajo.
     component Interruptor: Item {
         id: inter
@@ -403,7 +391,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: qsTr("letra, iconos y paneles; las miniaturas van aparte, con Ctrl+±")
+                            text: qsTr("letra, iconos y paneles; Ctrl y ± desde cualquier sitio; las miniaturas, con Ctrl y la rueda")
                             color: tema.textoTenue
                             font.pixelSize: tema.fuente * 0.85
                             wrapMode: Text.Wrap
@@ -415,7 +403,7 @@ Item {
                         spacing: tema.hueco * 0.4
                         Boton {
                             icono: "menos"
-                            onPulsado: panel.pasoEscala(-1)
+                            onPulsado: ventana.pasoEscala(-1)
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
@@ -427,13 +415,13 @@ Item {
                         }
                         Boton {
                             icono: "mas"
-                            onPulsado: panel.pasoEscala(1)
+                            onPulsado: ventana.pasoEscala(1)
                         }
                         Boton {
                             discreto: true
                             visible: Math.abs(ajustes.escala - 1) > 0.001
                             texto: qsTr("100 %")
-                            onPulsado: ajustes.escala = 1
+                            onPulsado: ventana.pasoEscala(0)
                         }
                     }
                 }
@@ -450,6 +438,12 @@ Item {
                     detalle: qsTr("solo el de debajo del ratón se pone en marcha")
                     puesto: ajustes.videoAlPasar
                     onCambiado: function (v) { ajustes.videoAlPasar = v }
+                }
+                Interruptor {
+                    titulo: qsTr("sonido en el panel de detalle")
+                    detalle: qsTr("el vídeo que se ve a la derecha, con su sonido o callado")
+                    puesto: ajustes.sonidoPanel
+                    onCambiado: function (v) { ajustes.sonidoPanel = v }
                 }
                 Interruptor {
                     titulo: qsTr("modo seguro")

@@ -18,7 +18,9 @@ use std::path::Path;
 /// toda biblioteca que existiera de antes.
 ///
 /// Versión 5: las pilas de versiones (`items.pila`).
-pub const USER_VERSION: i32 = 5;
+///
+/// Versión 6: el giro con el que se mira cada elemento (`items.rotation`).
+pub const USER_VERSION: i32 = 6;
 
 /// Cuántos `item.json` se leen a la vez al reconstruir el índice. Todos van a
 /// la misma transacción; la tanda solo acota la memoria.
@@ -296,6 +298,17 @@ impl Index {
                 "ALTER TABLE items ADD COLUMN pila TEXT;
                  CREATE INDEX IF NOT EXISTS idx_items_pila ON items(pila) WHERE pila IS NOT NULL;",
             )?;
+        }
+
+        // Versión 6: el giro de la vista. Cero, sin girar, es lo que era todo
+        // lo importado antes; no se busca por él, así que no lleva índice.
+        let hay_rotation: bool = self
+            .conn
+            .prepare("SELECT 1 FROM pragma_table_info('items') WHERE name = 'rotation'")?
+            .exists([])?;
+        if !hay_rotation {
+            self.conn
+                .execute_batch("ALTER TABLE items ADD COLUMN rotation INTEGER NOT NULL DEFAULT 0;")?;
         }
 
         self.conn
@@ -1169,8 +1182,8 @@ where
         r#"INSERT INTO items
            (id,name,ext,size,width,height,hash,phash,imported_at,modified_at,
             source,stars,note,origin_mode,origin_path,thumb_off,thumb_len,
-            dom_r,dom_g,dom_b,color_bucket,trashed,kind,duration_ms,pages,adult,pila)
-           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)
+            dom_r,dom_g,dom_b,color_bucket,trashed,kind,duration_ms,pages,adult,pila,rotation)
+           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28)
            ON CONFLICT(id) DO UPDATE SET
              name=excluded.name, ext=excluded.ext, size=excluded.size,
              width=excluded.width, height=excluded.height, hash=excluded.hash,
@@ -1182,7 +1195,8 @@ where
              dom_r=excluded.dom_r, dom_g=excluded.dom_g, dom_b=excluded.dom_b,
              color_bucket=excluded.color_bucket, trashed=excluded.trashed,
              kind=excluded.kind, duration_ms=excluded.duration_ms,
-             pages=excluded.pages, adult=excluded.adult, pila=excluded.pila
+             pages=excluded.pages, adult=excluded.adult, pila=excluded.pila,
+             rotation=excluded.rotation
            RETURNING rowid"#,
     )?;
     let mut del_fts = conn.prepare_cached("DELETE FROM items_fts WHERE rowid = ?1")?;
@@ -1239,6 +1253,7 @@ where
                 item.pages,
                 item.adult as i32,
                 item.pila,
+                item.rotation,
             ],
             |r| r.get(0),
         )?;
@@ -1362,7 +1377,8 @@ impl Union {
 /// columnas `id` y SQLite se queja con razón.
 const SELECT_COLS: &str = "i.id,i.name,i.ext,i.size,i.width,i.height,i.stars,\
                            i.thumb_off,i.thumb_len,i.dom_r,i.dom_g,i.dom_b,i.imported_at,\
-                           i.kind,i.duration_ms,i.origin_mode,i.origin_path,i.adult";
+                           i.kind,i.duration_ms,i.origin_mode,i.origin_path,i.adult,\
+                           i.rotation";
 
 fn hit_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<QueryHit> {
     Ok(QueryHit {
@@ -1397,6 +1413,7 @@ fn hit_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<QueryHit> {
             _ => None,
         },
         adulto: r.get::<_, i64>(17)? != 0,
+        giro: crate::item::giro_normal(r.get::<_, i64>(18)? as i32),
         // Lo rellena `search` aparte, de una vez para toda la vista.
         versiones: 0,
     })
@@ -1695,6 +1712,7 @@ mod tests {
             duracion_s: None,
             ruta_ref: None,
             adulto: false,
+            giro: 0,
             versiones: 0,
         }
     }
