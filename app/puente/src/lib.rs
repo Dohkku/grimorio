@@ -156,8 +156,12 @@ fn vigilar(raiz: PathBuf, tx: Sender<Peticion>, parar: Arc<std::sync::atomic::At
     const QUIETO: Duration = Duration::from_secs(2);
     // Lo visto en la pasada anterior: tamaño y desde cuándo lo tiene.
     let mut tamanos: HashMap<PathBuf, (u64, Instant)> = HashMap::new();
-    // Lo mandado a importar y todavía no marcado: id -> hasta.
-    let mut en_camino: HashMap<String, u64> = HashMap::new();
+    // Lo mandado a importar y todavía no marcado: id -> (hasta, cuándo).
+    let mut en_camino: HashMap<String, (u64, Instant)> = HashMap::new();
+    // Una importación que no marca en este tiempo es que falló —el pack
+    // ocupado, un disco lleno—: se vuelve a intentar. Sin esto la carpeta se
+    // quedaba esperándola para siempre y no entraba nada más hasta reiniciar.
+    const RENDIRSE: Duration = Duration::from_secs(60);
     'fuera: loop {
         let espera = Instant::now();
         while espera.elapsed() < CADA {
@@ -170,8 +174,8 @@ fn vigilar(raiz: PathBuf, tx: Sender<Peticion>, parar: Arc<std::sync::atomic::At
             continue;
         };
         for v in todas {
-            if let Some(hasta) = en_camino.get(&v.id) {
-                if v.desde_ms < *hasta {
+            if let Some((hasta, cuando)) = en_camino.get(&v.id) {
+                if v.desde_ms < *hasta && cuando.elapsed() < RENDIRSE {
                     continue; // la importación anterior aún no ha terminado
                 }
                 en_camino.remove(&v.id);
@@ -207,7 +211,7 @@ fn vigilar(raiz: PathBuf, tx: Sender<Peticion>, parar: Arc<std::sync::atomic::At
             if tx.send(Peticion::Cmd { id: 0, cmd }).is_err() {
                 break 'fuera;
             }
-            en_camino.insert(v.id.clone(), inicio);
+            en_camino.insert(v.id.clone(), (inicio, Instant::now()));
         }
     }
 }
@@ -1518,6 +1522,73 @@ mod tests {
             r.espera("hecho");
             assert_eq!(orden(), esperado);
         }
+        unsafe { grim_parar(n) };
+    }
+
+    #[test]
+    fn traer_de_otra_biblioteca_copia_con_su_nombre_y_sus_etiquetas() {
+        let dir = tempfile::tempdir().unwrap();
+        let disco = dir.path().join("disco");
+        std::fs::create_dir_all(&disco).unwrap();
+        let img = image::DynamicImage::ImageRgb8(image::RgbImage::from_fn(30, 20, |x, y| {
+            image::Rgb([90, x as u8 * 8, y as u8 * 9])
+        }));
+        let jpeg = grimorio_core::image_ops::encode_jpeg(&img.to_rgb8(), 80).unwrap();
+        std::fs::write(disco.join("gato.jpg"), jpeg).unwrap();
+
+        // La de allí, con un elemento con nombre, etiquetas y estrellas.
+        let alli = dir.path().join("alli.grimorio");
+        let mut otra = Library::create(&alli, "alli").unwrap();
+        let rep = grimorio_core::import::import(
+            &mut otra,
+            &[disco.join("gato.jpg")],
+            &Default::default(),
+            &|_, _| {},
+        )
+        .unwrap();
+        let id_alli = rep.ids[0].clone();
+        let mut it = otra.load_item(&id_alli).unwrap();
+        it.name = "el gato bueno".into();
+        it.tags = vec!["gato".into(), "referencia".into()];
+        it.stars = 4;
+        it.rotation = 90;
+        otra.save_item(&it).unwrap();
+        drop(otra);
+
+        let (_d, raiz, _) = biblioteca_con(0);
+        let r = Recolector::nuevo();
+        let n = arranca(&raiz, &r);
+        r.espera("vista");
+        manda(
+            n,
+            &format!(
+                r#"{{"cmd":"traer_de_otra","origen":{},"ids":["{id_alli}"]}}"#,
+                texto_json(&alli)
+            ),
+        );
+        let hasta = Instant::now() + Duration::from_secs(20);
+        let traido = loop {
+            assert!(Instant::now() < hasta, "no llegó");
+            let lib = Library::open(&raiz).unwrap();
+            let hits = lib.index().search(&grimorio_core::Query::default()).unwrap();
+            if let Some(h) = hits.first() {
+                let it = lib.load_item(&h.id).unwrap();
+                if it.stars > 0 {
+                    break it;
+                }
+            }
+            drop(lib);
+            std::thread::sleep(Duration::from_millis(100));
+        };
+        assert_ne!(traido.id, id_alli, "es una copia, con id propio");
+        assert_eq!(traido.name, "el gato bueno");
+        assert_eq!(traido.tags, vec!["gato".to_string(), "referencia".to_string()]);
+        assert_eq!((traido.stars, traido.rotation), (4, 90));
+        // La de allí no pierde nada.
+        let otra = Library::open(&alli).unwrap();
+        let alla = otra.load_item(&id_alli).unwrap();
+        assert!(!alla.trashed);
+        assert!(otra.original_path(&alla).exists());
         unsafe { grim_parar(n) };
     }
 

@@ -32,6 +32,13 @@ public:
     Q_INVOKABLE void pegar(const QString &carpeta);
     /// Lo que se soltó en la ventana.
     Q_INVOKABLE void soltar(const QList<QUrl> &urls, const QString &carpeta);
+    /// Lo que se soltó desde la ventana de otra biblioteca, la de `raiz`: se
+    /// copia con lo que se sabe de cada cosa, no solo el archivo.
+    Q_INVOKABLE void deOtra(const QList<QUrl> &urls, const QString &raiz,
+                            const QString &carpeta);
+    /// Si un arrastre viene de otra biblioteca: la raíz de esa, o "" si es de
+    /// esta o de ninguna.
+    Q_INVOKABLE QString otraBiblioteca(const QString &raiz) const;
     /// Descarga una URL y la importa con ella como origen.
     Q_INVOKABLE void descargar(const QUrl &url, const QString &carpeta);
     /// Pregunta qué archivos importar (diálogo del escritorio) y los importa.
@@ -63,6 +70,8 @@ private:
     /// El id si la ruta es de esta biblioteca (un original o su copia con
     /// nombre en cache/salida), o "".
     QString idPropio(const QString &ruta) const;
+    /// Lo mismo para la biblioteca de `raiz`.
+    static QString idEn(const QString &raiz, const QString &ruta);
     QString dirTemporal() const;
     void guardarImagen(const QImage &img, const QString &carpeta, const QString &origen,
                        const QString &etiqueta = QString());

@@ -3,7 +3,9 @@
 //
 // Vive en la ventana, como el de las carpetas, para poder desbordar la barra.
 // Cambiar de biblioteca relanza el programa (el porqué, en bibliotecas.h), así
-// que lo que se elige aquí cierra esta ventana y abre otra.
+// que lo que se elige aquí cierra esta ventana y abre otra. Salvo «en una
+// ventana nueva» —el botón de la fila o Ctrl y clic—: entonces se quedan las
+// dos abiertas, cada una en su proceso.
 import QtQuick
 
 Item {
@@ -71,7 +73,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: marca.right
                         anchors.leftMargin: tema.hueco * 0.4
-                        anchors.right: quitar.left
+                        anchors.right: aparte.left
                         Text {
                             width: parent.width
                             elide: Text.ElideRight
@@ -97,10 +99,22 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: fila.esActual ? Qt.ArrowCursor : Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: function (raton) {
                             if (fila.esActual) return
                             menu.cerrar()
-                            bibliotecas.abrir(fila.modelData)
+                            bibliotecas.abrir(fila.modelData, raton.modifiers & Qt.ControlModifier)
+                        }
+                    }
+                    BotonIcono {
+                        id: aparte
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: quitar.left
+                        visible: !fila.esActual && (sobre.containsMouse || encima || quitar.encima)
+                        icono: "externo"
+                        pista: qsTr("abrir en una ventana nueva (Ctrl y clic)")
+                        onPulsado: {
+                            menu.cerrar()
+                            bibliotecas.abrir(fila.modelData, true)
                         }
                     }
                     BotonIcono {
@@ -108,7 +122,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.right: parent.right
                         anchors.rightMargin: tema.hueco * 0.4
-                        visible: !fila.esActual && sobre.containsMouse || encima
+                        visible: !fila.esActual && (sobre.containsMouse || encima || aparte.encima)
                         icono: "cerrar"
                         pista: qsTr("quitar de la lista (no se borra nada)")
                         onPulsado: bibliotecas.olvidar(fila.modelData)
@@ -169,6 +183,7 @@ Item {
             Repeater {
                 model: [{ "renombrar": true, "texto": qsTr("renombrar esta biblioteca…") },
                         { "nueva": false, "texto": qsTr("abrir otra…") },
+                        { "nueva": false, "aparte": true, "texto": qsTr("abrir otra en una ventana nueva…") },
                         { "nueva": true, "texto": qsTr("nueva biblioteca…") },
                         { "vigilar": true, "texto": qsTr("vincular una carpeta del disco…") }]
                 delegate: Rectangle {
@@ -194,7 +209,7 @@ Item {
                             menu.cerrar()
                             if (accion.modelData.renombrar) ventana.renombrarBiblioteca()
                             else if (accion.modelData.vigilar) vigilancia.vigilar("")
-                            else bibliotecas.elegir(accion.modelData.nueva)
+                            else bibliotecas.elegir(accion.modelData.nueva, accion.modelData.aparte === true)
                         }
                     }
                 }

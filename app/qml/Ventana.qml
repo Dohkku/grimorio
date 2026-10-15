@@ -680,10 +680,26 @@ Window {
         // arrastre del sistema para poder soltarlo en otra aplicación. Volver
         // a soltarlo aquí no es importarlo otra vez; se rechaza al entrar, y
         // así ni se enciende el velo.
+        //
+        // Salvo si sale de la ventana de **otra** biblioteca: eso se copia, y
+        // con lo que se sabe de cada cosa (`traer.deOtra`). Copiar y no mover,
+        // como al arrastrar a cualquier sitio: la otra no pierde nada.
+        function deOtra(caida) {
+            if (caida.formats.indexOf("application/x-grimorio-biblioteca") < 0) return ""
+            return traer.otraBiblioteca(caida.getDataAsString("application/x-grimorio-biblioteca"))
+        }
         onEntered: function (caida) {
-            if (caida.formats.indexOf("application/x-grimorio-ids") >= 0) caida.accepted = false
+            if (caida.formats.indexOf("application/x-grimorio-ids") >= 0 && deOtra(caida) === "")
+                caida.accepted = false
         }
         onDropped: function (caida) {
+            const otra = deOtra(caida)
+            if (otra !== "") {
+                if (ventana.enPapelera) ventana.verPapelera(false)
+                traer.deOtra(caida.urls, otra, ventana.carpetaActual)
+                caida.accept(Qt.CopyAction)
+                return
+            }
             if (caida.formats.indexOf("application/x-grimorio-ids") >= 0) return
             if (caida.hasUrls) {
                 // Salir de la papelera antes de importar: lo que entra no está

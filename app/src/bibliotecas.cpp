@@ -75,7 +75,7 @@ void Bibliotecas::olvidar(const QString &ruta)
     guardar();
 }
 
-void Bibliotecas::abrir(const QString &ruta)
+void Bibliotecas::abrir(const QString &ruta, bool aparte)
 {
     const QString r = QDir(ruta).absolutePath();
     if (r == m_actual) return;
@@ -100,23 +100,25 @@ void Bibliotecas::abrir(const QString &ruta)
         emit aviso(tr("no pude arrancar Grimorio con «%1»").arg(nombreDe(r)), true);
         return;
     }
+    // Las dos a la vez: cada una en su proceso, con su cerrojo, y esta sigue.
+    if (aparte) return;
     // Irse en la vuelta siguiente: quien ha llamado está en mitad de un clic.
     QTimer::singleShot(0, qApp, &QCoreApplication::quit);
 }
 
-void Bibliotecas::elegir(bool nueva)
+void Bibliotecas::elegir(bool nueva, bool aparte)
 {
     const QString titulo = nueva ? tr("Carpeta para la biblioteca nueva")
                                  : tr("Abrir una biblioteca de Grimorio");
-    if (!elegirCarpeta(this, titulo, [this, nueva](const QString &r) { elegida(r, nueva); }))
+    if (!elegirCarpeta(this, titulo, [this, nueva, aparte](const QString &r) { elegida(r, nueva, aparte); }))
         emit aviso(tr("no hay diálogo de carpetas: ni el portal del escritorio ni zenity"), true);
 }
 
-void Bibliotecas::elegida(const QString &ruta, bool nueva)
+void Bibliotecas::elegida(const QString &ruta, bool nueva, bool aparte)
 {
     if (ruta.isEmpty()) return;
     if (esBiblioteca(ruta)) {
-        abrir(ruta);
+        abrir(ruta, aparte);
         return;
     }
     if (!nueva) {
@@ -136,5 +138,5 @@ void Bibliotecas::elegida(const QString &ruta, bool nueva)
         emit aviso(tr("no pude crear la biblioteca en «%1»").arg(destino), true);
         return;
     }
-    abrir(destino);
+    abrir(destino, aparte);
 }

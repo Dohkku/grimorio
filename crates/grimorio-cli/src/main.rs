@@ -322,6 +322,7 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 folder: None,
                 previews: !no_previews,
                 source: origen.clone(),
+                contar_papelera: false,
             };
             let report = import(&mut lib, paths, &opts, &|done, total| {
                 let mut out = std::io::stdout().lock();

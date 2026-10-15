@@ -30,6 +30,10 @@ pub struct ImportOptions {
     /// De dónde viene, si se sabe: la página o la imagen de la web de la que
     /// se pegó o se descargó. Se busca con el texto, como el nombre.
     pub source: Option<String>,
+    /// Contar como repetido también lo que está en la papelera. Para lo que
+    /// entra solo —las carpetas vinculadas—: lo que alguien tiró no tiene que
+    /// volver a entrar porque el archivo de fuera siga ahí.
+    pub contar_papelera: bool,
 }
 
 impl Default for ImportOptions {
@@ -42,6 +46,7 @@ impl Default for ImportOptions {
             folder: None,
             previews: true,
             source: None,
+            contar_papelera: false,
         }
     }
 }
@@ -192,7 +197,7 @@ pub fn import(
         .collect();
 
     let known: std::collections::HashMap<String, String> = if opts.skip_duplicates {
-        lib.index().ids_por_hash()?
+        lib.index().ids_por_hash_con_papelera(opts.contar_papelera)?
     } else {
         std::collections::HashMap::new()
     };
@@ -773,6 +778,30 @@ mod tests {
         assert_eq!(item.origin.mode, OriginMode::Ref);
         assert_eq!(lib.original_path(&item), src.join("a.png"));
         assert!(!lib.item_dir(&item.id).join("original.png").exists());
+    }
+
+    /// Lo tirado a la papelera no vuelve a entrar por una carpeta vinculada,
+    /// aunque el archivo siga en el disco y el vigía lo vea otra vez.
+    #[test]
+    fn contar_papelera_no_deja_volver_lo_tirado() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("origen");
+        std::fs::create_dir_all(&src).unwrap();
+        imagen_de_prueba(&src.join("a.png"), 40, 40, 9);
+        let mut lib = Library::create(&dir.path().join("x.grimorio"), "x").unwrap();
+        let r = import(&mut lib, &[src.clone()], &ImportOptions::default(), &|_, _| {}).unwrap();
+        lib.tirar(&r.ids, true, &|_, _| {}).unwrap();
+
+        let vigilada = ImportOptions {
+            contar_papelera: true,
+            ..Default::default()
+        };
+        let r = import(&mut lib, &[src.clone()], &vigilada, &|_, _| {}).unwrap();
+        assert_eq!((r.imported, r.duplicates), (0, 1));
+
+        // A mano sí: quien lo vuelve a traer lo quiere.
+        let r = import(&mut lib, &[src], &ImportOptions::default(), &|_, _| {}).unwrap();
+        assert_eq!(r.imported, 1);
     }
 }
 

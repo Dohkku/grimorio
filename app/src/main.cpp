@@ -430,6 +430,7 @@ int main(int argc, char **argv)
     Fotogramas fotogramas;
     Pixeles pixeles;
     Portapapeles portapapeles;
+    portapapeles.setBiblioteca(QDir(nucleo.raiz()).absolutePath());
     Traer traer(&nucleo);
     Captura captura(&nucleo);
     Recorte recorte(&nucleo, !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));

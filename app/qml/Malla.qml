@@ -44,6 +44,48 @@ Flickable {
         }
     }
 
+    // La rueda sola, a mano.
+    //
+    // El Flickable de Qt 6.4 convierte cada muesca en un lanzamiento con
+    // inercia, y las muescas seguidas se suman: se daba un poco y la malla
+    // seguía resbalando mucho más allá, que mareaba. Aquí cada muesca mueve lo
+    // mismo —unas tres líneas—, se desliza en 120 ms y para donde tiene que
+    // parar. Un panel táctil manda píxeles y esos se siguen uno a uno, sin
+    // animación: el dedo ya es la animación.
+    WheelHandler {
+        acceptedModifiers: Qt.NoModifier
+        target: null
+        onWheel: function (e) { malla.rodar(e) }
+    }
+
+    NumberAnimation {
+        id: deslizar
+        target: malla
+        property: "contentY"
+        duration: 120
+        easing.type: Easing.OutCubic
+    }
+
+    function rodar(e) {
+        const tope = Math.max(0, contentHeight - height)
+        if (e.pixelDelta.y !== 0) {
+            deslizar.stop()
+            contentY = Math.max(0, Math.min(tope, contentY - e.pixelDelta.y))
+            return
+        }
+        // Desde donde iba a parar, no desde donde está: tres muescas seguidas
+        // son tres pasos, no uno y pico.
+        const desde = deslizar.running ? deslizar.to : contentY
+        const paso = Qt.styleHints.wheelScrollLines * tema.fuente * 2.5
+        const hasta = Math.max(0, Math.min(tope, desde - e.angleDelta.y / 120 * paso))
+        deslizar.stop()
+        deslizar.from = contentY
+        deslizar.to = hasta
+        deslizar.start()
+    }
+
+    onMovementStarted: deslizar.stop()
+
     /// Qué vídeo se mueve y dónde: `{indice, x, y, ancho, alto}`, o nada.
     ///
     /// Uno. Hubo un modo que movía todos los que se veían y se quitó midiendo:
@@ -125,6 +167,7 @@ Flickable {
     }
 
     function llevarHasta(i) {
+        deslizar.stop()
         const y = disposicion.yDe(i)
         const h = disposicion.altoDe(i)
         if (y < contentY) contentY = Math.max(0, y - tema.hueco)
@@ -360,10 +403,12 @@ Flickable {
         case Qt.Key_Down:  destino = disposicion.vecinoVertical(destino, 1); break
         case Qt.Key_Home:  destino = 0; break
         case Qt.Key_End:   destino = modelo.total - 1; break
-        case Qt.Key_PageDown: malla.contentY = Math.min(malla.contentHeight - malla.height,
-                                                        malla.contentY + malla.height * 0.9)
+        case Qt.Key_PageDown: deslizar.stop()
+            malla.contentY = Math.min(malla.contentHeight - malla.height,
+                                      malla.contentY + malla.height * 0.9)
             evento.accepted = true; return
-        case Qt.Key_PageUp: malla.contentY = Math.max(0, malla.contentY - malla.height * 0.9)
+        case Qt.Key_PageUp: deslizar.stop()
+            malla.contentY = Math.max(0, malla.contentY - malla.height * 0.9)
             evento.accepted = true; return
         default: return
         }

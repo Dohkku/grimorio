@@ -491,6 +491,20 @@ impl Index {
     /// con el id del elemento que lo tiene. Es lo que deja decir «esto ya lo
     /// tenías, es este» en vez de solo «repetido».
     pub fn ids_por_hash(&self) -> Result<std::collections::HashMap<String, String>> {
+        self.ids_por_hash_con_papelera(false)
+    }
+
+    /// Lo mismo, y con `papelera` también lo tirado.
+    pub fn ids_por_hash_con_papelera(
+        &self,
+        papelera: bool,
+    ) -> Result<std::collections::HashMap<String, String>> {
+        if papelera {
+            let mut st = self.conn.prepare("SELECT hash, id FROM items WHERE hash <> ''")?;
+            let filas =
+                st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            return Ok(filas.collect::<std::result::Result<_, _>>()?);
+        }
         let mut st = self
             .conn
             .prepare("SELECT hash, id FROM items WHERE hash <> '' AND trashed = 0")?;

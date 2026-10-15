@@ -79,6 +79,10 @@ bool Portapapeles::arrastrarFuera(QQuickItem *agarre, const QList<QUrl> &urls,
     // ventana—, pero no va vacía, para que ningún sistema la descarte. Sirve
     // además para que la ventana no importe lo que sale de ella misma.
     m->setData(QStringLiteral("application/x-grimorio-ids"), QByteArrayLiteral("grimorio"));
+    // De qué biblioteca sale. La ventana de esta misma lo descarta, como
+    // siempre; la de otra lo copia con su nombre, sus etiquetas y lo demás.
+    if (!m_biblioteca.isEmpty())
+        m->setData(QStringLiteral("application/x-grimorio-biblioteca"), m_biblioteca.toUtf8());
     drag->setMimeData(m);
     // Lo que va pegado al cursor: la previa pequeña, que es lo que se está
     // arrastrando. Sin nada, el gestor de archivos pone un icono genérico y

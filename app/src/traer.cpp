@@ -117,8 +117,32 @@ QString Traer::dirTemporal() const
 
 QString Traer::idPropio(const QString &ruta) const
 {
-    const QString raiz = QDir(m_nucleo->raiz()).absolutePath();
+    return idEn(m_nucleo->raiz(), ruta);
+}
+
+QString Traer::otraBiblioteca(const QString &raiz) const
+{
     if (raiz.isEmpty()) return {};
+    const QString r = QDir(raiz).absolutePath();
+    return r == QDir(m_nucleo->raiz()).absolutePath() ? QString() : r;
+}
+
+void Traer::deOtra(const QList<QUrl> &urls, const QString &raiz, const QString &carpeta)
+{
+    QStringList ids;
+    for (const QUrl &u : urls) {
+        const QString id = u.isLocalFile() ? idEn(raiz, u.toLocalFile()) : QString();
+        if (!id.isEmpty() && !ids.contains(id)) ids << id;
+    }
+    // Si no sale ningún id, son archivos y nada más: se importan como tales.
+    if (ids.isEmpty()) repartir(urls, carpeta);
+    else m_nucleo->traerDeOtra(raiz, ids, carpeta);
+}
+
+QString Traer::idEn(const QString &raizBiblioteca, const QString &ruta)
+{
+    if (raizBiblioteca.isEmpty()) return {};
+    const QString raiz = QDir(raizBiblioteca).absolutePath();
     const QString r = QFileInfo(ruta).absoluteFilePath();
     // En Windows `C:\Biblioteca` y `c:\biblioteca` son la misma carpeta, y el
     // portapapeles o el Explorador pueden traerla escrita de cualquiera de

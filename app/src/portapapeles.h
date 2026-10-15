@@ -33,4 +33,11 @@ public:
     /// Bloquea hasta que se suelta. Devuelve si hubo arrastre.
     Q_INVOKABLE bool arrastrarFuera(QQuickItem *agarre, const QList<QUrl> &urls,
                                     const QString &previa);
+
+    /// La raíz de la biblioteca de esta ventana. Va en cada arrastre, para
+    /// que la ventana de otra biblioteca sepa de dónde le llega.
+    void setBiblioteca(const QString &raiz) { m_biblioteca = raiz; }
+
+private:
+    QString m_biblioteca;
 };

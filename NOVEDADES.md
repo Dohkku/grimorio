@@ -8,6 +8,24 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.11
+
+- **Dos bibliotecas a la vez.** En el menú de la biblioteca, cada una tiene un
+  botón para abrirla en una ventana nueva (o Ctrl + clic), y hay «abrir otra en
+  una ventana nueva…». La que tenías abierta se queda.
+- **Copiar de una biblioteca a otra arrastrando.** Arrastra desde la galería de
+  una ventana a la de otra biblioteca: se copia con su nombre, etiquetas,
+  estrellas, nota, fuente y giro. La de origen no pierde nada.
+- **Desplazarse con la rueda, sin resbalar.** Cada muesca baja lo mismo y la
+  galería para donde tiene que parar; con el panel táctil sigue al dedo.
+- **Vídeos repetidos en una pila.** En el visor se ven sus versiones también
+  con vídeos, y se reproduce la que elijas. V pasa a la siguiente versión y
+  Mayús + V a la anterior, también con fotos.
+- **Ordenar por «antiguos»**, lo primero que entró arriba.
+- **Arreglado:** en las carpetas vinculadas, lo que mandabas a la papelera
+  podía volver a entrar solo. Y si una importación de una carpeta vinculada
+  fallaba, esa carpeta dejaba de traer cosas hasta reiniciar.
+
 ## 0.1.10
 
 - **Girar fotos y vídeos.** En el visor, R gira a la derecha y Mayús + R a la

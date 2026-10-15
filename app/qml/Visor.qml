@@ -23,14 +23,17 @@ Item {
     /// La URL del original. La da la vista, no la ficha: pedir la ficha y
     /// esperarla metía una ida y vuelta al hilo del núcleo entre abrir un vídeo
     /// y que empezara a sonar, y durante esa vuelta la ruta era la del anterior.
+    /// Con una versión de la pila elegida, la de esa versión.
     readonly property url urlFoco:
-        sePuedeReproducir && foco >= 0 ? modelo.urlDe(foco) : ""
+        !sePuedeReproducir || foco < 0 ? ""
+        : version ? nucleo.urlDeRuta(version.ruta) : modelo.urlDe(foco)
     readonly property bool hayQueReproducir: String(urlFoco).length > 0
     /// Los PDF se leen página a página y los modelos 3D se giran: los dos
     /// tienen visor propio encima de la previsualización.
     /// Las fotos se acercan hasta el píxel (`VisorImagen.qml`). El RAW
     /// también, sobre la vista previa que lleva dentro.
     readonly property bool esImagen: familiaFoco === Textos.IMAGEN || familiaFoco === Textos.RAW
+    readonly property bool esVideo: familiaFoco === Textos.VIDEO
     readonly property bool esDocumento: familiaFoco === Textos.DOCUMENTO
     readonly property bool esModelo: familiaFoco === Textos.MODELO
     readonly property bool conVisorPropio: esDocumento || esModelo
@@ -238,7 +241,7 @@ Item {
     Binding {
         target: reproductor.item
         property: "idElemento"
-        value: visor.idFoco
+        value: visor.version ? visor.version.id : visor.idFoco
         when: reproductor.status === Loader.Ready
     }
     Binding {
@@ -364,13 +367,19 @@ Item {
     // Las versiones de la pila, por peso. Elegir una la enseña en su lugar;
     // arrastrarla la lleva a otra aplicación tal cual, y el botón la copia.
     // Es para lo que existen: pasar la ligera sin tener que exportar nada.
+    //
+    // Con vídeos también: un vídeo repetido se apila igual que una foto, y
+    // sin esto la única forma de ver las otras copias era sacarlas de la pila.
+    // Ahí va arriba, debajo de las estrellas: abajo están los mandos.
     Row {
         id: versiones
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: rotulo.top
+        anchors.bottom: visor.esVideo ? undefined : rotulo.top
         anchors.bottomMargin: tema.hueco
+        anchors.top: visor.esVideo ? estrellas.bottom : undefined
+        anchors.topMargin: tema.hueco
         spacing: tema.hueco * 0.5
-        visible: visor.esImagen && visor.pila.length > 1
+        visible: (visor.esImagen || visor.esVideo) && visor.pila.length > 1
         opacity: visor.interfazFuera ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
 
@@ -468,6 +477,7 @@ Item {
     }
 
     Estrellas {
+        id: estrellas
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: tema.margen
@@ -482,6 +492,18 @@ Item {
     /// malla y en el panel, y se deshace con Ctrl+Z como lo demás.
     function guardarGiro(grados) {
         if (idFoco.length > 0) nucleo.girar([idFoco], grados)
+    }
+
+    /// Pasa a la versión siguiente de la pila, dando la vuelta. Con la tecla V
+    /// se comparan copias sin soltar el teclado.
+    function cambiarVersion(paso) {
+        if (pila.length < 2) return false
+        let i = 0
+        for (let j = 0; j < pila.length; j++)
+            if (version ? pila[j].id === version.id : pila[j].principal) i = j
+        const otra = pila[(i + paso + pila.length) % pila.length]
+        idVersion = otra.principal ? "" : otra.id
+        return true
     }
 
     function mover(paso) {
@@ -531,6 +553,11 @@ Item {
         // Z, con un vídeo acercado, lo devuelve a su tamaño.
         if (evento.key === Qt.Key_Z && hayQueReproducir && rep !== null && rep.zoom > 1) {
             rep.quitarZoom()
+            evento.accepted = true
+            return
+        }
+        if (evento.key === Qt.Key_V && !(evento.modifiers & Qt.ControlModifier)
+                && visor.cambiarVersion(conMayus ? -1 : 1)) {
             evento.accepted = true
             return
         }

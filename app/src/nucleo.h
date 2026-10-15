@@ -188,6 +188,9 @@ public:
                    QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
     }
     Q_INVOKABLE void importar(const QStringList &rutas, const QString &carpeta = QString());
+    /// Copia elementos de la biblioteca de `origen` (la de otra ventana) con
+    /// sus etiquetas, estrellas, nota y demás.
+    void traerDeOtra(const QString &origen, const QStringList &ids, const QString &carpeta);
     /// Lo que llega de arrastrar y soltar: URLs, no rutas. La conversión se
     /// hace aquí y no en QML porque quitar el "file://" a mano se rompe con el
     /// primer nombre que lleve un espacio o un acento.

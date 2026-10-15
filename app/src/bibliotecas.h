@@ -32,11 +32,12 @@ public:
     /// El nombre que se enseña: el de su `library.json`, o el de la carpeta
     /// sin el «.grimorio» si no se puede leer.
     Q_INVOKABLE QString nombreDe(const QString &ruta) const;
-    /// Cambia a esa biblioteca (relanzando), si se puede.
-    Q_INVOKABLE void abrir(const QString &ruta);
+    /// Cambia a esa biblioteca (relanzando), si se puede. Con `aparte`, la
+    /// abre en una ventana nueva y esta se queda.
+    Q_INVOKABLE void abrir(const QString &ruta, bool aparte = false);
     /// Abre el diálogo de carpetas. Con `nueva`, la carpeta elegida pasa a ser
-    /// una biblioteca si no lo era.
-    Q_INVOKABLE void elegir(bool nueva);
+    /// una biblioteca si no lo era; con `aparte`, se abre en otra ventana.
+    Q_INVOKABLE void elegir(bool nueva, bool aparte = false);
     /// Quita una de la lista de recientes (no la borra del disco).
     Q_INVOKABLE void olvidar(const QString &ruta);
 
@@ -45,7 +46,7 @@ signals:
     void aviso(const QString &mensaje, bool error);
 
 private:
-    void elegida(const QString &ruta, bool nueva);
+    void elegida(const QString &ruta, bool nueva, bool aparte);
     void guardar();
 
     QSettings m_disco;

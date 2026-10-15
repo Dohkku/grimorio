@@ -266,6 +266,7 @@ Rectangle {
             opciones: [
                 { texto: qsTr("a mano"), valor: "" },
                 { texto: qsTr("recientes"), valor: "recientes" },
+                { texto: qsTr("antiguos"), valor: "antiguos" },
                 { texto: qsTr("nombre"), valor: "nombre" },
                 { texto: qsTr("peso"), valor: "peso" },
                 { texto: qsTr("estrellas"), valor: "estrellas" },

@@ -260,6 +260,20 @@ pub enum Comando {
         /// con ella: lo que entró, lo que ya estaba y lo que falló.
         #[serde(default)]
         etiqueta: Option<String>,
+        /// Lo que está en la papelera cuenta como ya importado: ver
+        /// `ImportOptions::contar_papelera`.
+        #[serde(default)]
+        contar_papelera: bool,
+    },
+    /// Copia elementos de otra biblioteca —la que está abierta en otra
+    /// ventana— con lo que se sabe de ellos: nombre, etiquetas, estrellas,
+    /// nota, fuente, giro y la marca de adulto. Siempre copia: la otra
+    /// biblioteca es de otro proceso, y aquí no se le toca nada.
+    TraerDeOtra {
+        origen: String,
+        ids: Vec<String>,
+        #[serde(default)]
+        carpeta: Option<String>,
     },
     /// Empieza a vigilar una carpeta del disco; lo nuevo entra en `carpeta`.
     VigilarCarpeta {
@@ -687,10 +701,87 @@ pub fn ejecutar(
                 mover: false,
                 copiar: true,
                 etiqueta: None,
+                contar_papelera: true,
             };
             ejecutar(lib, &importar, id_cmd, aviso, vista)?;
             grimorio_core::vigiladas::marcar(lib.root(), id, *hasta)?;
             eventos::vigiladas(aviso, lib);
+        }
+
+        Comando::TraerDeOtra {
+            origen,
+            ids,
+            carpeta,
+        } => {
+            let raiz = PathBuf::from(origen);
+            if raiz.as_path() == lib.root() {
+                return Ok(());
+            }
+            // Los de allí, leídos de su `item.json`: es la verdad, y leerlo no
+            // necesita el cerrojo de esa biblioteca.
+            let mut de_alli: std::collections::HashMap<String, Item> = Default::default();
+            let mut rutas = Vec::new();
+            for id in ids {
+                let json = grimorio_core::item::shard_dir(&raiz.join("items"), id).join("item.json");
+                let Ok(it) = Item::read(&json) else { continue };
+                rutas.push(
+                    grimorio_core::library::original_en(&raiz, &it)
+                        .to_string_lossy()
+                        .into_owned(),
+                );
+                de_alli.insert(it.hash.clone(), it);
+            }
+            if rutas.is_empty() {
+                return Err(Error::Invalid(
+                    "no encuentro eso en la otra biblioteca".to_string(),
+                ));
+            }
+            // Lo que ya estaba aquí no se toca: se salta como cualquier
+            // repetido, y su nombre y sus etiquetas siguen siendo los de aquí.
+            let habia = lib.index().ids_por_hash()?;
+            let importar = Comando::Importar {
+                rutas,
+                carpeta: carpeta.clone(),
+                etiquetas: Vec::new(),
+                origen: None,
+                mover: false,
+                copiar: true,
+                etiqueta: None,
+                contar_papelera: false,
+            };
+            ejecutar(lib, &importar, id_cmd, aviso, vista)?;
+            // Entró como «original.jpg» y sin nada: se le pone lo suyo.
+            let ahora = lib.index().ids_por_hash()?;
+            let mut puestos = 0;
+            for (hash, alli) in &de_alli {
+                if habia.contains_key(hash) {
+                    continue;
+                }
+                let Some(id) = ahora.get(hash) else { continue };
+                let mut it = lib.load_item(id)?;
+                it.name = alli.name.clone();
+                for t in &alli.tags {
+                    if !it.tags.contains(t) {
+                        it.tags.push(t.clone());
+                    }
+                }
+                it.stars = alli.stars;
+                it.note = alli.note.clone();
+                it.source = alli.source.clone().or(it.source.take());
+                it.adult = alli.adult;
+                it.rotation = alli.rotation;
+                lib.save_item(&it)?;
+                puestos += 1;
+            }
+            if puestos > 0 {
+                let q = consulta_actual(vista);
+                republicar(lib, q, id_cmd, aviso, vista)?;
+                eventos::etiquetas(
+                    aviso,
+                    id_cmd,
+                    lib.index().tags_con_prefijo("", tope_etiquetas())?,
+                );
+            }
         }
 
         Comando::Reordenar {
@@ -1137,6 +1228,7 @@ pub fn ejecutar(
             mover,
             copiar,
             etiqueta,
+            contar_papelera,
         } => {
             if let Some(c) = carpeta {
                 if !lib.folders().existe(c) {
@@ -1158,6 +1250,7 @@ pub fn ejecutar(
                 folder: carpeta.clone(),
                 tags: etiquetas.clone(),
                 source: origen.clone(),
+                contar_papelera: *contar_papelera,
                 ..Default::default()
             };
             // El progreso lo llaman los hilos de importación, varios a la vez.

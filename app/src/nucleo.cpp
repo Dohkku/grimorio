@@ -517,6 +517,16 @@ void Nucleo::importar(const QStringList &rutas, const QString &carpeta)
     mandar(o);
 }
 
+void Nucleo::traerDeOtra(const QString &origen, const QStringList &ids, const QString &carpeta)
+{
+    if (ids.isEmpty()) return;
+    QJsonObject o { { QStringLiteral("cmd"), QStringLiteral("traer_de_otra") },
+                    { QStringLiteral("origen"), origen },
+                    { QStringLiteral("ids"), deLista(ids) } };
+    if (!carpeta.isEmpty()) o[QStringLiteral("carpeta")] = carpeta;
+    mandar(o);
+}
+
 void Nucleo::importarDeFuera(const QStringList &rutas, const QString &carpeta,
                              const QString &origen, bool mover, const QString &etiqueta)
 {

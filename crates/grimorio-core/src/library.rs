@@ -111,6 +111,19 @@ fn default_mode() -> OriginMode {
 /// Es una función libre y no solo un método porque el puente la necesita sin
 /// tener una `Library` a mano, y tener el reparto de carpetas escrito en dos
 /// sitios es la forma más tonta de que un día dejen de coincidir.
+/// Dónde está el original de un elemento de la biblioteca de `root`, sin
+/// abrirla. Para leer de otra biblioteca que tiene abierta otra ventana: abrirla
+/// sería tocar su índice, y ese es de quien tiene el cerrojo.
+pub fn original_en(root: &Path, item: &Item) -> PathBuf {
+    let dentro = || {
+        crate::item::shard_dir(&root.join("items"), &item.id).join(format!("original.{}", item.ext))
+    };
+    match item.origin.mode {
+        OriginMode::Ref => item.origin.path.as_ref().map(PathBuf::from).unwrap_or_else(dentro),
+        _ => dentro(),
+    }
+}
+
 pub fn preview_path(root: &Path, id: &str) -> PathBuf {
     root.join("thumbs")
         .join("preview")
@@ -293,20 +306,7 @@ impl Library {
         self.item_dir(id).join("item.json")
     }
     pub fn original_path(&self, item: &Item) -> PathBuf {
-        match item.origin.mode {
-            OriginMode::Ref => item
-                .origin
-                .path
-                .as_ref()
-                .map(PathBuf::from)
-                .unwrap_or_else(|| {
-                    self.item_dir(&item.id)
-                        .join(format!("original.{}", item.ext))
-                }),
-            _ => self
-                .item_dir(&item.id)
-                .join(format!("original.{}", item.ext)),
-        }
+        original_en(&self.root, item)
     }
     pub fn pack_path(&self) -> PathBuf {
         self.root.join("thumbs").join("grid.pack")
