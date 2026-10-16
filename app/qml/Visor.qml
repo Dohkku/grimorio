@@ -371,8 +371,12 @@ Item {
     // Con vídeos también: un vídeo repetido se apila igual que una foto, y
     // sin esto la única forma de ver las otras copias era sacarlas de la pila.
     // Ahí va arriba, debajo de las estrellas: abajo están los mandos.
+    //
+    // Por encima del reproductor y del visor propio, que van en `z: 1`: sin
+    // esto el vídeo tapa la fila.
     Row {
         id: versiones
+        z: 3
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: visor.esVideo ? undefined : rotulo.top
         anchors.bottomMargin: tema.hueco
@@ -478,6 +482,8 @@ Item {
 
     Estrellas {
         id: estrellas
+        // Igual que las versiones: a pantalla completa el vídeo llega arriba.
+        z: 3
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: tema.margen

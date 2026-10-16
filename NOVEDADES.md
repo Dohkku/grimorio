@@ -8,6 +8,13 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.12
+
+- **Las versiones de un vídeo, a la vista.** En el visor, con un vídeo que
+  tiene versiones apiladas, la fila para elegir versión quedaba tapada por el
+  propio vídeo. Ahora va siempre por encima, y las estrellas también a
+  pantalla completa.
+
 ## 0.1.11
 
 - **Dos bibliotecas a la vez.** En el menú de la biblioteca, cada una tiene un
