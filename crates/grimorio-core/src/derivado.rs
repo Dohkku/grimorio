@@ -193,6 +193,8 @@ pub struct Tira {
 }
 
 pub const TIRA_ANCHO: u32 = 192;
+/// Desde cuántos segundos la tira sale solo de los fotogramas clave.
+const TIRA_SOLO_CLAVES_S: f32 = 90.0;
 
 pub fn tira_video(
     raiz: &Path,
@@ -220,26 +222,20 @@ pub fn tira_video(
     let p = Parcial::para(&destino)?;
     let salida = p.con_ext(&destino);
     let filtro = format!("fps={n}/{duracion_s:.3},scale={TIRA_ANCHO}:-2,tile={columnas}x{filas}");
-    externo::correr(
-        "ffmpeg",
-        &[
-            "-v",
-            "error",
-            "-y",
-            "-i",
-            &original.to_string_lossy(),
-            "-an",
-            "-vf",
-            &filtro,
-            "-frames:v",
-            "1",
-            "-q:v",
-            "4",
-            &salida.to_string_lossy(),
-        ],
-        TOPE_TIRA,
-    )
-    .map_err(|f| fallo("ffmpeg", f))?;
+    let orig = original.to_string_lossy();
+    let sal = salida.to_string_lossy();
+    let mut args: Vec<&str> = vec!["-v", "error", "-y"];
+    // En un vídeo largo, solo los fotogramas clave. Decodificarlo entero se
+    // comía todos los núcleos justo al abrirlo, mientras se pincha la barra:
+    // medido con un vídeo de un minuto, 6,6 s de procesador contra 0,5. La
+    // vista previa sale del clave más cercano, que para saber por dónde se
+    // va basta. En uno corto se decodifica entero: es barato, y con claves
+    // cada diez segundos la tira saldría casi vacía.
+    if duracion_s > TIRA_SOLO_CLAVES_S {
+        args.extend_from_slice(&["-skip_frame", "nokey"]);
+    }
+    args.extend_from_slice(&["-i", &orig, "-an", "-vf", &filtro, "-frames:v", "1", "-q:v", "4", &sal]);
+    externo::correr("ffmpeg", &args, TOPE_TIRA).map_err(|f| fallo("ffmpeg", f))?;
     p.colocar(&salida, &destino)?;
     Ok((destino, tira))
 }
@@ -827,6 +823,30 @@ mod tests {
             .filter(|e| e.file_name().to_string_lossy().contains("parcial"))
             .collect();
         assert!(sobra.is_empty());
+    }
+
+    #[test]
+    fn la_tira_de_un_video_largo_sale_de_los_fotogramas_clave() {
+        if !externo::hay("ffmpeg") {
+            eprintln!("sin ffmpeg: prueba saltada");
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mp4 = dir.path().join("largo.mp4");
+        externo::correr(
+            "ffmpeg",
+            &[
+                "-v", "error", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=10:duration=100",
+                "-g", "50", "-pix_fmt", "yuv420p", "-y", &mp4.to_string_lossy(),
+            ],
+            Duration::from_secs(60),
+        )
+        .unwrap();
+        let (r, t) = tira_video(dir.path(), "01TIRA", &mp4, 100.0).unwrap();
+        assert_eq!((t.n, t.columnas, t.filas), (100, 10, 10));
+        let (w, h) = image::image_dimensions(&r).unwrap();
+        assert_eq!(w, TIRA_ANCHO * 10);
+        assert!(h > 0);
     }
 
     #[test]

@@ -8,6 +8,16 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.14
+
+- **Vídeos largos sin tirones.** Al abrir un vídeo largo, preparar la vista
+  previa de la barra ocupaba el ordenador entero unos segundos (más cuanto
+  más largo), justo mientras se pinchaba la barra. Ahora es unas treinta
+  veces más ligero. Y pinchar o arrastrar la barra deprisa ya no amontona
+  saltos.
+- **Arreglado:** después de abrir algo con Intro y cerrarlo con Esc, las
+  flechas dejaban de moverse por la galería.
+
 ## 0.1.13
 
 - **Recortar vídeos y sonidos.** Con un vídeo o un sonido elegido, pulsa E (o

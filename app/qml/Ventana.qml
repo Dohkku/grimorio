@@ -29,6 +29,11 @@ Window {
     readonly property bool enPapelera: Consulta.leer(textoBusqueda, "papelera") === "si"
     property bool visorAbierto: false
     readonly property bool editorAbierto: editor.abierto
+    // El visor y el editor se quedan el foco al abrirse para sus teclas. Al
+    // cerrarse se ocultan con él, y el foco no volvía a ningún sitio: las
+    // flechas dejaban de moverse por la galería hasta pinchar en ella.
+    onVisorAbiertoChanged: if (!visorAbierto && !editorAbierto) malla.forceActiveFocus()
+    onEditorAbiertoChanged: if (!editorAbierto && !visorAbierto) malla.forceActiveFocus()
 
     /// El alto de la barra de arriba, que es también el de la cabeza de la
     /// barra lateral y el del inspector: las tres rayas de debajo son una.

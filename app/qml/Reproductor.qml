@@ -167,9 +167,42 @@ Item {
         else reproduccion.play()
     }
 
+    // Saltar, con freno: uno cada 150 ms como mucho, y gana el último.
+    //
+    // Cada salto obliga al decodificador a volver al fotograma clave de antes
+    // y decodificar desde ahí, y en un vídeo con claves cada diez segundos eso
+    // son cientos de fotogramas. Pinchando la barra deprisa o arrastrando,
+    // los saltos se amontonaban: medido, el doble de procesador que solo
+    // reproduciendo, y la ventana a tirones. El primero sale en el acto, así
+    // que un clic suelto no espera nada.
+    property real saltoPendiente: -1
+    /// A dónde se va o se acaba de ir: mientras el salto no ha llegado,
+    /// `position` aún dice dónde se estaba, y contar desde ahí (un fotograma
+    /// más, diez segundos más) repetiría el mismo paso.
+    property real ultimoSalto: -1
     function irA(ms) {
-        if (reproduccion.seekable)
-            reproduccion.setPosition(Math.max(0, Math.min(reproduccion.duration, ms)))
+        if (!reproduccion.seekable) return
+        const v = Math.max(0, Math.min(reproduccion.duration, ms))
+        ultimoSalto = v
+        if (frenoSalto.running) {
+            saltoPendiente = v
+            return
+        }
+        reproduccion.setPosition(v)
+        frenoSalto.start()
+    }
+    function posicionPedida() {
+        return frenoSalto.running && ultimoSalto >= 0 ? ultimoSalto : reproduccion.position
+    }
+    Timer {
+        id: frenoSalto
+        interval: 150
+        onTriggered: {
+            if (reproductor.saltoPendiente < 0) return
+            reproduccion.setPosition(reproductor.saltoPendiente)
+            reproductor.saltoPendiente = -1
+            restart()
+        }
     }
 
     /// Un fotograma adelante o atrás. Se para primero: avanzar de uno en uno
@@ -177,7 +210,7 @@ Item {
     function paso(n) {
         if (enMarcha) reproduccion.pause()
         pendiente = false
-        irA(reproduccion.position + n * 1000 / fps)
+        irA(posicionPedida() + n * 1000 / fps)
     }
 
     /// Un escalón más rápido (+1) o más lento (-1) en la lista de velocidades.
@@ -204,11 +237,9 @@ Item {
     /// Adelantar o atrasar. Se pide en segundos porque es lo que piensa quien
     /// mira: «un poco atrás» son diez segundos, no cinco mil milisegundos.
     function saltar(segundos) {
-        // `setPosition` y no `position = ...`: en Qt 6 la posición es de solo
-        // lectura y asignarla no da error, simplemente no hace nada.
-        if (reproduccion.seekable)
-            reproduccion.setPosition(Math.max(
-                0, Math.min(reproduccion.duration, reproduccion.position + segundos * 1000)))
+        // Por `irA`, con su freno: pulsar diez veces «+10 s» seguidas son cien
+        // segundos, contados desde el último salto pedido.
+        irA(posicionPedida() + segundos * 1000)
     }
 
     // Salir de pantalla lo para; volver a entrar lo arranca.
