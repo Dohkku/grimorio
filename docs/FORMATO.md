@@ -11,6 +11,11 @@ con un script de veinte líneas.
 ```
 MiBiblioteca.grimorio/
 ├── library.json          identidad y ajustes de la biblioteca
+├── folders.json          el árbol de carpetas
+├── etiquetas.json        grupos de etiquetas con su color
+├── busquedas.json        carpetas dinámicas (búsquedas con nombre)
+├── vigiladas.json        carpetas del disco que se importan solas
+├── abierta.lock          cerrojo mientras la aplicación la tiene abierta
 ├── index.sqlite          ÍNDICE DERIVADO — borrable, se reconstruye
 ├── items/
 │   └── 01/JK/01JKX7…/    sharding de dos niveles por los 4 primeros
@@ -69,6 +74,7 @@ azar. Dos propiedades que usamos en todas partes:
   "schema": 1,
   "name": "estudio de iluminación nocturna",
   "ext": "jpg",
+  "kind": "imagen",
   "size": 4821904,
   "width": 4032,
   "height": 3024,
@@ -91,6 +97,15 @@ azar. Dos propiedades que usamos en todas partes:
   y la base de la detección de duplicados.
 - `phash` es un dHash de 64 bits en hexadecimal, para "parecidas a esta".
 - `palette` va ordenada por peso; el primer color es el dominante.
+- `kind` es la familia: `imagen`, `raw`, `video`, `audio`, `documento`,
+  `tipografia` o `modelo`. Se saca de la extensión; está escrita para no
+  tener que saber cuál es cuál.
+- `adult` (solo si es `true`) marca lo que el modo seguro difumina.
+- `rotation` (0, 90, 180 o 270) es el giro con el que se mira. El original no
+  se gira.
+- `orden` guarda el orden a mano: por cada carpeta (su id, o `""` para
+  «Todo»), la posición del elemento. Son números con hueco entre ellos para
+  meter uno en medio sin renumerar.
 - `origin.inode` permite reencontrar un original en modo `ref` que alguien haya
   movido de sitio.
 - `durationMs` y `pages` van en lo que dura y en lo que tiene páginas.
@@ -129,6 +144,12 @@ principal:
 - `receta.recorte`, si está, dice con qué modelo se quitó el fondo
   (`isnet-general-use`): la versión es un PNG del mismo tamaño con
   transparencia donde estaba el fondo.
+- `receta.tramo`, si está, es un trozo de un vídeo o de un sonido sacado con
+  el editor: `desde_ms` y `hasta_ms` sobre el original, y `exacto` si se
+  recodificó para cortar en el fotograma justo (si no, se copió sin
+  recodificar y el archivo arranca en el fotograma clave de antes, con una
+  lista de edición que lo deja empezar donde se pidió). El formato es el del
+  original.
 - Las etiquetas, carpetas, estrellas y nota son de la principal: es lo que se
   ve en la malla. Las versiones no salen en la malla ni en los recuentos.
 - Una versión cuya principal no existe o está en la papelera se ve suelta:
@@ -143,6 +164,32 @@ find MiBiblioteca.grimorio/items -name item.json -exec cat {} + \
 
 Toda escritura es atómica: archivo temporal en el mismo directorio y `rename`.
 Un corte de corriente deja el archivo anterior intacto, nunca uno a medias.
+
+## Los otros archivos de la raíz
+
+Todos son JSON con un `schema` y se escriben enteros cada vez, de forma
+atómica. Ninguno es imprescindible: sin ellos la biblioteca abre igual, sin
+carpetas, grupos, carpetas dinámicas ni carpetas vigiladas.
+
+- **`folders.json`**: qué carpetas existen: `{"schema", "folders": [{"id",
+  "name", "parent", "color", "pos"}]}`. `parent` falta en las de la raíz y
+  `pos` ordena entre hermanas. En qué carpetas está cada elemento lo dice su
+  `item.json` (`folders`), no este archivo.
+- **`etiquetas.json`**: grupos de etiquetas: `{"schema", "grupos": [{"id",
+  "nombre", "color", "etiquetas"}]}`. Una etiqueta está en un grupo o en
+  ninguno; su color es el del grupo.
+- **`busquedas.json`**: las carpetas dinámicas: `{"schema", "busquedas":
+  [{"id", "nombre", "consulta"}]}`. `consulta` es la línea del buscador tal
+  cual (`#comida -#picante tipo:video`); puede estar vacía en una recién
+  creada.
+- **`vigiladas.json`**: carpetas del disco que se importan solas:
+  `{"schema", "vigiladas": [{"id", "ruta", "carpeta", "desde_ms"}]}`.
+  `carpeta` es la carpeta de la biblioteca donde caen (o `null`) y `desde_ms`
+  el momento de la última pasada.
+- **`abierta.lock`**: lo pone la aplicación mientras tiene la biblioteca
+  abierta (formato de `QLockFile`: el pid en la primera línea, la máquina en
+  la tercera). `grim` lo mira antes de escribir. Uno de un proceso que ya no
+  existe no cuenta.
 
 ## `thumbs/grid.pack`
 

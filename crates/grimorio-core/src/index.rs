@@ -1517,6 +1517,44 @@ fn build_sql(q: &Query, hay_pilas: bool) -> (String, Vec<Box<dyn rusqlite::ToSql
         );
         args.push(Box::new(t.clone()));
     }
+    for g in q.alguna_tag.iter().filter(|g| !g.is_empty()) {
+        let marks = vec!["?"; g.len()].join(",");
+        wheres.push(format!(
+            "i.id IN (SELECT it.item_id FROM item_tags it JOIN tags tg ON tg.id = it.tag_id WHERE tg.name IN ({marks}))"
+        ));
+        for t in g {
+            args.push(Box::new(t.clone()));
+        }
+    }
+    if !q.sin_tags.is_empty() {
+        let marks = vec!["?"; q.sin_tags.len()].join(",");
+        wheres.push(format!(
+            "i.id NOT IN (SELECT it.item_id FROM item_tags it JOIN tags tg ON tg.id = it.tag_id WHERE tg.name IN ({marks}))"
+        ));
+        for t in &q.sin_tags {
+            args.push(Box::new(t.clone()));
+        }
+    }
+    if !q.sin_familias.is_empty() {
+        let marks = vec!["?"; q.sin_familias.len()].join(",");
+        wheres.push(format!("i.kind NOT IN ({marks})"));
+        for f in &q.sin_familias {
+            args.push(Box::new(f.as_str()));
+        }
+    }
+    if !q.sin_exts.is_empty() {
+        let marks = vec!["?"; q.sin_exts.len()].join(",");
+        wheres.push(format!("i.ext NOT IN ({marks})"));
+        for e in &q.sin_exts {
+            args.push(Box::new(e.to_ascii_lowercase()));
+        }
+    }
+    // Cada palabra fuera por separado: `-a -b` quita lo que tenga cualquiera
+    // de las dos, no solo lo que tenga las dos.
+    for t in q.sin_texto.iter().map(|t| fts_prefix_query(t)).filter(|t| !t.is_empty()) {
+        wheres.push("i.rowid NOT IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ?)".into());
+        args.push(Box::new(t));
+    }
     if let Some(f) = &q.folder {
         if q.folder_recursive {
             // Pinchar en una carpeta enseña también lo que hay en sus hijas,
@@ -1914,6 +1952,28 @@ mod tests {
         b.note = Some("bocetos para el moodboard".into());
         idx.upsert_many([(&a, None), (&b, None)]).unwrap();
         idx
+    }
+
+    #[test]
+    fn dejar_fuera_y_cualquiera_de_varias() {
+        let mut idx = Index::open_in_memory().unwrap();
+        let mut a = item(&crate::id::id_at(1000, 1), "tacos", "jpg", 10, 10);
+        a.tags = vec!["comida".into(), "picante".into()];
+        let mut b = item(&crate::id::id_at(2000, 2), "tarta borrador", "png", 10, 10);
+        b.tags = vec!["comida".into(), "postre".into()];
+        let mut c = item(&crate::id::id_at(3000, 3), "flan", "gif", 10, 10);
+        c.tags = vec!["postre".into()];
+        idx.upsert_many([(&a, None), (&b, None), (&c, None)]).unwrap();
+        let nombres = |s: &str| -> Vec<String> {
+            let q = crate::filtro::parsear(s, Query { limit: 0, ..Default::default() }).0;
+            let mut n: Vec<String> = idx.search(&q).unwrap().into_iter().map(|h| h.name).collect();
+            n.sort();
+            n
+        };
+        assert_eq!(nombres("#comida -#picante"), vec!["tarta borrador"]);
+        assert_eq!(nombres("#comida|postre"), vec!["flan", "tacos", "tarta borrador"]);
+        assert_eq!(nombres("#comida|postre -ext:gif"), vec!["tacos", "tarta borrador"]);
+        assert_eq!(nombres("#postre -borrador"), vec!["flan"]);
     }
 
     #[test]

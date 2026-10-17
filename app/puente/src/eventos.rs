@@ -82,6 +82,12 @@ pub enum Evento<'a> {
         hechos: usize,
         total: usize,
     },
+    /// Etiquetas que probablemente les van a `ids`.
+    Sugerencias {
+        cmd: u64,
+        ids: &'a [String],
+        lista: &'a [grimorio_core::sugerencias::Sugerencia],
+    },
     /// La ficha completa de un elemento.
     ///
     /// Va en un evento aparte y no dentro de la vista porque la vista lleva
@@ -483,6 +489,15 @@ pub fn sugerencia_pila(aviso: &Aviso, lib: &Library, pares: &[grimorio_core::ind
     if !pares.is_empty() {
         manda(aviso, &Evento::SugerenciaPila { pares });
     }
+}
+
+pub fn sugerencias(
+    aviso: &Aviso,
+    cmd: u64,
+    ids: &[String],
+    lista: &[grimorio_core::sugerencias::Sugerencia],
+) {
+    manda(aviso, &Evento::Sugerencias { cmd, ids, lista });
 }
 
 pub fn ficha(aviso: &Aviso, cmd: u64, lib: &Library, it: &grimorio_core::Item) {

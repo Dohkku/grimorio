@@ -244,6 +244,67 @@ pub fn tira_video(
     Ok((destino, tira))
 }
 
+// ----------------------------------------------------------------- tramos
+
+/// Corta un tramo de un vídeo o de un sonido a un archivo nuevo en
+/// `cache/versiones/`, de donde [`crate::Library::anadir_version`] lo mete en
+/// la pila moviéndolo. Va aquí y no en la biblioteca porque puede tardar (el
+/// corte exacto recodifica) y así se llama desde el hilo de los derivados,
+/// sin parar el de editar.
+///
+/// Rápido por defecto: ffmpeg copia los paquetes del tramo sin decodificarlos
+/// (`-c copy`), y tarda lo que tarda leerlos aunque el vídeo sea de una hora.
+/// El archivo lleva desde el fotograma clave de antes, pero en MP4 y MOV una
+/// lista de edición hace que se vea desde el punto pedido; otros contenedores
+/// pueden enseñar ese trozo de más. Con `exacto` se recodifica y corta justo.
+pub fn cortar_tramo(raiz: &Path, original: &Path, tramo: crate::Tramo) -> Result<PathBuf> {
+    if tramo.hasta_ms <= tramo.desde_ms {
+        return Err(mal("el tramo acaba antes de empezar"));
+    }
+    let ext = original
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("mp4")
+        .to_ascii_lowercase();
+    let dir = raiz.join("cache").join("versiones");
+    std::fs::create_dir_all(&dir).map_err(|source| Error::Io {
+        path: dir.clone(),
+        source,
+    })?;
+    let destino = dir.join(format!("{}.{ext}", crate::id::new_id()));
+    let desde = format!("{:.3}", tramo.desde_ms as f64 / 1000.0);
+    let dura = format!("{:.3}", (tramo.hasta_ms - tramo.desde_ms) as f64 / 1000.0);
+    let orig = original.to_string_lossy();
+    let sal = destino.to_string_lossy();
+    let mut args: Vec<&str> = vec!["-v", "error", "-y", "-ss", &desde, "-i", &orig, "-t", &dura];
+    if tramo.exacto {
+        // Que ffmpeg elija los códecs del contenedor; en MP4 y compañía,
+        // H.264 casi sin pérdida y deprisa.
+        args.extend_from_slice(&["-map", "0:v?", "-map", "0:a?"]);
+        if matches!(ext.as_str(), "mp4" | "m4v" | "mov" | "mkv") {
+            args.extend_from_slice(&["-c:v", "libx264", "-crf", "18", "-preset", "veryfast"]);
+        }
+    } else {
+        // Sin `-avoid_negative_ts make_zero` a propósito: con él, lo que hay
+        // desde el fotograma clave de antes se veía entero (un tramo de 8 s
+        // salía de 15 con claves cada 10). Sin él, MP4 y MOV guardan una
+        // lista de edición y empiezan a verse justo donde se pidió.
+        args.extend_from_slice(&["-map", "0", "-c", "copy"]);
+    }
+    args.push(&sal);
+    if let Err(f) = externo::correr("ffmpeg", &args, TOPE_PROXY) {
+        let _ = std::fs::remove_file(&destino);
+        return Err(fallo("ffmpeg", f));
+    }
+    match std::fs::metadata(&destino) {
+        Ok(m) if m.len() > 0 => Ok(destino),
+        _ => {
+            let _ = std::fs::remove_file(&destino);
+            Err(mal("ffmpeg no sacó nada de ese tramo"))
+        }
+    }
+}
+
 // ------------------------------------------------------------------ audio
 
 /// Tasa a la que se analiza. 44,1 kHz llega hasta 22 kHz, lo que oye una
@@ -481,9 +542,12 @@ pub fn miniatura_blend(original: &Path) -> Option<image::DynamicImage> {
 /// lo que se ve en el viewport— y la vuelca de una vez con `foreach_get`: las
 /// mismas dos escenas tardan 1,5 y 1,9 s, casi todo arrancar Blender.
 ///
+/// Con la geometría van los materiales: el color de base de cada uno, si lo
+/// fija o si sale de una imagen, y las coordenadas de textura.
+///
 /// Sale en el formato de [`modelo3d::leer_tris`].
 const GUION_BLENDER: &str = r#"
-import bpy, sys
+import bpy, sys, os, struct, tempfile
 import numpy as np
 args = sys.argv[sys.argv.index('--') + 1:]
 src, out, ext = args[0], args[1], args[2]
@@ -493,30 +557,159 @@ if ext == 'fbx':
 escena = bpy.context.scene
 dg = bpy.context.evaluated_depsgraph_get()
 mm = 1000.0 * (escena.unit_settings.scale_length or 1.0)
+
+mats, por_nombre = [], {}
+def mat_id(m):
+    k = m.name if m else None
+    if k not in por_nombre:
+        por_nombre[k] = len(mats)
+        mats.append(m)
+    return por_nombre[k]
+
+V, M, UV = [], [], []
+for ob in escena.objects:
+    if ob.type not in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT'} or not ob.visible_get():
+        continue
+    ev = ob.evaluated_get(dg)
+    try:
+        me = ev.to_mesh()
+    except RuntimeError:
+        continue
+    if me is None:
+        continue
+    me.calc_loop_triangles()
+    n = len(me.loop_triangles)
+    if n:
+        co = np.empty(len(me.vertices) * 3, np.float32)
+        me.vertices.foreach_get('co', co)
+        tri = np.empty(n * 3, np.int32)
+        me.loop_triangles.foreach_get('vertices', tri)
+        m = np.array(ev.matrix_world, np.float32)
+        w = co.reshape(-1, 3) @ m[:3, :3].T + m[:3, 3]
+        t = w[tri]
+        lazos = np.empty(n * 3, np.int32)
+        me.loop_triangles.foreach_get('loops', lazos)
+        # Una escala negativa da la vuelta a las caras.
+        if np.linalg.det(m[:3, :3]) < 0:
+            t = t.reshape(-1, 3, 3)[:, [0, 2, 1]].reshape(-1, 3)
+            lazos = lazos.reshape(-1, 3)[:, [0, 2, 1]].reshape(-1)
+        V.append(t.astype('<f4'))
+        mi = np.empty(n, np.int32)
+        me.loop_triangles.foreach_get('material_index', mi)
+        huecos = [mat_id(s.material) for s in ev.material_slots] or [mat_id(None)]
+        M.append(np.array(huecos, np.uint32)[np.clip(mi, 0, len(huecos) - 1)])
+        capa = me.uv_layers.active
+        if capa is not None and len(capa.data):
+            uv = np.empty(len(me.loops) * 2, np.float32)
+            capa.data.foreach_get('uv', uv)
+            uv = uv.reshape(-1, 2)[lazos]
+            # En Blender el origen de la textura es abajo; en glTF, arriba.
+            uv[:, 1] = 1.0 - uv[:, 1]
+        else:
+            uv = np.zeros((n * 3, 2), np.float32)
+        UV.append(uv.astype('<f4'))
+    ev.to_mesh_clear()
+
+def srgb(x):
+    x = min(max(x, 0.0), 1.0)
+    return x * 12.92 if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055
+
+def imagen_de(nodo, hondo=0):
+    if nodo is None or hondo > 4:
+        return None
+    if nodo.type == 'TEX_IMAGE':
+        return nodo.image
+    for e in nodo.inputs:
+        for l in e.links:
+            i = imagen_de(l.from_node, hondo + 1)
+            if i is not None:
+                return i
+    return None
+
+def material(m):
+    if m is None:
+        return None, None, True
+    dos = not getattr(m, 'use_backface_culling', False)
+    color, img = None, None
+    if m.use_nodes and m.node_tree:
+        nodos = m.node_tree.nodes
+        bsdf = next((x for x in nodos if x.type == 'BSDF_PRINCIPLED'), None) or \
+               next((x for x in nodos if x.type == 'BSDF_DIFFUSE'), None)
+        e = bsdf and (bsdf.inputs.get('Base Color') or bsdf.inputs.get('Color'))
+        if e is not None:
+            if e.links:
+                img = imagen_de(e.links[0].from_node)
+            else:
+                c = tuple(e.default_value)
+                # El gris por defecto de Blender no es un color elegido.
+                if any(abs(a - b) > 1e-3 for a, b in zip(c, (0.8, 0.8, 0.8, 1.0))):
+                    color = [srgb(c[0]), srgb(c[1]), srgb(c[2]), c[3]]
+    else:
+        c = tuple(m.diffuse_color)
+        if any(abs(a - b) > 1e-3 for a, b in zip(c, (0.8, 0.8, 0.8, 1.0))):
+            color = [srgb(c[0]), srgb(c[1]), srgb(c[2]), c[3]]
+    if img is not None and color is None:
+        color = [1.0, 1.0, 1.0, 1.0]
+    return color, img, dos
+
+FIRMAS = (b'\x89PNG', b'\xff\xd8\xff', b'RIFF', b'BM')
+def bytes_de(img):
+    try:
+        if img.packed_file:
+            d = bytes(img.packed_file.data)
+        else:
+            d = open(bpy.path.abspath(img.filepath, library=img.library), 'rb').read()
+        if d[:4].startswith(FIRMAS) or d[:3] == b'\xff\xd8\xff':
+            return d
+    except Exception:
+        pass
+    # TGA, EXR, lo que sea: se pasa a PNG.
+    try:
+        tmp = os.path.join(tempfile.gettempdir(), 'grimorio-%d.png' % os.getpid())
+        escena.render.image_settings.file_format = 'PNG'
+        img.save_render(tmp, scene=escena)
+        d = open(tmp, 'rb').read()
+        os.remove(tmp)
+        return d
+    except Exception:
+        return None
+
+imagenes, por_imagen = [], {}
+info = []
+for m in mats:
+    color, img, dos = material(m)
+    t = -1
+    if img is not None:
+        if img.name not in por_imagen:
+            d = bytes_de(img)
+            por_imagen[img.name] = len(imagenes) if d else -1
+            if d:
+                imagenes.append(d)
+        t = por_imagen[img.name]
+    info.append((m.name if m else '', color, t, dos))
+
 with open(out, 'wb') as f:
-    f.write(b'GRIMTRIS')
-    f.write(np.array([mm], '<f4').tobytes())
-    for ob in escena.objects:
-        if ob.type not in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT'} or not ob.visible_get():
-            continue
-        ev = ob.evaluated_get(dg)
-        try:
-            me = ev.to_mesh()
-        except RuntimeError:
-            continue
-        if me is None:
-            continue
-        me.calc_loop_triangles()
-        n = len(me.loop_triangles)
-        if n:
-            co = np.empty(len(me.vertices) * 3, np.float32)
-            me.vertices.foreach_get('co', co)
-            tri = np.empty(n * 3, np.int32)
-            me.loop_triangles.foreach_get('vertices', tri)
-            m = np.array(ev.matrix_world, np.float32)
-            w = co.reshape(-1, 3) @ m[:3, :3].T + m[:3, 3]
-            f.write(w[tri].astype('<f4').tobytes())
-        ev.to_mesh_clear()
+    n = sum(len(x) for x in M)
+    f.write(b'GRIMTRI2')
+    f.write(struct.pack('<fI', mm, n))
+    for x in V:
+        f.write(x.tobytes())
+    for x in M:
+        f.write(x.astype('<u4').tobytes())
+    con_uv = any(t >= 0 for _, _, t, _ in info)
+    f.write(struct.pack('<I', int(con_uv)))
+    if con_uv:
+        for x in UV:
+            f.write(x.tobytes())
+    f.write(struct.pack('<I', len(info)))
+    for nombre, color, t, dos in info:
+        b = nombre.encode('utf-8')
+        f.write(struct.pack('<I', len(b)) + b)
+        f.write(struct.pack('<4fiI', *(color or (1.0, 1.0, 1.0, 1.0)), t,
+                            int(dos) | (0 if color else 2)))
+    f.write(struct.pack('<I', len(imagenes)))
+    for d in imagenes:
+        f.write(struct.pack('<I', len(d)) + d)
 "#;
 
 pub fn blender_a_tris(original: &Path, ext: &str, destino: &Path) -> Result<()> {
@@ -574,7 +767,11 @@ pub struct InfoMalla {
 pub fn malla(raiz: &Path, id: &str, original: &Path, ext: &str) -> Result<(PathBuf, InfoMalla)> {
     let destino = ruta(raiz, "malla", id, ".malla");
     if let Ok(b) = std::fs::read(&destino) {
-        if b.len() >= 32 && &b[..8] == b"GRIMALLA" {
+        // Las de una versión anterior se rehacen: no traían los materiales.
+        if b.len() >= 32
+            && &b[..8] == b"GRIMALLA"
+            && u32::from_le_bytes([b[8], b[9], b[10], b[11]]) == modelo3d::VERSION_MALLA
+        {
             let f = |o: usize| f32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]);
             let med = [f(20), f(24), f(28)];
             return Ok((

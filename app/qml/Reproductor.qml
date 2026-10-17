@@ -436,7 +436,9 @@ Item {
         id: rescate
         interval: 3000
         repeat: true
-        running: !reproductor.conMandos && reproductor.enPantalla
+        // Un sonido no da fotogramas nunca: «no llega ninguno» no es fallo, y
+        // reiniciarlo cada tres segundos lo devolvía al principio sin parar.
+        running: !reproductor.conMandos && !reproductor.soloSonido && reproductor.enPantalla
                  && String(reproductor.fuente).length > 0 && intentos < 3
         /// Tres y para. Si a la tercera no llega nada, no es la carrera del
         /// arranque, y reintentar cada tres segundos sería un tic para siempre.

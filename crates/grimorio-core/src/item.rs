@@ -159,6 +159,20 @@ pub struct Receta {
     /// siempre en PNG, a su tamaño, con la transparencia donde estaba el fondo.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recorte: Option<String>,
+    /// Si es un trozo de un vídeo o de un sonido: de dónde a dónde.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tramo: Option<Tramo>,
+}
+
+/// Un trozo de un vídeo o de un sonido.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tramo {
+    pub desde_ms: u64,
+    pub hasta_ms: u64,
+    /// Recodificado para cortar en el fotograma justo. Sin esto se copia tal
+    /// cual, que es inmediato pero empieza en el fotograma clave de antes.
+    #[serde(default)]
+    pub exacto: bool,
 }
 
 fn calidad_por_defecto() -> u8 {

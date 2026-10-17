@@ -68,6 +68,13 @@ void Nucleo::procesar(const QString &json)
         estado.remove(QStringLiteral("tipo"));
         estado.remove(QStringLiteral("cmd"));
         emit itemCambiado(ev.value(QStringLiteral("id")).toString(), estado);
+    } else if (tipo == QLatin1String("sugerencias")) {
+        // Solo las de lo último pedido: al pasar deprisa por la galería llegan
+        // respuestas de elementos que ya no están elegidos.
+        if (ev.value(QStringLiteral("ids")).toVariant().toStringList() == m_sugerenciasPara) {
+            m_sugerencias = ev.value(QStringLiteral("lista")).toArray().toVariantList();
+            emit sugerenciasCambio();
+        }
     } else if (tipo == QLatin1String("ficha")) {
         m_ficha = ev.toVariantMap();
         m_ficha.remove(QStringLiteral("tipo"));
@@ -238,7 +245,8 @@ void Nucleo::consultar(const QVariantMap &q, const QString &filtro)
 
 void Nucleo::guardarBusqueda(const QString &nombre, const QString &consulta)
 {
-    if (nombre.trimmed().isEmpty() || consulta.trimmed().isEmpty()) return;
+    // Sin filtros vale: se crea la carpeta y se le ponen dentro.
+    if (nombre.trimmed().isEmpty()) return;
     mandar({ { QStringLiteral("cmd"), QStringLiteral("guardar_busqueda") },
              { QStringLiteral("nombre"), nombre.trimmed() },
              { QStringLiteral("consulta"), consulta.trimmed() } });
@@ -250,6 +258,14 @@ void Nucleo::renombrarBusqueda(const QString &id, const QString &nombre)
     mandar({ { QStringLiteral("cmd"), QStringLiteral("renombrar_busqueda") },
              { QStringLiteral("id"), id },
              { QStringLiteral("nombre"), nombre.trimmed() } });
+}
+
+void Nucleo::cambiarBusqueda(const QString &id, const QString &consulta)
+{
+    if (id.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("cambiar_busqueda") },
+             { QStringLiteral("id"), id },
+             { QStringLiteral("consulta"), consulta.trimmed() } });
 }
 
 void Nucleo::borrarBusqueda(const QString &id)
@@ -429,6 +445,19 @@ void Nucleo::anadirVersion(const QString &id, const QString &ruta, const QString
     mandar(o);
 }
 
+void Nucleo::anadirTramo(const QString &id, const QString &ruta, double desdeMs, double hastaMs,
+                         bool exacto)
+{
+    if (id.isEmpty() || ruta.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("anadir_version") },
+             { QStringLiteral("id"), id },
+             { QStringLiteral("ruta"), ruta },
+             { QStringLiteral("tramo"),
+               QJsonObject { { QStringLiteral("desde_ms"), qint64(desdeMs) },
+                             { QStringLiteral("hasta_ms"), qint64(hastaMs) },
+                             { QStringLiteral("exacto"), exacto } } } });
+}
+
 void Nucleo::apilarGrupos(const QVariantList &grupos)
 {
     if (grupos.isEmpty()) return;
@@ -495,6 +524,18 @@ void Nucleo::pedirEtiquetas(const QString &prefijo)
 {
     mandar({ { QStringLiteral("cmd"), QStringLiteral("etiquetas") },
              { QStringLiteral("prefijo"), prefijo } });
+}
+
+void Nucleo::pedirSugerencias(const QStringList &ids)
+{
+    m_sugerenciasPara = ids;
+    if (ids.isEmpty()) {
+        m_sugerencias.clear();
+        emit sugerenciasCambio();
+        return;
+    }
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("sugerir_etiquetas") },
+             { QStringLiteral("ids"), QJsonArray::fromStringList(ids) } });
 }
 
 void Nucleo::pedirFicha(const QString &id)

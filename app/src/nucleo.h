@@ -51,6 +51,9 @@ class Nucleo : public QObject {
     /// La ficha del elemento en foco: lo que la vista no lleva porque solo
     /// hace falta de uno cada vez (peso, medidas, fechas, ruta, nota).
     Q_PROPERTY(QVariantMap ficha READ ficha NOTIFY fichaCambio)
+    /// Etiquetas que probablemente les van a lo elegido: `{etiqueta, puntos,
+    /// porque}`, las mejores primero. Las de la última `pedirSugerencias`.
+    Q_PROPERTY(QVariantList sugerencias READ sugerencias NOTIFY sugerenciasCambio)
     Q_PROPERTY(QString ultimoAviso READ ultimoAviso NOTIFY aviso)
 
 public:
@@ -71,6 +74,7 @@ public:
     QVariantList grupos() const { return m_grupos; }
     QVariantList vigiladas() const { return m_vigiladas; }
     QVariantMap ficha() const { return m_ficha; }
+    QVariantList sugerencias() const { return m_sugerencias; }
     int tirados() const { return m_tirados; }
     bool hayAdultos() const { return m_adultos > 0; }
     QVariantList reparto() const { return m_reparto; }
@@ -90,6 +94,8 @@ public:
     Q_INVOKABLE void crearCarpeta(const QString &nombre, const QString &padre = QString());
     Q_INVOKABLE void guardarBusqueda(const QString &nombre, const QString &consulta);
     Q_INVOKABLE void renombrarBusqueda(const QString &id, const QString &nombre);
+    /// Los filtros de una carpeta dinámica, que se tocan con ella abierta.
+    Q_INVOKABLE void cambiarBusqueda(const QString &id, const QString &consulta);
     Q_INVOKABLE void borrarBusqueda(const QString &id);
     /// De cada grupo de copias exactas deja la primera; el resto, a la papelera.
     Q_INVOKABLE void quitarCopiasExactas();
@@ -174,6 +180,10 @@ public:
     /// Pide la ficha de un elemento. Llamarla con el mismo id dos veces no
     /// cuesta nada: es leer un JSON pequeño en el hilo del núcleo.
     Q_INVOKABLE void pedirFicha(const QString &id);
+    Q_INVOKABLE void pedirSugerencias(const QStringList &ids);
+    /// Mete un tramo ya cortado (derivado `tramo`) como versión de `id`.
+    Q_INVOKABLE void anadirTramo(const QString &id, const QString &ruta, double desdeMs,
+                                 double hastaMs, bool exacto);
     /// Una ruta del disco como URL. Hecho a mano en QML se rompe con un «#»
     /// en el nombre o con la letra de unidad de Windows.
     Q_INVOKABLE QUrl urlDeRuta(const QString &ruta) const { return QUrl::fromLocalFile(ruta); }
@@ -220,6 +230,7 @@ signals:
     void gruposCambiaron();
     void vigiladasCambiaron();
     void fichaCambio();
+    void sugerenciasCambio();
     void registroCambio();
     /// Un elemento cambió, con su estado nuevo: estrellas, nombre, etiquetas,
     /// nota y carpetas. Va con los datos dentro para que la interfaz no tenga
@@ -258,6 +269,8 @@ private:
     QVariantList m_vigiladas;
     QHash<QString, QString> m_colorEtiqueta;
     QVariantMap m_ficha;
+    QVariantList m_sugerencias;
+    QStringList m_sugerenciasPara;
     int m_tirados = 0;
     int m_adultos = 0;
     QVariantList m_reparto;

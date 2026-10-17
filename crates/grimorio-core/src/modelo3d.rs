@@ -34,6 +34,10 @@ pub const CON_BLENDER: &[&str] = &["blend", "fbx"];
 /// Sin índices a propósito. Lo que se hace con él es dibujarlo una vez y
 /// escribirlo para el visor, y en los dos casos los índices solo añaden un
 /// salto en memoria por vértice.
+///
+/// Los materiales son opcionales: un STL no tiene y se pinta entero del color
+/// de la pieza. Si los hay, `mat` dice el de cada triángulo y `uv` dónde cae
+/// cada vértice en su textura.
 #[derive(Debug, Default, Clone)]
 pub struct Malla {
     pub v: Vec<[f32; 3]>,
@@ -41,6 +45,43 @@ pub struct Malla {
     /// STL no lo dice, pero todo el mundo lo escribe en milímetros; OBJ y PLY
     /// no lo dicen y no hay costumbre, así que ahí no se inventa.
     pub mm_por_unidad: Option<f32>,
+    /// Uno por vértice, o vacío si ningún material lleva textura.
+    pub uv: Vec<[f32; 2]>,
+    /// Uno por triángulo, índice en `materiales`; vacío si no hay materiales.
+    pub mat: Vec<u32>,
+    pub materiales: Vec<Material>,
+    /// Las imágenes tal como venían en el archivo (PNG, JPEG…), sin decodificar:
+    /// el visor las decodifica a su manera y aquí solo se miran para la miniatura.
+    pub texturas: Vec<Vec<u8>>,
+}
+
+/// Cómo se pinta una parte del modelo.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Material {
+    pub nombre: String,
+    /// En sRGB y con alfa. `None` si el archivo no dice nada: entonces va del
+    /// color de la pieza, igual que un modelo sin materiales.
+    pub color: Option<[f32; 4]>,
+    /// Índice en `Malla::texturas`.
+    pub textura: Option<usize>,
+    /// Por debajo de este alfa de la textura no se pinta: pelo, pestañas, hojas.
+    pub corte: Option<f32>,
+    /// glTF dice que por defecto solo se ve la cara de delante. Respetarlo es
+    /// lo que hace desaparecer la cáscara del contorno de los personajes de
+    /// estilo dibujo animado, que es la misma malla hinchada y del revés.
+    pub dos_caras: bool,
+}
+
+impl Default for Material {
+    fn default() -> Self {
+        Material {
+            nombre: String::new(),
+            color: None,
+            textura: None,
+            corte: None,
+            dos_caras: true,
+        }
+    }
 }
 
 impl Malla {
@@ -109,27 +150,90 @@ pub fn leer(bytes: &[u8], ext: &str, junto_a: Option<&Path>) -> Result<Malla> {
     Ok(m)
 }
 
-/// Lo que vuelca el guion de Blender (ver [`crate::derivado::blender_a_tris`]):
-/// `"GRIMTRIS"`, un `f32` con los milímetros por unidad de la escena, y
-/// triángulos sueltos en `f32`, con Z hacia arriba como en Blender.
+/// Lo que vuelca el guion de Blender (ver [`crate::derivado::blender_a_tris`]),
+/// con Z hacia arriba como en Blender. Todo little endian:
+/// ```text
+/// "GRIMTRI2" · f32 milímetros por unidad · u32 triángulos
+/// f32 vértices[triángulos·9] · u32 material[triángulos]
+/// u32 con coordenadas de textura (0 o 1), y si 1: f32 uv[triángulos·6]
+/// u32 materiales, y por material: u32 bytes · nombre en UTF-8
+///     f32 color[4] (sRGB) · i32 textura (-1 sin) · u32 banderas
+///     (1: a dos caras, 2: sin color propio)
+/// u32 texturas, y por textura: u32 bytes · la imagen tal cual
+/// ```
+/// `"GRIMTRIS"` es el de antes: los milímetros y los triángulos, sin más.
 pub fn leer_tris(b: &[u8]) -> Result<Malla> {
-    if b.len() < 12 || &b[..8] != b"GRIMTRIS" {
+    let corto = || mal("Blender devolvió una malla cortada");
+    if b.len() < 12 || (&b[..8] != b"GRIMTRIS" && &b[..8] != b"GRIMTRI2") {
         return Err(mal("Blender no devolvió una malla"));
     }
     let mm = f32_le(b, 8);
-    let n = (b.len() - 12) / 36 * 9;
-    let mut v = Vec::with_capacity(n / 3);
-    for k in 0..n / 3 {
-        let o = 12 + k * 12;
-        v.push(zup([f32_le(b, o), f32_le(b, o + 4), f32_le(b, o + 8)]));
+    let mut m = Malla {
+        mm_por_unidad: (mm.is_finite() && mm > 0.0).then_some(mm),
+        ..Default::default()
+    };
+    if &b[..8] == b"GRIMTRIS" {
+        let n = (b.len() - 12) / 36 * 9;
+        m.v = (0..n / 3)
+            .map(|k| {
+                let o = 12 + k * 12;
+                zup([f32_le(b, o), f32_le(b, o + 4), f32_le(b, o + 8)])
+            })
+            .collect();
+    } else {
+        // Un cursor que no se sale: un volcado cortado es un error, no un pánico.
+        let mut o = 12usize;
+        let toma = |o: &mut usize, n: usize| -> Result<std::ops::Range<usize>> {
+            let r = *o..o.checked_add(n).filter(|f| *f <= b.len()).ok_or_else(corto)?;
+            *o = r.end;
+            Ok(r)
+        };
+        let n = u32_le(b, toma(&mut o, 4)?.start) as usize;
+        let r = toma(&mut o, n.checked_mul(36).ok_or_else(corto)?)?;
+        m.v = (0..n * 3)
+            .map(|k| {
+                let p = r.start + k * 12;
+                zup([f32_le(b, p), f32_le(b, p + 4), f32_le(b, p + 8)])
+            })
+            .collect();
+        let r = toma(&mut o, n * 4)?;
+        m.mat = (0..n).map(|k| u32_le(b, r.start + k * 4)).collect();
+        if u32_le(b, toma(&mut o, 4)?.start) == 1 {
+            let r = toma(&mut o, n * 24)?;
+            m.uv = (0..n * 3)
+                .map(|k| [f32_le(b, r.start + k * 8), f32_le(b, r.start + k * 8 + 4)])
+                .collect();
+        }
+        let nm = u32_le(b, toma(&mut o, 4)?.start) as usize;
+        for _ in 0..nm.min(1 << 16) {
+            let largo = u32_le(b, toma(&mut o, 4)?.start) as usize;
+            let nombre = String::from_utf8_lossy(&b[toma(&mut o, largo)?]).into_owned();
+            let r = toma(&mut o, 24)?;
+            let c = |k: usize| f32_le(b, r.start + k * 4);
+            let textura = i32::from_le_bytes(b[r.start + 16..r.start + 20].try_into().unwrap());
+            let banderas = u32_le(b, r.start + 20);
+            m.materiales.push(Material {
+                nombre,
+                color: (banderas & 2 == 0).then(|| [c(0), c(1), c(2), c(3)]),
+                textura: usize::try_from(textura).ok(),
+                corte: None,
+                dos_caras: banderas & 1 != 0,
+            });
+        }
+        let nt = u32_le(b, toma(&mut o, 4)?.start) as usize;
+        for _ in 0..nt.min(1 << 16) {
+            let largo = u32_le(b, toma(&mut o, 4)?.start) as usize;
+            m.texturas.push(b[toma(&mut o, largo)?].to_vec());
+        }
+        if m.materiales.is_empty() || m.mat.iter().any(|x| *x as usize >= m.materiales.len()) {
+            m.mat.clear();
+            m.materiales.clear();
+        }
     }
-    if v.is_empty() {
+    if m.v.is_empty() {
         return Err(mal("la escena no tiene nada visible con superficie"));
     }
-    Ok(Malla {
-        v,
-        mm_por_unidad: (mm.is_finite() && mm > 0.0).then_some(mm),
-    })
+    Ok(m)
 }
 
 // ------------------------------------------------------------------- STL
@@ -179,6 +283,7 @@ fn stl(b: &[u8]) -> Result<Malla> {
     Ok(Malla {
         v,
         mm_por_unidad: Some(1.0),
+        ..Default::default()
     })
 }
 
@@ -226,6 +331,7 @@ fn obj(b: &[u8]) -> Result<Malla> {
     Ok(Malla {
         v,
         mm_por_unidad: None,
+        ..Default::default()
     })
 }
 
@@ -431,6 +537,7 @@ fn ply(b: &[u8]) -> Result<Malla> {
     Ok(Malla {
         v,
         mm_por_unidad: None,
+        ..Default::default()
     })
 }
 
@@ -685,8 +792,116 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
             .collect()
     };
 
-    let mut v = Vec::new();
-    let malla_en = |m: usize, mat: &Mat4, v: &mut Vec<[f32; 3]>| -> Result<()> {
+    // Las imágenes, tal como vienen: dentro del GLB, en una URI `data:` o en
+    // un archivo al lado. La que no se encuentra no es motivo para no leer el
+    // modelo: esa parte sale sin textura.
+    let mut texturas: Vec<Vec<u8>> = Vec::new();
+    let mut de_imagen: HashMap<usize, Option<usize>> = HashMap::new();
+    let mut imagen = |i: usize| -> Option<usize> {
+        if let Some(t) = de_imagen.get(&i) {
+            return *t;
+        }
+        let im = &doc["images"][i];
+        let datos = if let Some(bv) = im["bufferView"].as_u64() {
+            let vista = &doc["bufferViews"][bv as usize];
+            let ini = vista["byteOffset"].as_u64().unwrap_or(0) as usize;
+            let n = vista["byteLength"].as_u64().unwrap_or(0) as usize;
+            buffers
+                .get(vista["buffer"].as_u64().unwrap_or(0) as usize)
+                .and_then(|b| b.get(ini..ini + n))
+                .map(|b| b.to_vec())
+        } else {
+            match im["uri"].as_str() {
+                Some(uri) if uri.starts_with("data:") => uri
+                    .find(',')
+                    .and_then(|c| base64(&uri[c + 1..]).ok()),
+                Some(uri) => junto_a
+                    .and_then(|p| p.parent())
+                    .and_then(|d| std::fs::read(d.join(sin_porcentajes(uri))).ok()),
+                None => None,
+            }
+        };
+        let t = datos.filter(|d| !d.is_empty()).map(|d| {
+            texturas.push(d);
+            texturas.len() - 1
+        });
+        de_imagen.insert(i, t);
+        t
+    };
+
+    let mut materiales: Vec<Material> = Vec::new();
+    // Qué juego de coordenadas usa la textura de cada material: casi siempre
+    // el 0, pero glTF deja elegir.
+    let mut juego_uv: Vec<usize> = Vec::new();
+    for (i, m) in doc["materials"].as_array().into_iter().flatten().enumerate() {
+        // El modelo de brillo y especular es anterior a PBR y hay archivos
+        // viejos que solo traen ese.
+        let sg = &m["extensions"]["KHR_materials_pbrSpecularGlossiness"];
+        let pbr = &m["pbrMetallicRoughness"];
+        let (factor, tex) = if sg.is_object() && !pbr.is_object() {
+            (&sg["diffuseFactor"], &sg["diffuseTexture"])
+        } else {
+            (&pbr["baseColorFactor"], &pbr["baseColorTexture"])
+        };
+        let textura = tex["index"].as_u64().and_then(|t| {
+            let t = &doc["textures"][t as usize];
+            // La fuente normal antes que la de WebP: la normal la entiende
+            // cualquiera que vaya a pintar esto.
+            t["source"]
+                .as_u64()
+                .or_else(|| t["extensions"]["EXT_texture_webp"]["source"].as_u64())
+                .and_then(|s| imagen(s as usize))
+        });
+        let color = match factor.as_array() {
+            Some(f) if f.len() >= 4 => {
+                let c = |k: usize| f[k].as_f64().unwrap_or(1.0) as f32;
+                Some([a_srgb(c(0)), a_srgb(c(1)), a_srgb(c(2)), c(3)])
+            }
+            _ if textura.is_some() => Some([1.0; 4]),
+            _ => None,
+        };
+        let corte = match m["alphaMode"].as_str() {
+            Some("MASK") => Some(m["alphaCutoff"].as_f64().unwrap_or(0.5) as f32),
+            // Una miniatura no mezcla transparencias. Lo casi invisible se
+            // quita y lo demás se pinta entero: el pelo hecho de tarjetas se
+            // ve pelo, y un cristal tapa lo de detrás, que es menos grave.
+            Some("BLEND") => Some(0.1),
+            _ => None,
+        };
+        materiales.push(Material {
+            nombre: m["name"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| format!("material {i}")),
+            color,
+            textura,
+            corte,
+            dos_caras: m["doubleSided"].as_bool().unwrap_or(false),
+        });
+        juego_uv.push(tex["texCoord"].as_u64().unwrap_or(0) as usize);
+    }
+    // Lo que no dice material va con uno neutro. A dos caras: quien no puso
+    // material tampoco cuidó hacia dónde mira cada cara.
+    let sin_material = materiales.len();
+    materiales.push(Material {
+        nombre: "sin material".into(),
+        ..Default::default()
+    });
+    juego_uv.push(0);
+    let con_uv = materiales.iter().any(|m| m.textura.is_some());
+
+    let mut out = Malla {
+        // glTF va en metros por especificación.
+        mm_por_unidad: Some(1000.0),
+        materiales,
+        texturas,
+        ..Default::default()
+    };
+    let malla_en = |m: usize, mat: &Mat4, out: &mut Malla| -> Result<()> {
+        // Una escala negativa da la vuelta a los triángulos: lo que era la cara
+        // de delante pasa a ser la de detrás, y hay que deshacerlo.
+        let columna = |k: usize| [mat[k], mat[k + 1], mat[k + 2]];
+        let espejo = punto(columna(0), cruz(columna(4), columna(8))) < 0.0;
         for prim in doc["meshes"][m]["primitives"]
             .as_array()
             .into_iter()
@@ -699,22 +914,48 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
             let Some(pos) = prim["attributes"]["POSITION"].as_u64() else {
                 continue;
             };
+            let material = prim["material"]
+                .as_u64()
+                .map(|x| x as usize)
+                .filter(|x| *x < sin_material)
+                .unwrap_or(sin_material);
             let ps: Vec<[f32; 3]> = leer_accessor(pos as usize, 3)?
                 .into_iter()
                 .map(|p| aplicar(mat, [p[0], p[1], p[2]]))
                 .collect();
-            match prim["indices"].as_u64() {
-                Some(ix) => {
-                    for i in leer_indices(ix as usize)? {
-                        v.push(
-                            *ps.get(i as usize)
-                                .ok_or_else(|| mal("glTF con un índice que apunta fuera"))?,
-                        );
+            let uvs: Vec<[f32; 2]> = if con_uv {
+                let clave = format!("TEXCOORD_{}", juego_uv[material]);
+                match prim["attributes"][clave.as_str()].as_u64() {
+                    Some(a) => leer_accessor(a as usize, 2)?
+                        .into_iter()
+                        .map(|t| [t[0], t[1]])
+                        .collect(),
+                    None => Vec::new(),
+                }
+            } else {
+                Vec::new()
+            };
+            let indices: Vec<u32> = match prim["indices"].as_u64() {
+                Some(ix) => leer_indices(ix as usize)?,
+                None => (0..ps.len() as u32).collect(),
+            };
+            for t in indices.chunks_exact(3) {
+                let orden = if espejo {
+                    [t[0], t[2], t[1]]
+                } else {
+                    [t[0], t[1], t[2]]
+                };
+                for i in orden {
+                    out.v.push(
+                        *ps.get(i as usize)
+                            .ok_or_else(|| mal("glTF con un índice que apunta fuera"))?,
+                    );
+                    if con_uv {
+                        out.uv.push(uvs.get(i as usize).copied().unwrap_or([0.0; 2]));
                     }
                 }
-                None => v.extend_from_slice(&ps),
+                out.mat.push(material as u32);
             }
-            v.truncate(v.len() / 3 * 3);
         }
         Ok(())
     };
@@ -748,7 +989,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
     if nodos.is_empty() {
         // Un glTF sin nodos todavía puede tener mallas: se pintan tal cual.
         for m in 0..doc["meshes"].as_array().map(|a| a.len()).unwrap_or(0) {
-            malla_en(m, &IDENTIDAD, &mut v)?;
+            malla_en(m, &IDENTIDAD, &mut out)?;
         }
     } else {
         let mut pila: Vec<(usize, Mat4, u32)> =
@@ -787,7 +1028,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
             };
             let mat = mul(&padre, &local);
             if let Some(m) = n["mesh"].as_u64() {
-                malla_en(m as usize, &mat, &mut v)?;
+                malla_en(m as usize, &mat, &mut out)?;
             }
             for h in n["children"].as_array().into_iter().flatten() {
                 if let Some(h) = h.as_u64() {
@@ -797,11 +1038,42 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
         }
     }
 
-    Ok(Malla {
-        v,
-        // glTF va en metros por especificación.
-        mm_por_unidad: Some(1000.0),
-    })
+    // El neutro de reserva, si nadie lo usó, sobra: es el último y quitarlo
+    // no mueve los índices de los demás.
+    if !out.mat.iter().any(|m| *m as usize == sin_material) {
+        out.materiales.pop();
+    }
+    Ok(out)
+}
+
+/// De luz lineal, que es como glTF guarda sus colores, a sRGB, que es como se
+/// pintan las texturas y como se ve todo lo demás.
+fn a_srgb(x: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    if x <= 0.003_130_8 {
+        x * 12.92
+    } else {
+        1.055 * x.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// `mi%20textura.png` → `mi textura.png`: las URI de glTF van escapadas.
+fn sin_porcentajes(uri: &str) -> String {
+    let b = uri.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let Ok(x) = u8::from_str_radix(&uri[i + 1..i + 3], 16) {
+                out.push(x);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 // ------------------------------------------------------------------- 3MF
@@ -1104,6 +1376,7 @@ fn tres_mf(b: &[u8]) -> Result<Malla> {
     Ok(Malla {
         v,
         mm_por_unidad: Some(unidad),
+        ..Default::default()
     })
 }
 
@@ -1187,26 +1460,52 @@ pub fn dibujar(m: &Malla, lado: u32) -> RgbImage {
     let escala = l as f32 * 0.84 / tam;
     let (mx, my) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0);
 
+    // Fondo en degradado oscuro, y lo que no dice su color en arcilla: un tono
+    // neutro deja ver la forma, que en una pieza de impresión es lo que importa.
+    let arcilla = [0.86f32, 0.82, 0.76];
+    let texturas = texturas_para_dibujar(m, l);
+    let con_uv = m.uv.len() == m.v.len();
+
     let mut prof = vec![f32::NEG_INFINITY; (l * l) as usize];
-    let mut luz = vec![0f32; (l * l) as usize];
+    let mut color = vec![[0f32; 3]; (l * l) as usize];
     let clave = unitario([-0.45, 0.65, 0.62]);
     let relleno = unitario([0.7, 0.1, 0.5]);
 
-    for t in vs.chunks_exact(3) {
+    for (it, t) in vs.chunks_exact(3).enumerate() {
         let n = cruz(resta(t[1], t[0]), resta(t[2], t[0]));
         if !n.iter().all(|c| c.is_finite()) || punto(n, n) == 0.0 {
             continue;
         }
+        let material = m.mat.get(it).and_then(|i| m.materiales.get(*i as usize));
         let mut n = unitario(n);
         // Luz de dos lados: muchos modelos traen caras con el sentido cambiado
-        // y no por eso son negras por fuera.
+        // y no por eso son negras por fuera. Salvo que el material diga que
+        // solo tiene cara por delante: entonces lo de detrás no se pinta.
         if n[2] < 0.0 {
+            if material.is_some_and(|m| !m.dos_caras) {
+                continue;
+            }
             n = [-n[0], -n[1], -n[2]];
         }
         let i = 0.16
             + 0.70 * punto(n, clave).max(0.0)
             + 0.22 * punto(n, relleno).max(0.0)
             + 0.18 * (1.0 - n[2]).powi(2);
+        let i = i.min(1.25);
+        let base = material
+            .and_then(|m| m.color)
+            .unwrap_or([arcilla[0], arcilla[1], arcilla[2], 1.0]);
+        let textura = material
+            .and_then(|m| m.textura)
+            .and_then(|k| texturas.get(k))
+            .and_then(|t| t.as_ref())
+            .filter(|_| con_uv);
+        let corte = material.and_then(|m| m.corte);
+        let uv = if textura.is_some() {
+            [m.uv[it * 3], m.uv[it * 3 + 1], m.uv[it * 3 + 2]]
+        } else {
+            [[0.0; 2]; 3]
+        };
 
         let s: Vec<[f32; 3]> = t
             .iter()
@@ -1258,17 +1557,30 @@ pub fn dibujar(m: &Malla, lado: u32) -> RgbImage {
                 }
                 let z = w0 * s[0][2] + w1 * s[1][2] + w2 * s[2][2];
                 let k = (y as u32 * l + x as u32) as usize;
-                if z > prof[k] {
-                    prof[k] = z;
-                    luz[k] = i;
+                if z <= prof[k] {
+                    continue;
                 }
+                // Proyección ortográfica: interpolar las coordenadas de
+                // textura en pantalla es exacto, no hace falta corregir
+                // la perspectiva.
+                let mut c = base;
+                if let Some(tx) = textura {
+                    let u = w0 * uv[0][0] + w1 * uv[1][0] + w2 * uv[2][0];
+                    let v = w0 * uv[0][1] + w1 * uv[1][1] + w2 * uv[2][1];
+                    let p = muestra(tx, u, v);
+                    for k in 0..4 {
+                        c[k] *= p[k];
+                    }
+                }
+                if corte.is_some_and(|corte| c[3] < corte) {
+                    continue;
+                }
+                prof[k] = z;
+                color[k] = [c[0] * i, c[1] * i, c[2] * i];
             }
         }
     }
 
-    // Fondo en degradado oscuro, y la pieza en color arcilla: es una
-    // miniatura, no una prueba de material, y un tono neutro deja ver la forma.
-    let arcilla = [0.86f32, 0.82, 0.76];
     let mut img = RgbImage::new(lado, lado);
     for y in 0..lado {
         for x in 0..lado {
@@ -1278,8 +1590,7 @@ pub fn dibujar(m: &Malla, lado: u32) -> RgbImage {
                     let (gx, gy) = (x * SS + dx, y * SS + dy);
                     let k = (gy * l + gx) as usize;
                     let c = if prof[k].is_finite() {
-                        let i = luz[k].min(1.25);
-                        [arcilla[0] * i, arcilla[1] * i, arcilla[2] * i]
+                        color[k]
                     } else {
                         let t = gy as f32 / l as f32;
                         let f = (0.20 - 0.08 * t).max(0.0);
@@ -1305,19 +1616,77 @@ pub fn dibujar(m: &Malla, lado: u32) -> RgbImage {
     img
 }
 
+/// Las texturas que algún material usa, decodificadas y reducidas a lo que
+/// cabe en el dibujo: una de 4096 en una miniatura de 1024 es memoria tirada.
+/// La que no se deja decodificar queda en `None` y esa parte va sin textura.
+fn texturas_para_dibujar(m: &Malla, lado: u32) -> Vec<Option<image::RgbaImage>> {
+    let usadas: std::collections::HashSet<usize> =
+        m.materiales.iter().filter_map(|x| x.textura).collect();
+    m.texturas
+        .iter()
+        .enumerate()
+        .map(|(k, bytes)| {
+            if !usadas.contains(&k) {
+                return None;
+            }
+            let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+            let tope = lado.min(1024);
+            Some(if img.width() > tope || img.height() > tope {
+                let f = tope as f32 / img.width().max(img.height()) as f32;
+                image::imageops::thumbnail(
+                    &img,
+                    ((img.width() as f32 * f) as u32).max(1),
+                    ((img.height() as f32 * f) as u32).max(1),
+                )
+            } else {
+                img
+            })
+        })
+        .collect()
+}
+
+/// El color de la textura en (u, v), repitiéndola fuera de 0‒1 como hacen
+/// glTF y Blender por defecto. El origen es la esquina de arriba a la
+/// izquierda, como en glTF.
+fn muestra(t: &image::RgbaImage, u: f32, v: f32) -> [f32; 4] {
+    let (w, h) = (t.width(), t.height());
+    let f = |x: f32, n: u32| -> u32 {
+        let x = if x.is_finite() { x - x.floor() } else { 0.0 };
+        ((x * n as f32) as u32).min(n - 1)
+    };
+    let p = t.get_pixel(f(u, w), f(v, h)).0;
+    [
+        p[0] as f32 / 255.0,
+        p[1] as f32 / 255.0,
+        p[2] as f32 / 255.0,
+        p[3] as f32 / 255.0,
+    ]
+}
+
 // ------------------------------------------------------- para el visor
+
+/// Versión del formato de [`escribir_malla`]. Lo guardado con otra se rehace.
+pub const VERSION_MALLA: u32 = 2;
 
 /// Escribe la malla para el visor: centrada, a escala unidad y en f32.
 ///
 /// Formato (little endian):
 /// ```text
-/// "GRIMALLA" · u32 versión (1) · u32 triángulos
+/// "GRIMALLA" · u32 versión (2) · u32 triángulos
 /// f32 radio (la mitad del lado mayor, en unidades del archivo)
 /// f32 medidas_mm[3] (ancho, fondo, alto; -1 si no se saben)
 /// f32 vértices[triángulos·9], centrados y divididos por el radio
+/// u32 grupos, y por grupo:
+///     u32 primer triángulo · u32 triángulos · f32 color[4] (sRGB y alfa)
+///     i32 textura (-1 sin) · f32 corte de alfa (0 sin) · u32 banderas
+///     (1: a dos caras, 2: sin color propio, va del de la pieza)
+/// u32 con coordenadas de textura (0 o 1), y si 1: f32 uv[triángulos·6]
+/// u32 texturas, y por textura: u32 bytes · la imagen tal cual (PNG, JPEG…)
 /// ```
 /// Sin normales: el visor las saca del propio triángulo en el sombreador, y
-/// así el archivo es la mitad.
+/// así el archivo es la mitad. Los triángulos van ordenados por material, para
+/// pintar cada grupo de una vez. La versión 1 acababa en los vértices: un visor
+/// de antes abre esta y la pinta sin color.
 pub fn escribir_malla(m: &Malla, salida: &mut impl std::io::Write) -> std::io::Result<()> {
     let (lo, hi) = m.caja();
     let c = [
@@ -1327,19 +1696,93 @@ pub fn escribir_malla(m: &Malla, salida: &mut impl std::io::Write) -> std::io::R
     ];
     let r = ((hi[0] - lo[0]).max(hi[1] - lo[1]).max(hi[2] - lo[2]) / 2.0).max(1e-12);
     let med = m.medidas_mm().unwrap_or([-1.0; 3]);
-    let mut b = Vec::with_capacity(36 + m.v.len() * 12);
-    b.extend_from_slice(b"GRIMALLA");
-    b.extend_from_slice(&1u32.to_le_bytes());
-    b.extend_from_slice(&(m.triangulos() as u32).to_le_bytes());
-    b.extend_from_slice(&r.to_le_bytes());
-    for x in med {
-        b.extend_from_slice(&x.to_le_bytes());
+    let n = m.triangulos();
+    let con_mat = m.mat.len() == n && !m.materiales.is_empty();
+    let con_uv = con_mat
+        && m.uv.len() == m.v.len()
+        && m.materiales.iter().any(|x| x.textura.is_some());
+
+    // Ordenados por material sin perder el orden dentro de cada uno.
+    let mut orden: Vec<usize> = (0..n).collect();
+    if con_mat {
+        orden.sort_by_key(|&t| m.mat[t]);
     }
-    for p in &m.v {
-        for k in 0..3 {
-            let x = (p[k] - c[k]) / r;
-            b.extend_from_slice(&(if x.is_finite() { x } else { 0.0 }).to_le_bytes());
+
+    let mut b = Vec::with_capacity(48 + n * if con_uv { 60 } else { 36 });
+    let f = |b: &mut Vec<u8>, x: f32| b.extend_from_slice(&x.to_le_bytes());
+    let u = |b: &mut Vec<u8>, x: u32| b.extend_from_slice(&x.to_le_bytes());
+    b.extend_from_slice(b"GRIMALLA");
+    u(&mut b, VERSION_MALLA);
+    u(&mut b, n as u32);
+    f(&mut b, r);
+    for x in med {
+        f(&mut b, x);
+    }
+    for &t in &orden {
+        for p in &m.v[t * 3..t * 3 + 3] {
+            for k in 0..3 {
+                let x = (p[k] - c[k]) / r;
+                f(&mut b, if x.is_finite() { x } else { 0.0 });
+            }
         }
+    }
+
+    let mut grupos: Vec<(u32, u32, Option<&Material>)> = Vec::new();
+    if con_mat {
+        for (k, &t) in orden.iter().enumerate() {
+            let mt = m.mat[t];
+            match grupos.last_mut() {
+                Some(g) if k > 0 && m.mat[orden[k - 1]] == mt => g.1 += 1,
+                _ => grupos.push((k as u32, 1, m.materiales.get(mt as usize))),
+            }
+        }
+    } else if n > 0 {
+        grupos.push((0, n as u32, None));
+    }
+    // Solo las texturas que algún grupo pinta: las de un material que ahora
+    // va de un color liso no hace falta llevarlas.
+    let mut usadas: Vec<usize> = Vec::new();
+    if con_uv {
+        for (_, _, mat) in &grupos {
+            if let Some(t) = mat.and_then(|x| x.textura) {
+                if t < m.texturas.len() && !usadas.contains(&t) {
+                    usadas.push(t);
+                }
+            }
+        }
+    }
+    u(&mut b, grupos.len() as u32);
+    for (primero, cuantos, mat) in &grupos {
+        u(&mut b, *primero);
+        u(&mut b, *cuantos);
+        let color = mat.and_then(|x| x.color);
+        for x in color.unwrap_or([1.0; 4]) {
+            f(&mut b, x);
+        }
+        let textura = mat
+            .and_then(|x| x.textura)
+            .and_then(|t| usadas.iter().position(|u| *u == t))
+            .map(|t| t as i32)
+            .unwrap_or(-1);
+        b.extend_from_slice(&textura.to_le_bytes());
+        f(&mut b, mat.and_then(|x| x.corte).unwrap_or(0.0));
+        let dos_caras = mat.is_none_or(|x| x.dos_caras);
+        u(&mut b, dos_caras as u32 | if color.is_none() { 2 } else { 0 });
+    }
+    let con_uv = !usadas.is_empty();
+    u(&mut b, con_uv as u32);
+    if con_uv {
+        for &t in &orden {
+            for p in &m.uv[t * 3..t * 3 + 3] {
+                f(&mut b, if p[0].is_finite() { p[0] } else { 0.0 });
+                f(&mut b, if p[1].is_finite() { p[1] } else { 0.0 });
+            }
+        }
+    }
+    u(&mut b, usadas.len() as u32);
+    for t in usadas.iter().map(|&k| &m.texturas[k]) {
+        u(&mut b, t.len() as u32);
+        b.extend_from_slice(t);
     }
     salida.write_all(&b)
 }
@@ -1563,12 +2006,168 @@ pub(crate) mod tests {
         let mut b = Vec::new();
         escribir_malla(&m, &mut b).unwrap();
         assert_eq!(&b[..8], b"GRIMALLA");
+        assert_eq!(u32_le(&b, 8), VERSION_MALLA);
         assert_eq!(u32_le(&b, 12), 12);
-        let n = (b.len() - 32) / 4;
-        assert_eq!(n, 12 * 9);
+        let n = 12 * 9;
         for k in 0..n {
             let x = f32_le(&b, 32 + k * 4);
             assert!((-1.0001..=1.0001).contains(&x));
         }
+        // Un STL no tiene materiales: un solo grupo, del color de la pieza,
+        // sin coordenadas de textura ni texturas.
+        let o = 32 + n * 4;
+        assert_eq!(u32_le(&b, o), 1);
+        assert_eq!(u32_le(&b, o + 8), 12, "el grupo son los doce triángulos");
+        assert_eq!(u32_le(&b, o + 36), 1 | 2, "a dos caras y sin color propio");
+        assert_eq!(u32_le(&b, o + 40), 0);
+        assert_eq!(u32_le(&b, o + 44), 0);
+        assert_eq!(b.len(), o + 48);
+    }
+
+    /// Un GLB con su JSON y su búfer binario.
+    fn glb_de(json: &str, bin: &[u8]) -> Vec<u8> {
+        let mut j = json.as_bytes().to_vec();
+        while j.len() % 4 != 0 {
+            j.push(b' ');
+        }
+        let mut bin = bin.to_vec();
+        while bin.len() % 4 != 0 {
+            bin.push(0);
+        }
+        let mut b = Vec::new();
+        b.extend_from_slice(b"glTF");
+        b.extend_from_slice(&2u32.to_le_bytes());
+        b.extend_from_slice(&((12 + 8 + j.len() + 8 + bin.len()) as u32).to_le_bytes());
+        b.extend_from_slice(&(j.len() as u32).to_le_bytes());
+        b.extend_from_slice(b"JSON");
+        b.extend_from_slice(&j);
+        b.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+        b.extend_from_slice(b"BIN\0");
+        b.extend_from_slice(&bin);
+        b
+    }
+
+    /// Un cuadrado de cara a +Z con una textura roja de 2×2 dentro. `al_reves`
+    /// le da la vuelta a los triángulos, y `dos_caras` es el del material.
+    fn glb_cuadrado_rojo(al_reves: bool, dos_caras: bool) -> Vec<u8> {
+        let mut png = Vec::new();
+        image::RgbaImage::from_pixel(2, 2, image::Rgba([255, 0, 0, 255]))
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let mut bin = Vec::new();
+        for p in [[0f32, 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]] {
+            for x in p {
+                bin.extend_from_slice(&x.to_le_bytes());
+            }
+        }
+        for t in [[0f32, 1.], [1., 1.], [1., 0.], [0., 0.]] {
+            for x in t {
+                bin.extend_from_slice(&x.to_le_bytes());
+            }
+        }
+        let ix: [u16; 6] = if al_reves {
+            [0, 2, 1, 0, 3, 2]
+        } else {
+            [0, 1, 2, 0, 2, 3]
+        };
+        for i in ix {
+            bin.extend_from_slice(&i.to_le_bytes());
+        }
+        let ini_png = bin.len();
+        bin.extend_from_slice(&png);
+        let json = format!(
+            r#"{{"asset":{{"version":"2.0"}},"scene":0,"scenes":[{{"nodes":[0]}}],
+            "nodes":[{{"mesh":0}}],
+            "meshes":[{{"primitives":[{{"attributes":{{"POSITION":0,"TEXCOORD_0":1}},"indices":2,"material":0}}]}}],
+            "materials":[{{"name":"Rojo.001","doubleSided":{dos_caras},
+                "pbrMetallicRoughness":{{"baseColorTexture":{{"index":0}}}}}}],
+            "textures":[{{"source":0}}],
+            "images":[{{"bufferView":3,"mimeType":"image/png"}}],
+            "buffers":[{{"byteLength":{}}}],
+            "bufferViews":[{{"buffer":0,"byteOffset":0,"byteLength":48}},
+                           {{"buffer":0,"byteOffset":48,"byteLength":32}},
+                           {{"buffer":0,"byteOffset":80,"byteLength":12}},
+                           {{"buffer":0,"byteOffset":{ini_png},"byteLength":{}}}],
+            "accessors":[{{"bufferView":0,"componentType":5126,"count":4,"type":"VEC3"}},
+                         {{"bufferView":1,"componentType":5126,"count":4,"type":"VEC2"}},
+                         {{"bufferView":2,"componentType":5123,"count":6,"type":"SCALAR"}}]}}"#,
+            bin.len(),
+            png.len()
+        );
+        glb_de(&json, &bin)
+    }
+
+    #[test]
+    fn un_glb_con_textura_trae_su_material_y_la_miniatura_la_pinta() {
+        let m = leer(&glb_cuadrado_rojo(false, false), "glb", None).unwrap();
+        assert_eq!(m.triangulos(), 2);
+        assert_eq!(m.texturas.len(), 1);
+        assert_eq!(m.uv.len(), 6);
+        assert_eq!(m.mat, vec![0, 0]);
+        assert_eq!(m.materiales[0].nombre, "Rojo.001");
+        assert_eq!(m.materiales[0].textura, Some(0));
+        assert!(!m.materiales[0].dos_caras);
+        let p = dibujar(&m, 64).get_pixel(32, 32).0;
+        assert!(p[0] > 100 && p[1] < 40 && p[2] < 40, "{p:?}");
+    }
+
+    #[test]
+    fn lo_que_solo_tiene_cara_por_delante_no_se_ve_por_detras() {
+        let fondo = |m: &Malla| {
+            let p = dibujar(m, 64).get_pixel(32, 32).0;
+            p[0] < 80
+        };
+        let detras = leer(&glb_cuadrado_rojo(true, false), "glb", None).unwrap();
+        assert!(fondo(&detras), "de espaldas y a una cara: no se pinta");
+        let dos = leer(&glb_cuadrado_rojo(true, true), "glb", None).unwrap();
+        assert!(!fondo(&dos), "a dos caras se ve también de espaldas");
+    }
+
+    #[test]
+    fn la_malla_del_visor_lleva_grupos_coordenadas_y_textura() {
+        let m = leer(&glb_cuadrado_rojo(false, false), "glb", None).unwrap();
+        let mut b = Vec::new();
+        escribir_malla(&m, &mut b).unwrap();
+        let mut o = 32 + 2 * 36;
+        assert_eq!(u32_le(&b, o), 1);
+        o += 4;
+        assert_eq!(i32::from_le_bytes(b[o + 24..o + 28].try_into().unwrap()), 0);
+        assert_eq!(u32_le(&b, o + 32), 0, "a una cara y con color");
+        o += 36;
+        assert_eq!(u32_le(&b, o), 1, "con coordenadas de textura");
+        o += 4 + 2 * 24;
+        assert_eq!(u32_le(&b, o), 1);
+        let largo = u32_le(&b, o + 4) as usize;
+        assert_eq!(&b[o + 8..o + 12], b"\x89PNG");
+        assert_eq!(b.len(), o + 8 + largo);
+    }
+
+    #[test]
+    fn lo_que_vuelca_blender_con_materiales_se_lee() {
+        let mut b = b"GRIMTRI2".to_vec();
+        b.extend_from_slice(&1000f32.to_le_bytes());
+        b.extend_from_slice(&1u32.to_le_bytes());
+        for x in [0f32, 0., 0., 1., 0., 0., 0., 1., 0.] {
+            b.extend_from_slice(&x.to_le_bytes());
+        }
+        b.extend_from_slice(&0u32.to_le_bytes()); // material del triángulo
+        b.extend_from_slice(&0u32.to_le_bytes()); // sin coordenadas
+        b.extend_from_slice(&1u32.to_le_bytes());
+        b.extend_from_slice(&4u32.to_le_bytes());
+        b.extend_from_slice(b"Piel");
+        for x in [1f32, 0.5, 0.25, 1.] {
+            b.extend_from_slice(&x.to_le_bytes());
+        }
+        b.extend_from_slice(&(-1i32).to_le_bytes());
+        b.extend_from_slice(&0u32.to_le_bytes()); // a una cara, con color
+        b.extend_from_slice(&0u32.to_le_bytes()); // sin texturas
+        let m = leer_tris(&b).unwrap();
+        assert_eq!(m.triangulos(), 1);
+        assert_eq!(m.mat, vec![0]);
+        assert_eq!(m.materiales[0].nombre, "Piel");
+        assert_eq!(m.materiales[0].color, Some([1.0, 0.5, 0.25, 1.0]));
+        assert!(!m.materiales[0].dos_caras);
+        // Cortado a la mitad es un error, no un pánico.
+        assert!(leer_tris(&b[..b.len() - 10]).is_err());
     }
 }

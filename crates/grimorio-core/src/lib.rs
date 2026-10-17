@@ -30,13 +30,14 @@ pub mod query;
 pub mod raw;
 pub mod registro;
 pub mod senal;
+pub mod sugerencias;
 pub mod thumbs;
 pub mod time;
 pub mod vigiladas;
 
 pub use error::{Error, Result};
 pub use folder::{Folder, Folders};
-pub use item::{Item, Origin, OriginMode, PaletteEntry, Receta};
+pub use item::{Item, Origin, OriginMode, PaletteEntry, Receta, Tramo};
 pub use library::{preview_path, Library};
 pub use medio::{Familia, Lienzo};
 pub use query::{Query, QueryHit, SortBy};

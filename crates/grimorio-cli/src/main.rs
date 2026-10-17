@@ -195,6 +195,12 @@ enum Cmd {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
+    /// Las etiquetas que el panel de detalle propondría a unos elementos, con
+    /// por qué. Solo lee: se puede con la aplicación abierta
+    Sugerir {
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
     /// Abre un archivo como lo abriría la importación, sin biblioteca, y dice
     /// qué se le saca: familia, medidas, triángulos, y la miniatura si se pide
     Mirar {
@@ -617,6 +623,7 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 calidad: *calidad,
                 lado: *lado,
                 recorte: None,
+                tramo: None,
             };
             let nuevo = lib.crear_version(&id, &receta)?;
             let original = lib.load_item(&id)?;
@@ -753,6 +760,24 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                     .map(|(t, n)| format!("{t} {}", fmt::dim(&n.to_string())))
                     .collect();
                 println!("  {} {}", fmt::dim("etiquetas     "), linea.join("  "));
+            }
+            Ok(())
+        }
+
+        Cmd::Sugerir { ids } => {
+            let lib = open_lib(cli)?;
+            let ids: Vec<String> = ids
+                .iter()
+                .map(|i| resolver_id(&lib, i))
+                .collect::<Result<_, _>>()?;
+            for s in grimorio_core::sugerencias::sugerir(&lib, &ids, 10)? {
+                println!(
+                    "  {:<24} {:>4.2}  {:?}{}",
+                    format!("#{}", s.etiqueta),
+                    s.puntos,
+                    s.porque,
+                    if s.nueva { "  (nueva)" } else { "" }
+                );
             }
             Ok(())
         }

@@ -28,6 +28,7 @@ Window {
     property string textoBusqueda: filtroInicial
     readonly property bool enPapelera: Consulta.leer(textoBusqueda, "papelera") === "si"
     property bool visorAbierto: false
+    readonly property bool editorAbierto: editor.abierto
 
     /// El alto de la barra de arriba, que es también el de la cabeza de la
     /// barra lateral y el del inspector: las tres rayas de debajo son una.
@@ -39,11 +40,65 @@ Window {
     readonly property string consultaSinEtiquetar: "etiquetado:no"
     readonly property string consultaRecientes: "fecha:7d"
 
+    /// La carpeta dinámica abierta, o "". Con una abierta, lo que se toque en
+    /// el buscador (escribir, quitar un #, un filtro de la fila) cambia sus
+    /// filtros: se crea la carpeta y se le ponen dentro, o se le cambian.
+    /// Irse a otra vista la cierra sin tocarla.
+    property string dinamicaActual: ""
+    function dinamica(id) {
+        const bs = nucleo.busquedas
+        for (let i = 0; i < bs.length; i++) if (bs[i].id === id) return bs[i]
+        return null
+    }
+    function abrirDinamica(id) {
+        const b = dinamica(id)
+        if (!b) return
+        aplicarBusqueda(b.consulta)
+        dinamicaActual = id
+    }
+    /// Lo que hay en el buscador pasa a ser la búsqueda de la abierta.
+    function guardarEnDinamica() {
+        if (dinamicaActual === "") return
+        const b = dinamica(dinamicaActual)
+        if (!b) { dinamicaActual = ""; return }
+        const c = textoBusqueda.trim()
+        if (c !== b.consulta) nucleo.cambiarBusqueda(dinamicaActual, c)
+    }
+    /// Crea una carpeta dinámica con los filtros de ahora (o ninguno) y la deja
+    /// abierta. El id lo pone el núcleo: se reconoce al llegar la lista nueva.
+    property var dinamicasAntes: null
+    function crearDinamica(nombre, consulta) {
+        let ids = []
+        const bs = nucleo.busquedas
+        for (let i = 0; i < bs.length; i++) ids.push(bs[i].id)
+        dinamicasAntes = ids
+        nucleo.guardarBusqueda(nombre, consulta)
+    }
+    Connections {
+        target: nucleo
+        function onBusquedasCambiaron() {
+            if (!ventana.dinamicasAntes) {
+                if (ventana.dinamicaActual !== "" && !ventana.dinamica(ventana.dinamicaActual))
+                    ventana.dinamicaActual = ""
+                return
+            }
+            const bs = nucleo.busquedas
+            for (let i = 0; i < bs.length; i++) {
+                if (ventana.dinamicasAntes.indexOf(bs[i].id) < 0) {
+                    ventana.dinamicasAntes = null
+                    ventana.abrirDinamica(bs[i].id)
+                    ventana.enfocarBusqueda()
+                    return
+                }
+            }
+        }
+    }
+
     /// Qué vista fija se está mirando: "todo", "sinEtiquetar", "recientes",
     /// "papelera", o "" si es una carpeta o una búsqueda cualquiera.
     readonly property string vistaFija: {
         if (enPapelera) return "papelera"
-        if (carpetaActual.length > 0) return ""
+        if (carpetaActual.length > 0 || dinamicaActual.length > 0) return ""
         const t = textoBusqueda.trim()
         if (t.length === 0) return "todo"
         if (t === consultaSinEtiquetar) return "sinEtiquetar"
@@ -54,9 +109,12 @@ Window {
     /// La carpeta dinámica cuyo filtro es justo el que se ve, o "".
     readonly property string dinamicaAbierta: {
         if (carpetaActual.length > 0 || enPapelera) return ""
+        if (dinamicaActual.length > 0) return dinamicaActual
+        const t = textoBusqueda.trim()
+        if (t.length === 0) return ""
         const bs = nucleo.busquedas
         for (let i = 0; i < bs.length; i++)
-            if (bs[i].consulta === textoBusqueda.trim()) return bs[i].id
+            if (bs[i].consulta === t) return bs[i].id
         return ""
     }
     /// Si lo que se ve es un filtro que se puede guardar como carpeta
@@ -67,8 +125,10 @@ Window {
                                                && dinamicaAbierta === ""
                                                && textoBusqueda.trim().length > 0
 
+    /// El botón «guardar como carpeta»: se crea en el acto, con los filtros
+    /// por nombre. Para otro nombre, doble clic en la carpeta.
     function guardarComoDinamica() {
-        lateral.guardarDinamica()
+        crearDinamica(Consulta.nombreDe(textoBusqueda), textoBusqueda.trim())
     }
 
     /// El rótulo de lo que se está mirando, para la barra de arriba.
@@ -80,9 +140,8 @@ Window {
         case "todo": return qsTr("Todo")
         }
         if (carpetaActual.length > 0) return nombreDeCarpeta(carpetaActual)
-        const bs = nucleo.busquedas
-        for (let i = 0; i < bs.length; i++)
-            if (bs[i].consulta === textoBusqueda.trim()) return bs[i].nombre
+        const d = dinamica(dinamicaAbierta)
+        if (d) return d.nombre
         return qsTr("Búsqueda")
     }
 
@@ -301,18 +360,31 @@ Window {
         ]
         if (carpetaActual.length > 0)
             a.push({ texto: qsTr("sacar de la carpeta"), valor: "sacar", icono: "salir" })
-        // Las pilas. Apilar pide más de uno —el del foco es la principal—, y
-        // sacar una versión ligera tiene sentido de una imagen en una imagen.
+        // Las pilas. Apilar pide más de uno —el del foco es la principal—.
         if (!enPapelera) {
             const foco = modelo.actual
             if (varios)
                 a.push({ texto: qsTr("apilar como versiones"), valor: "apilar", icono: "pila" })
-            else if (foco >= 0 && modelo.familiaDe(foco) === Textos.IMAGEN)
-                a.push({ texto: qsTr("crear versión…"), valor: "version", icono: "pila" })
             if (foco >= 0 && modelo.versionesDe(foco) > 0)
                 a.push({ texto: qsTr("deshacer la pila"), valor: "desapilar", icono: "pila" })
-            if (recorte.hayPrograma && foco >= 0 && modelo.familiaDe(foco) === Textos.IMAGEN)
-                a.push({ texto: qsTr("quitar el fondo"), valor: "fondo", icono: "recorte" })
+        }
+        // Editar: lo rápido se hace aquí mismo; lo que pide mirar, en el editor.
+        // Nada de esto toca el original: girar es un dato del elemento, y lo
+        // demás sale como versión en su pila.
+        if (!enPapelera && modelo.actual >= 0) {
+            const f = modelo.familiaDe(modelo.actual)
+            let ed = []
+            if (f === Textos.IMAGEN || f === Textos.VIDEO) {
+                ed.push({ texto: qsTr("girar a la izquierda"), valor: "girarIzq", icono: "girarIzq" })
+                ed.push({ texto: qsTr("girar a la derecha"), valor: "girarDer", icono: "girarDer" })
+            }
+            if (!varios && f === Textos.IMAGEN)
+                ed.push({ texto: qsTr("crear versión…"), valor: "version", icono: "pila" })
+            if (recorte.hayPrograma && f === Textos.IMAGEN)
+                ed.push({ texto: qsTr("quitar el fondo"), valor: "fondo", icono: "recorte" })
+            if (!varios && editor.sabe(modelo.actual))
+                ed.push({ texto: qsTr("abrir en el editor (recortar)"), valor: "editor", icono: "lapiz", atajo: "E" })
+            if (ed.length > 0) a = a.concat([{ separador: true }], ed)
         }
         a.push({ texto: modelo.adultoFoco ? qsTr("quitar +18") : qsTr("marcar +18"),
                  valor: "adulto", icono: "escudo" })
@@ -352,6 +424,9 @@ Window {
             break
         }
         case "desapilar": nucleo.desapilar([modelo.idDe(modelo.actual)]); break
+        case "girarIzq": nucleo.girar(modelo.seleccion, (modelo.giroFoco + 270) % 360); break
+        case "girarDer": nucleo.girar(modelo.seleccion, (modelo.giroFoco + 90) % 360); break
+        case "editor": visorAbierto = false; editor.abrir(modelo.actual); break
         case "fondo": quitarFondo(); break
         }
     }
@@ -619,6 +694,7 @@ Window {
     }
 
     function irACarpeta(id) {
+        dinamicaActual = ""
         carpetaActual = id
         // Elegir una carpeta saca de la papelera: mirar dentro de una carpeta
         // y ver solo lo tirado sería la sorpresa más tonta posible.
@@ -629,6 +705,7 @@ Window {
     /// Abre una carpeta dinámica: su búsqueda en el buscador, sobre toda la
     /// biblioteca. Vacía, vuelve a «Todo».
     function aplicarBusqueda(consulta) {
+        dinamicaActual = ""
         carpetaActual = ""
         textoBusqueda = consulta
         consultar()
@@ -639,7 +716,7 @@ Window {
     }
 
     function verPapelera(si) {
-        if (si) carpetaActual = ""
+        if (si) { carpetaActual = ""; dinamicaActual = "" }
         textoBusqueda = Consulta.poner(textoBusqueda, "papelera", si ? "si" : "")
         consultar()
     }
@@ -648,11 +725,13 @@ Window {
     function filtrarPorEtiqueta(t) {
         textoBusqueda = Consulta.alternar(textoBusqueda, "etiqueta", t)
         consultar()
+        guardarEnDinamica()
     }
 
     function ponerFiltro(campo, valor) {
         textoBusqueda = Consulta.poner(textoBusqueda, campo, valor)
         consultar()
+        guardarEnDinamica()
     }
 
     function pedirVaciarPapelera() {
@@ -794,6 +873,11 @@ Window {
         anchors.fill: parent
         visible: ventana.visorAbierto
         onCerrar: ventana.visorAbierto = false
+    }
+
+    Editor {
+        id: editor
+        anchors.fill: parent
     }
 
     // El menú de carpeta va aquí y no dentro de la fila que lo abre: dentro
@@ -1003,6 +1087,7 @@ Window {
     function mostrarElemento(id) {
         visorAbierto = false
         carpetaActual = ""
+        dinamicaActual = ""
         textoBusqueda = ""
         porEnsenar = id
         consultar()
@@ -1069,6 +1154,7 @@ Window {
             else if (panelAjustes.abierto) panelAjustes.cerrar()
             else if (panelVinculos.abierto) panelVinculos.cerrar()
             else if (panelNovedades.abierto) panelNovedades.cerrar()
+            else if (editor.abierto) editor.cerrar()
             // A pantalla completa, Esc sale de ella y deja el visor abierto,
             // como en cualquier reproductor; el siguiente Esc ya lo cierra.
             else if (ventana.visorAbierto && visor.pantallaCompleta) visor.alternarPantallaCompleta()
@@ -1078,7 +1164,7 @@ Window {
     }
     Shortcut {
         sequence: "Return"
-        enabled: modelo.actual >= 0 && !ventana.visorAbierto && !ventana.escribiendo
+        enabled: modelo.actual >= 0 && !ventana.visorAbierto && !ventana.editorAbierto && !ventana.escribiendo
                  && !confirmacion.abierto && !confirmarBorrado.abierto
         onActivated: ventana.visorAbierto = true
     }
@@ -1094,7 +1180,7 @@ Window {
     }
     Shortcut {
         sequences: [StandardKey.Delete]
-        enabled: modelo.elegidos > 0 && !ventana.escribiendo
+        enabled: modelo.elegidos > 0 && !ventana.escribiendo && !ventana.editorAbierto
         // En la papelera, Supr borra para siempre, pero siempre preguntando
         // antes: la tecla que se pulsa sin mirar no puede borrar sin más.
         onActivated: ventana.tirar()
@@ -1125,6 +1211,16 @@ Window {
         sequence: "Ctrl+L"
         onActivated: disposicion.modo = disposicion.modo === 1 ? 0 : (disposicion.modo === 0 ? 2 : 1)
     }
+    // E abre el editor con lo del foco, desde la galería o desde el visor.
+    Shortcut {
+        sequence: "E"
+        enabled: modelo.actual >= 0 && !ventana.editorAbierto && !ventana.escribiendo
+                 && editor.sabe(modelo.actual)
+        onActivated: {
+            ventana.visorAbierto = false
+            editor.abrir(modelo.actual)
+        }
+    }
     Shortcut {
         sequence: "Ctrl+I"
         onActivated: ajustes.verInspector = !ajustes.verInspector
@@ -1153,7 +1249,7 @@ Window {
     // aquí y no hay por qué quitárselo a quien lo quiera.
     Shortcut {
         sequence: "Space"
-        enabled: !ventana.visorAbierto && !ventana.escribiendo && inspector.hayReproductor
+        enabled: !ventana.visorAbierto && !ventana.editorAbierto && !ventana.escribiendo && inspector.hayReproductor
         onActivated: inspector.alternarReproduccion()
     }
     Shortcut {

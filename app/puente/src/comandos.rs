@@ -43,6 +43,10 @@ pub enum Comando {
         nombre: String,
         consulta: String,
     },
+    CambiarBusqueda {
+        id: String,
+        consulta: String,
+    },
     RenombrarBusqueda {
         id: String,
         nombre: String,
@@ -147,6 +151,9 @@ pub enum Comando {
         /// El modelo con el que se quitó el fondo.
         #[serde(default)]
         recorte: Option<String>,
+        /// O el tramo que se cortó de un vídeo o de un sonido.
+        #[serde(default)]
+        tramo: Option<grimorio_core::Tramo>,
     },
     /// Varias pilas de una vez, como una sola cosa que se deshace.
     ApilarGrupos {
@@ -294,6 +301,10 @@ pub enum Comando {
     /// Pide la ficha completa de un elemento, para el panel de detalle.
     Ficha {
         id: String,
+    },
+    /// Etiquetas que probablemente les van a estos elementos.
+    SugerirEtiquetas {
+        ids: Vec<String>,
     },
     /// Abre el original con el visor del sistema.
     AbrirFuera {
@@ -452,6 +463,12 @@ pub fn ejecutar(
                 format!("«{}» guardada como carpeta inteligente", nombre.trim()),
                 id,
             );
+        }
+
+        Comando::CambiarBusqueda { id, consulta } => {
+            grimorio_core::busquedas::cambiar_consulta(lib.root(), id, consulta)?;
+            eventos::busquedas(aviso, lib);
+            eventos::hecho(aviso, id_cmd, String::new());
         }
 
         Comando::RenombrarBusqueda { id, nombre } => {
@@ -1038,17 +1055,34 @@ pub fn ejecutar(
             eventos::estimacion(aviso, id_cmd, id, &e);
         }
 
-        Comando::AnadirVersion { id, ruta, recorte } => {
+        Comando::AnadirVersion {
+            id,
+            ruta,
+            recorte,
+            tramo,
+        } => {
+            let formato = std::path::Path::new(ruta)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("png")
+                .to_ascii_lowercase();
             let receta = grimorio_core::Receta {
-                formato: "png".into(),
+                formato,
                 calidad: 100,
                 lado: 0,
                 recorte: recorte.clone(),
+                tramo: *tramo,
             };
             let nuevo = lib.anadir_version(id, std::path::Path::new(ruta), &receta)?;
             let v = lib.load_item(&nuevo)?;
             pila_cambiada(lib, id, id_cmd, aviso, vista)?;
-            let que = if recorte.is_some() { "fondo quitado" } else { "versión añadida" };
+            let que = if recorte.is_some() {
+                "fondo quitado"
+            } else if tramo.is_some() {
+                "recortado"
+            } else {
+                "versión añadida"
+            };
             eventos::hecho_con_id(aviso, id_cmd, format!("{que}: {}", humano(v.size)), nuevo);
         }
 
@@ -1316,6 +1350,11 @@ pub fn ejecutar(
             eventos::ficha(aviso, id_cmd, lib, &it);
         }
 
+        Comando::SugerirEtiquetas { ids } => {
+            let lista = grimorio_core::sugerencias::sugerir(lib, ids, 6)?;
+            eventos::sugerencias(aviso, id_cmd, ids, &lista);
+        }
+
         Comando::AbrirFuera { id } => {
             let item = lib.load_item(id)?;
             let ruta = lib.original_path(&item);
@@ -1450,11 +1489,19 @@ fn cambia_la_vista(q: &Query, t: Toca) -> bool {
     t.papelera
         || t.pila
         || (t.carpetas && q.folder.is_some())
-        || (t.etiquetas && (!q.tags.is_empty() || q.text.is_some()))
+        || (t.etiquetas
+            && (!q.tags.is_empty()
+                || !q.alguna_tag.is_empty()
+                || !q.sin_tags.is_empty()
+                || q.text.is_some()
+                || !q.sin_texto.is_empty()))
         || (t.estrellas
             && (q.min_stars.is_some() || q.max_stars.is_some() || q.sort == SortBy::StarsDesc))
-        || (t.nombre && (q.text.is_some() || matches!(q.sort, SortBy::NameAsc | SortBy::NameDesc)))
-        || (t.nota && q.text.is_some())
+        || (t.nombre
+            && (q.text.is_some()
+                || !q.sin_texto.is_empty()
+                || matches!(q.sort, SortBy::NameAsc | SortBy::NameDesc)))
+        || (t.nota && (q.text.is_some() || !q.sin_texto.is_empty()))
         // Marcar como +18 solo saca de la vista si se está mirando justo por
         // esa marca. Con el modo seguro puesto no cambia qué se ve, solo cómo
         // se ve, y eso lo resuelve la celda sola.

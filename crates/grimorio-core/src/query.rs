@@ -69,6 +69,20 @@ pub struct Query {
     pub familias: Vec<crate::medio::Familia>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    /// Grupos de «cualquiera de estas»: `#comida|postre` es un grupo, y tiene
+    /// que cumplirse cada grupo.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alguna_tag: Vec<Vec<String>>,
+    /// Lo que se deja fuera, con un `-` delante: `-#picante`, `-tipo:video`,
+    /// `-ext:gif`, `-borrador`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sin_tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sin_familias: Vec<crate::medio::Familia>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sin_exts: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sin_texto: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub folder: Option<String>,
     /// Si la carpeta arrastra también lo que hay en sus hijas. Por defecto sí:
@@ -139,6 +153,11 @@ impl Default for Query {
             exts: Vec::new(),
             familias: Vec::new(),
             tags: Vec::new(),
+            alguna_tag: Vec::new(),
+            sin_tags: Vec::new(),
+            sin_familias: Vec::new(),
+            sin_exts: Vec::new(),
+            sin_texto: Vec::new(),
             folder: None,
             folder_recursive: true,
             min_stars: None,

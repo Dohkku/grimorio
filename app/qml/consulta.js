@@ -95,7 +95,7 @@ function muestrasConNinguna() {
 function tieneTextoLibre(texto) {
     var t = trozos(texto)
     for (var i = 0; i < t.length; ++i)
-        if (t[i].indexOf(":") < 0 && t[i].charAt(0) !== "#") return true
+        if (t[i].indexOf(":") < 0 && t[i].charAt(0) !== "#" && t[i].charAt(0) !== "-") return true
     return false
 }
 
@@ -119,6 +119,44 @@ function cambiarUltima(texto, nuevo) {
     if (nuevo.length > 0) salida.push(nuevo)
     var s = salida.join(" ")
     return s.length > 0 ? s + " " : ""
+}
+
+/// Un nombre para una carpeta dinámica hecho con sus filtros: «comida · sin
+/// picante · vídeos». Se pone de partida; quien quiera otro, la renombra.
+function nombreDe(texto) {
+    var FAMILIAS = { imagen: "imágenes", video: "vídeos", audio: "audio", modelo: "3D",
+                     documento: "documentos", tipografia: "fuentes", raw: "RAW" }
+    var partes = []
+    var t = trozos(texto)
+    for (var i = 0; i < t.length; ++i) {
+        var trozo = t[i]
+        var fuera = trozo.charAt(0) === "-" && trozo.length > 1
+        if (fuera) trozo = trozo.substring(1)
+        var dicho = ""
+        var sug = null
+        for (var k = 0; k < SUGERENCIAS.length; ++k)
+            if (SUGERENCIAS[k].token === trozo) sug = SUGERENCIAS[k]
+        if (sug) {
+            dicho = sug.texto.replace(/^tipo: /, "").replace(/^forma: /, "")
+        } else if (trozo.charAt(0) === "#") {
+            dicho = trozo.substring(1).split("|").join(" o ")
+        } else if (esCampo(trozo, "etiqueta")) {
+            dicho = trozo.substring(9).split("|").join(" o ")
+        } else if (esCampo(trozo, "tipo") || esCampo(trozo, "ext")) {
+            var v = trozo.substring(trozo.indexOf(":") + 1).toLowerCase()
+            dicho = FAMILIAS[v] || v
+        } else if (esCampo(trozo, "estrellas")) {
+            dicho = trozo.substring(10).replace(">=", "≥").replace("<=", "≤") + " ★"
+        } else if (esCampo(trozo, "orden")) {
+            continue
+        } else {
+            dicho = trozo.replace(":", " ")
+        }
+        if (dicho.length > 0) partes.push((fuera ? "sin " : "") + dicho)
+    }
+    var n = partes.join(" · ")
+    if (n.length > 60) n = n.substring(0, 59) + "…"
+    return n.length > 0 ? n : "carpeta dinámica"
 }
 
 /// `#etiqueta` como se escribe en el buscador: entre comillas si lleva

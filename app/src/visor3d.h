@@ -2,8 +2,8 @@
 //
 // OpenGL a mano y no Qt Quick 3D: Qt Quick 3D va con licencia GPL o comercial,
 // y Grimorio se distribuye como binario cerrado (ver docs/DEPENDENCIAS.md).
-// Para enseñar una malla sin texturas hacen falta un búfer de vértices y dos
-// sombreadores, y eso está en Qt Gui, que es LGPL.
+// Para enseñar una malla con sus colores y texturas hacen falta unos búferes,
+// unas texturas y dos sombreadores, y eso está en Qt Gui, que es LGPL.
 //
 // La malla llega ya preparada por el núcleo (`.malla`: centrada, a escala
 // unidad, Y hacia arriba) y sin normales: el sombreador las saca de la

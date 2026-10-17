@@ -13,6 +13,30 @@ Column {
     property var lista: []
     /// Cuántos elementos hay elegidos, para saber si se está editando en lote.
     property int cuantos: 1
+    /// Los elegidos, para pedir las sugerencias.
+    property var ids: []
+
+    // Las sugerencias se piden con un momento de calma: al pasar con las
+    // flechas por la galería, los de paso no encargan nada. Y otra vez al
+    // cambiar sus etiquetas, porque lo que va junto depende de ellas.
+    onIdsChanged: pedir.restart()
+    onListaChanged: pedir.restart()
+    Timer {
+        id: pedir
+        interval: 250
+        onTriggered: nucleo.pedirSugerencias(raiz.ids)
+    }
+    readonly property var porqueNueva: ({
+        "nombre": qsTr("etiqueta nueva, de su nombre"),
+        "carpeta": qsTr("etiqueta nueva, de la carpeta de la que vino")
+    })
+    readonly property var porque: ({
+        "nombre": qsTr("por su nombre"),
+        "parecidas": qsTr("las parecidas la llevan"),
+        "juntas": qsTr("suele ir con las que ya tiene"),
+        "carpeta": qsTr("la llevan las de su carpeta"),
+        "origen": qsTr("la llevan las de la misma web")
+    })
 
     signal anadir(string etiqueta)
     signal quitar(string etiqueta)
@@ -118,6 +142,60 @@ Column {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: raiz.quitar(ficha.modelData)
+                    }
+                }
+            }
+        }
+    }
+
+    // Sugeridas: un clic y se pone. Con borde de puntos en el tono tenue para
+    // que no se confundan con las que ya tiene.
+    Flow {
+        width: raiz.width
+        spacing: tema.hueco * 0.4
+        visible: nucleo.sugerencias.length > 0
+
+        Text {
+            height: Math.round(tema.fuente * 1.7)
+            verticalAlignment: Text.AlignVCenter
+            text: qsTr("sugeridas")
+            color: tema.textoTenue
+            font.pixelSize: tema.fuente * 0.85
+        }
+        Repeater {
+            model: nucleo.sugerencias
+            delegate: Rectangle {
+                id: propuesta
+                required property var modelData
+                height: Math.round(tema.fuente * 1.7)
+                width: texto.implicitWidth + tema.hueco * 1.4
+                radius: height / 2
+                color: propuestaRaton.containsMouse ? tema.borde : "transparent"
+                border.color: propuestaRaton.containsMouse ? tema.seleccion : tema.borde
+                border.width: 1
+                opacity: 0.55 + 0.45 * propuesta.modelData.puntos
+                Text {
+                    id: texto
+                    anchors.centerIn: parent
+                    // Las nuevas en cursiva: ponerla la crea, y conviene verlo.
+                    text: "+ " + propuesta.modelData.etiqueta
+                    font.italic: propuesta.modelData.nueva === true
+                    color: propuestaRaton.containsMouse ? tema.texto : tema.textoTenue
+                    font.pixelSize: tema.fuente * 0.9
+                }
+                MouseArea {
+                    id: propuestaRaton
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onContainsMouseChanged: containsMouse
+                        ? ventana.pistas.mostrar(propuesta, (propuesta.modelData.nueva
+                                                               ? raiz.porqueNueva[propuesta.modelData.porque]
+                                                               : raiz.porque[propuesta.modelData.porque]) || "")
+                        : ventana.pistas.ocultar(propuesta)
+                    onClicked: {
+                        ventana.pistas.ocultar(propuesta)
+                        raiz.anadir(propuesta.modelData.etiqueta)
                     }
                 }
             }

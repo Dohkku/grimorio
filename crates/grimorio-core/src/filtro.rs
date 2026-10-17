@@ -6,6 +6,9 @@
 //! que existan las carpetas inteligentes— **es** la carpeta inteligente. La
 //! barra de filtros de la ventana escribe aquí dentro; no hay dos verdades.
 //!
+//! Un `-` delante deja fuera: `#comida -#picante`, `-tipo:video`, `-borrador`.
+//! Una barra entre etiquetas vale cualquiera de ellas: `#comida|postre`.
+//!
 //! Regla de diseño: **lo que no se entiende es texto**. Si alguien pega una URL
 //! o escribe `nota:` esperando algo que no existe, el buscador busca esas
 //! palabras en vez de tragárselas o dar un error. Un buscador que castiga por
@@ -193,15 +196,24 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
     let mut libres: Vec<String> = Vec::new();
 
     for trozo in trocear(entrada) {
+        // `-algo` deja fuera lo que diga `algo`. Un `-` solo es texto.
+        let (fuera, trozo) = match trozo.strip_prefix('-') {
+            Some(r) if !r.is_empty() && r != "-" => (true, r.to_string()),
+            _ => (false, trozo),
+        };
         // Atajo: `#rótulo` es lo mismo que `etiqueta:rótulo`. Se escribe solo.
         if let Some(t) = trozo.strip_prefix('#') {
             if !t.is_empty() {
-                q.tags.push(t.to_string());
+                etiqueta(&mut q, t, fuera);
                 continue;
             }
         }
         let Some((campo, valor)) = trozo.split_once(':') else {
-            libres.push(trozo);
+            if fuera {
+                q.sin_texto.push(trozo);
+            } else {
+                libres.push(trozo);
+            }
             continue;
         };
         let campo_l = campo.to_ascii_lowercase();
@@ -210,9 +222,22 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
             // `etiqueta:` a medio escribir no es un error, es alguien tecleando.
             continue;
         }
+        if fuera {
+            match campo_l.as_str() {
+                "etiqueta" | "etiquetas" | "tag" | "tags" => etiqueta(&mut q, v, true),
+                "ext" | "tipo" | "formato" | "familia" => match Familia::parse(v) {
+                    Some(f) => q.sin_familias.push(f),
+                    None => q.sin_exts.push(v.trim_start_matches('.').to_string()),
+                },
+                // Lo demás ya se dice al revés con su comparador
+                // (`estrellas:<3`, `adulto:no`); un `-` ahí no tiene sentido.
+                _ => avisos.push(format!("«-{campo}:» no se puede dejar fuera; prueba al revés")),
+            }
+            continue;
+        }
         let mut mal = || avisos.push(format!("no entiendo «{campo}:{valor}»"));
         match campo_l.as_str() {
-            "etiqueta" | "etiquetas" | "tag" | "tags" => q.tags.push(v.to_string()),
+            "etiqueta" | "etiquetas" | "tag" | "tags" => etiqueta(&mut q, v, false),
             // `tipo:` sirve para las dos cosas y elige sola: `tipo:video` es una
             // familia y `tipo:png` una extensión. Obligar a acordarse de cuál
             // es cada campo sería hacerle recordar a la persona una distinción
@@ -314,6 +339,22 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
     (q, avisos)
 }
 
+/// Una etiqueta del buscador: dentro, fuera o una de varias (`a|b`).
+fn etiqueta(q: &mut Query, t: &str, fuera: bool) {
+    let varias: Vec<String> = t
+        .split('|')
+        .map(|x| x.trim().trim_start_matches('#').to_string())
+        .filter(|x| !x.is_empty())
+        .collect();
+    match (fuera, varias.len()) {
+        (_, 0) => {}
+        // `-#a|b`: ni una ni otra.
+        (true, _) => q.sin_tags.extend(varias),
+        (false, 1) => q.tags.extend(varias),
+        (false, _) => q.alguna_tag.push(varias),
+    }
+}
+
 /// Escribe la consulta como se escribiría a mano.
 ///
 /// Es la vuelta del viaje, y existe para que la barra de filtros y la línea de
@@ -334,11 +375,26 @@ pub fn escribir(q: &Query) -> String {
     for t in &q.tags {
         partes.push(format!("etiqueta:{}", entrecomilla(t)));
     }
+    for g in &q.alguna_tag {
+        partes.push(format!("etiqueta:{}", entrecomilla(&g.join("|"))));
+    }
+    for t in &q.sin_tags {
+        partes.push(format!("-etiqueta:{}", entrecomilla(t)));
+    }
     for f in &q.familias {
         partes.push(format!("tipo:{}", f.as_str()));
     }
+    for f in &q.sin_familias {
+        partes.push(format!("-tipo:{}", f.as_str()));
+    }
     for e in &q.exts {
         partes.push(format!("ext:{e}"));
+    }
+    for e in &q.sin_exts {
+        partes.push(format!("-ext:{e}"));
+    }
+    for t in &q.sin_texto {
+        partes.push(format!("-{}", entrecomilla(t)));
     }
     match (q.min_stars, q.max_stars) {
         (Some(a), Some(b)) if a == b => partes.push(format!("estrellas:{a}")),
@@ -402,6 +458,38 @@ mod tests {
 
     fn p(s: &str) -> Query {
         parsear(s, Query::default()).0
+    }
+
+    #[test]
+    fn un_menos_delante_deja_fuera() {
+        let q = p("#comida -#picante -etiqueta:\"muy dulce\" -tipo:video -ext:.gif -borrador");
+        assert_eq!(q.tags, vec!["comida"]);
+        assert_eq!(q.sin_tags, vec!["picante", "muy dulce"]);
+        assert_eq!(q.sin_familias, vec![Familia::Video]);
+        assert_eq!(q.sin_exts, vec!["gif"]);
+        assert_eq!(q.sin_texto, vec!["borrador"]);
+        assert_eq!(q.text, None);
+        // Y de vuelta se escribe igual de entendible.
+        let otra = p(&escribir(&q));
+        assert_eq!(otra.sin_tags, q.sin_tags);
+        assert_eq!(otra.sin_familias, q.sin_familias);
+        assert_eq!(otra.sin_texto, q.sin_texto);
+    }
+
+    #[test]
+    fn una_barra_entre_etiquetas_vale_cualquiera() {
+        let q = p("#comida|postre -#a|b");
+        assert_eq!(q.alguna_tag, vec![vec!["comida".to_string(), "postre".into()]]);
+        assert_eq!(q.sin_tags, vec!["a", "b"]);
+        assert_eq!(p(&escribir(&q)).alguna_tag, q.alguna_tag);
+    }
+
+    #[test]
+    fn un_menos_suelto_o_en_un_campo_sin_sentido_no_rompe() {
+        let (q, avisos) = parsear("- -estrellas:3", Query::default());
+        assert_eq!(q.text.as_deref(), Some("-"));
+        assert_eq!(q.min_stars, None);
+        assert_eq!(avisos.len(), 1);
     }
 
     #[test]

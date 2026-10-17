@@ -621,6 +621,7 @@ Rectangle {
                     id: etiquetas
                     width: parent.width
                     cuantos: inspector.cuantos
+                    ids: modelo.seleccion
                     lista: inspector.alDia && inspector.ficha.etiquetas ? inspector.ficha.etiquetas : []
                     onAnadir: function (t) { nucleo.etiquetar(modelo.seleccion, [t], []) }
                     onQuitar: function (t) { nucleo.etiquetar(modelo.seleccion, [], [t]) }

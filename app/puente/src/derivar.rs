@@ -30,6 +30,17 @@ pub enum Peticion {
         ruta: PathBuf,
         duracion: f32,
     },
+    /// Un tramo de un vídeo o de un sonido, cortado a un archivo nuevo que
+    /// luego entra como versión (`anadir_version` con su `tramo`).
+    Tramo {
+        raiz: PathBuf,
+        id: String,
+        ruta: PathBuf,
+        desde_ms: u64,
+        hasta_ms: u64,
+        #[serde(default)]
+        exacto: bool,
+    },
     /// Onda y espectro de un sonido.
     Onda {
         raiz: PathBuf,
@@ -86,6 +97,7 @@ pub fn responder(peticion: &[u8]) -> Value {
     let cruce = match &p {
         Peticion::Proxy { raiz, id, ruta }
         | Peticion::Tira { raiz, id, ruta, .. }
+        | Peticion::Tramo { raiz, id, ruta, .. }
         | Peticion::Onda { raiz, id, ruta }
         | Peticion::PdfPagina { raiz, id, ruta, .. }
         | Peticion::Malla { raiz, id, ruta, .. } => mismo_elemento(raiz, id, ruta),
@@ -112,6 +124,23 @@ pub fn responder(peticion: &[u8]) -> Value {
                 "cadaS": t.cada_s,
             })
         }),
+        Peticion::Tramo {
+            raiz,
+            ruta,
+            desde_ms,
+            hasta_ms,
+            exacto,
+            ..
+        } => derivado::cortar_tramo(
+            &raiz,
+            &ruta,
+            grimorio_core::Tramo {
+                desde_ms,
+                hasta_ms,
+                exacto,
+            },
+        )
+        .map(|r| json!({ "ruta": r })),
         Peticion::Onda { raiz, id, ruta } => {
             derivado::onda(&raiz, &id, &ruta).map(|r| json!({ "ruta": r }))
         }

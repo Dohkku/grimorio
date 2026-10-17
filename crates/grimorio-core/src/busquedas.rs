@@ -49,13 +49,14 @@ pub fn guardar(raiz: &Path, busquedas: &[Busqueda]) -> Result<()> {
     crate::item::write_atomic(&ruta, &json)
 }
 
-/// Añade una y devuelve su id.
+/// Añade una y devuelve su id. Puede nacer sin búsqueda: se crea la carpeta
+/// y los filtros se le ponen después, ya dentro.
 pub fn anadir(raiz: &Path, nombre: &str, consulta: &str) -> Result<String> {
     let nombre = nombre.trim();
     let consulta = consulta.trim();
-    if nombre.is_empty() || consulta.is_empty() {
+    if nombre.is_empty() {
         return Err(Error::Invalid(
-            "una carpeta inteligente necesita nombre y búsqueda".into(),
+            "una carpeta inteligente necesita nombre".into(),
         ));
     }
     let mut todas = cargar(raiz)?;
@@ -92,6 +93,16 @@ pub fn renombrar(raiz: &Path, id: &str, nombre: &str) -> Result<()> {
     guardar(raiz, &todas)
 }
 
+/// Cambia su búsqueda: es lo que pasa al tocar los filtros con ella abierta.
+pub fn cambiar_consulta(raiz: &Path, id: &str, consulta: &str) -> Result<()> {
+    let mut todas = cargar(raiz)?;
+    let Some(b) = todas.iter_mut().find(|b| b.id == id) else {
+        return Err(Error::Invalid(format!("no existe la búsqueda {id}")));
+    };
+    b.consulta = consulta.trim().to_string();
+    guardar(raiz, &todas)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +120,11 @@ mod tests {
         assert_eq!(todas[0].nombre, "lo mejor en vídeo");
         assert_eq!(todas[0].consulta, "tipo:video estrellas:>=4");
         assert!(anadir(d.path(), "  ", "x").is_err());
+        // Nace vacía y se le ponen los filtros después.
+        let c = anadir(d.path(), "por ordenar", "").unwrap();
+        cambiar_consulta(d.path(), &c, " #comida -#picante ").unwrap();
+        let todas = cargar(d.path()).unwrap();
+        assert_eq!(todas[1].consulta, "#comida -#picante");
         assert!(borrar(d.path(), "no-existe").is_err());
     }
 }

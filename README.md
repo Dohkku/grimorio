@@ -33,8 +33,8 @@
   carpetas anidadas con color y **carpetas dinámicas** que se rellenan solas
   con un filtro.
 - **Encontrar al instante.** Un buscador que entiende `#etiqueta`,
-  `estrellas:>=4`, `tipo:vídeo`, fechas y colores, y que sugiere mientras
-  escribes. Responde en milisegundos con cien mil elementos.
+  `estrellas:>=4`, `tipo:vídeo`, fechas y colores, deja fuera con un menos
+  (`#comida -#picante`) y sugiere mientras escribes. Responde en milisegundos con cien mil elementos.
 - **Mirar de verdad.** Visor con zoom hasta el píxel y cuentagotas, onda de
   los sonidos, páginas de los PDF y modelos 3D con ejes como en Blender.
 - **Con el teclado.** Estrellas con los números, `Ctrl+K` para etiquetar,
@@ -43,6 +43,9 @@
 - **La misma imagen, en varios pesos.** Las versiones de una imagen se apilan
   y en la galería se ve una sola. Puedes crear versiones más ligeras y quitar
   el fondo, sin tocar el original.
+- **Recortar al momento.** Un editor para vídeos y sonidos (E, o clic
+  derecho): entrada, salida y listo. El tramo sale como versión en su pila
+  sin recodificar, así que tarda lo mismo con un vídeo de una hora.
 - **A tu manera.** Tema noche o papel, tamaño de la interfaz, modo seguro que
   difumina lo marcado como +18, repetidos, carpetas del disco vinculadas,
   capturas de pantalla, pegar desde el portapapeles o una URL.

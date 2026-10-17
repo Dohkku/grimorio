@@ -33,8 +33,11 @@ Rectangle {
     height: Math.round(tema.fuente * 2.6)
     color: "transparent"
 
-    function empezar() {
-        campo.text = ""
+    /// `inicial` sale escrito y elegido: se acepta con Intro o se escribe
+    /// encima.
+    function empezar(inicial) {
+        campo.text = inicial || ""
+        campo.selectAll()
         campo.forceActiveFocus()
     }
 

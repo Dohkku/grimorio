@@ -31,6 +31,7 @@
 // la raíz.
 
 import QtQuick
+import "consulta.js" as Consulta
 import "textos.js" as Textos
 
 Rectangle {
@@ -106,6 +107,7 @@ Rectangle {
         property bool cuentaTapada: false
         readonly property bool encima: sobreFila.containsMouse
         signal pulsada()
+        signal dobleClic()
 
         x: lateral.sangria
         width: lateral.width - lateral.sangria * 2 - 1
@@ -157,6 +159,7 @@ Rectangle {
                 lateral.forceActiveFocus()
                 fila.pulsada()
             }
+            onDoubleClicked: fila.dobleClic()
         }
     }
 
@@ -372,25 +375,33 @@ Rectangle {
     // usan igual —un clic y se ve lo que hay dentro— pero no son un árbol: ni
     // se anidan ni se arrastran, así que van en lista y aparte.
     property bool guardando: false
-    /// Pide el nombre en la fila donde va a quedar la carpeta. La llama
-    /// también el botón «guardar como carpeta» de la barra de arriba.
+    /// La carpeta dinámica que se está renombrando, o "" si la fila de
+    /// escribir es para una nueva.
+    property string renombrandoDinamica: ""
+    /// Pide el nombre de una carpeta dinámica nueva en la fila donde va a
+    /// quedar. Nace con los filtros de ahora si los hay, o vacía; los filtros
+    /// se le ponen o se le cambian ya dentro.
     function guardarDinamica() {
+        renombrandoDinamica = ""
         guardando = true
         // Un tick después: la fila tiene que estar visible para darle el foco.
+        empezarNombre.start()
+    }
+    function renombrarDinamica(id, nombre) {
+        renombrandoDinamica = id
+        guardando = true
         empezarNombre.start()
     }
     Timer {
         id: empezarNombre
         interval: 0
-        onTriggered: nombreBusqueda.empezar()
+        onTriggered: {
+            const d = ventana.dinamica(lateral.renombrandoDinamica)
+            nombreBusqueda.empezar(d ? d.nombre
+                                     : ventana.hayFiltroGuardable ? Consulta.nombreDe(ventana.textoBusqueda) : "")
+        }
     }
-    readonly property string busquedaActual: {
-        if (ventana.carpetaActual.length > 0 || ventana.enPapelera) return ""
-        const bs = nucleo.busquedas
-        for (let i = 0; i < bs.length; i++)
-            if (bs[i].consulta === ventana.textoBusqueda.trim()) return bs[i].id
-        return ""
-    }
+    readonly property string busquedaActual: ventana.dinamicaAbierta
 
     Cabecera {
         id: cabeceraDinamicas
@@ -399,15 +410,9 @@ Rectangle {
         // Sin nada escrito no hay qué guardar, y el botón lo dice en vez de no
         // hacer nada.
         pista: ventana.hayFiltroGuardable
-               ? qsTr("guardar lo que se ve como carpeta dinámica")
-               : qsTr("filtra o busca algo y guárdalo aquí")
-        onMas: {
-            if (!ventana.hayFiltroGuardable) {
-                ventana.enfocarBusqueda()
-                return
-            }
-            lateral.guardarDinamica()
-        }
+               ? qsTr("nueva carpeta dinámica con lo que se ve")
+               : qsTr("nueva carpeta dinámica: los filtros se le ponen dentro")
+        onMas: lateral.guardarDinamica()
     }
 
     Column {
@@ -426,7 +431,8 @@ Rectangle {
                 elegida: lateral.busquedaActual === modelData.id
                 cuentaTapada: quitarB.visible
                 // Pinchar la elegida vuelve a «Todo», como una carpeta.
-                onPulsada: ventana.aplicarBusqueda(elegida ? "" : modelData.consulta)
+                onPulsada: elegida ? ventana.aplicarBusqueda("") : ventana.abrirDinamica(modelData.id)
+                onDobleClic: lateral.renombrarDinamica(modelData.id)
 
                 BotonIcono {
                     id: quitarB
@@ -450,7 +456,7 @@ Rectangle {
             topPadding: tema.hueco * 0.2
             bottomPadding: tema.hueco * 0.4
             wrapMode: Text.Wrap
-            text: qsTr("Filtra o busca algo y pulsa «guardar como carpeta»: se rellena sola con lo que vaya encajando.")
+            text: qsTr("Pulsa + o filtra algo y «guardar como carpeta»: se rellena sola con lo que vaya encajando, y sus filtros se cambian desde dentro.")
             color: tema.textoTenue
             font.pixelSize: tema.fuente * 0.85
             lineHeight: 1.15
@@ -464,8 +470,13 @@ Rectangle {
             height: visible ? lateral.altoFila : 0
             seguir: false
             pista: qsTr("nombre de la carpeta…")
-            onNombrado: function (nombre) { nucleo.guardarBusqueda(nombre, ventana.textoBusqueda) }
-            onAcabada: lateral.guardando = false
+            onNombrado: function (nombre) {
+                if (lateral.renombrandoDinamica.length > 0)
+                    nucleo.renombrarBusqueda(lateral.renombrandoDinamica, nombre)
+                else
+                    ventana.crearDinamica(nombre, ventana.hayFiltroGuardable ? ventana.textoBusqueda.trim() : "")
+            }
+            onAcabada: { lateral.guardando = false; lateral.renombrandoDinamica = "" }
         }
     }
 

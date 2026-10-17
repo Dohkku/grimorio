@@ -8,6 +8,34 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.13
+
+- **Recortar vídeos y sonidos.** Con un vídeo o un sonido elegido, pulsa E (o
+  clic derecho, «abrir en el editor»): marca la entrada y la salida sobre los
+  fotogramas o la onda, con I y O, y guarda. El trozo sale como versión en su
+  pila, sin tocar el original, y al momento: no se recodifica, así que tarda
+  lo mismo con un vídeo de una hora. «Exacto» recodifica para cortar en el
+  fotograma justo.
+- **Dejar fuera en el buscador.** Un menos delante quita lo que diga:
+  `#comida -#picante`, `-tipo:video`, `-borrador`. Y una barra vale cualquiera
+  de las dos: `#comida|postre`.
+- **Carpetas dinámicas que se editan.** El + crea la carpeta al momento,
+  aunque esté vacía, y lo que filtres con ella abierta se queda como sus
+  filtros. «Guardar como carpeta» le pone de nombre sus filtros («comida ·
+  sin picante»); doble clic para cambiarlo.
+- **Etiquetas sugeridas.** Debajo de las etiquetas de lo elegido salen
+  propuestas: por su nombre, por las imágenes que se le parecen, por las que
+  suelen ir con las que ya tiene y por su carpeta. También nuevas (en
+  cursiva), sacadas del nombre del archivo o de la carpeta de la que vino. Un
+  clic y se pone.
+- **Modelos 3D con sus texturas.** GLB, glTF, .blend y .fbx se ven con sus
+  colores y texturas en la galería y en el visor. Los que ya tenías se ponen
+  al día con `grim miniaturas` (con Grimorio cerrado).
+- **Retoques en el clic derecho.** Girar, crear versión, quitar el fondo y el
+  editor, juntos.
+- **Arreglado:** al elegir una etiqueta del buscador y pulsar la cruz, se
+  quitaba el filtro pero el texto se quedaba escrito.
+
 ## 0.1.12
 
 - **Las versiones de un vídeo, a la vista.** En el visor, con un vídeo que

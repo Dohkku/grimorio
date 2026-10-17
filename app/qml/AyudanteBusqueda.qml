@@ -34,9 +34,12 @@ Item {
 
     /// La palabra que se escribe ahora.
     readonly property string palabra: campo ? Consulta.ultimaPalabra(campo.text) : ""
-    readonly property bool esEtiqueta: palabra.charAt(0) === "#"
+    /// `-#picante`: la etiqueta se sugiere igual, y al elegirla se deja fuera.
+    readonly property bool fuera: palabra.charAt(0) === "-"
+    readonly property string sinMenos: fuera ? palabra.substring(1) : palabra
+    readonly property bool esEtiqueta: sinMenos.charAt(0) === "#"
     readonly property string busca: {
-        let p = palabra
+        let p = sinMenos
         if (p.charAt(0) === "#") p = p.substring(1)
         if (p.toLowerCase().indexOf("etiqueta:") === 0) p = p.substring(9)
         return p.toLowerCase()
@@ -104,7 +107,8 @@ Item {
         if (bs.length > 0) {
             out.push({ tipo: "seccion", texto: qsTr("carpetas dinámicas") })
             for (let i = 0; i < Math.min(5, bs.length); i++)
-                out.push({ tipo: "inteligente", consulta: bs[i].consulta, nombre: bs[i].nombre, n: bs[i].cuenta })
+                out.push({ tipo: "inteligente", id: bs[i].id, consulta: bs[i].consulta,
+                           nombre: bs[i].nombre, n: bs[i].cuenta })
         }
         if (b.length > 0) {
             let fs = []
@@ -147,12 +151,14 @@ Item {
         campo.text = t
         ventana.textoBusqueda = t
         ventana.consultar()
+        ventana.guardarEnDinamica()
     }
 
     function usar(f) {
         switch (f.tipo) {
         case "etiqueta":
-            ponerBusqueda(Consulta.cambiarUltima(campo.text, Consulta.comoEtiqueta(f.nombre)))
+            ponerBusqueda(Consulta.cambiarUltima(campo.text,
+                                                 (fuera ? "-" : "") + Consulta.comoEtiqueta(f.nombre)))
             break
         case "filtro":
             ponerBusqueda(Consulta.cambiarUltima(campo.text, f.token))
@@ -164,7 +170,7 @@ Item {
             break
         case "inteligente":
             campo.text = f.consulta
-            ventana.aplicarBusqueda(f.consulta)
+            ventana.abrirDinamica(f.id)
             cerrado = true
             break
         }

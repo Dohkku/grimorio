@@ -16,7 +16,7 @@
 
 use crate::error::{Error, Result};
 use crate::import::{self, ImportOptions};
-use crate::item::{Item, OriginMode, Receta};
+use crate::item::{Item, OriginMode, Receta, Tramo};
 use crate::library::Library;
 use crate::registro::{Operacion, Parche};
 use std::collections::HashMap;
@@ -243,6 +243,36 @@ impl Library {
         r
     }
 
+    /// Un trozo de un vídeo o de un sonido como versión nueva en su pila.
+    ///
+    /// Rápido por defecto: ffmpeg copia los paquetes del tramo sin
+    /// decodificarlos (`-c copy`), así que tarda lo que tarda leerlos del
+    /// disco aunque el vídeo sea de una hora. A cambio, el vídeo empieza en el
+    /// fotograma clave de antes del punto pedido, unas décimas antes. Con
+    /// `exacto` se recodifica y corta justo donde se pidió.
+    pub fn recortar_tramo(&mut self, id: &str, tramo: Tramo) -> Result<String> {
+        let fuente = self.load_item(id)?;
+        if !matches!(fuente.kind, crate::medio::Familia::Video | crate::medio::Familia::Audio) {
+            return Err(Error::Invalid("solo se recortan vídeos y sonidos".into()));
+        }
+        if tramo.hasta_ms <= tramo.desde_ms {
+            return Err(Error::Invalid("el tramo acaba antes de empezar".into()));
+        }
+        let original = self.original_path(&fuente);
+        let ext = fuente.ext.to_ascii_lowercase();
+        let tmp = crate::derivado::cortar_tramo(self.root(), &original, tramo)?;
+        let receta = Receta {
+            formato: ext,
+            calidad: 100,
+            lado: 0,
+            recorte: None,
+            tramo: Some(tramo),
+        };
+        let r = self.anadir_version(id, &tmp, &receta);
+        let _ = std::fs::remove_file(&tmp);
+        r
+    }
+
     /// Lo que pesaría la versión de `id` con `receta`, sin crearla: el mismo
     /// trabajo que [`Library::crear_version`] hasta tener los bytes, que se
     /// cuentan y se tiran. Es lo que deja ver el peso antes de decidir.
@@ -301,6 +331,8 @@ impl Library {
 
         let titulo = if receta.recorte.is_some() {
             "quitar el fondo"
+        } else if receta.tramo.is_some() {
+            "recortar"
         } else {
             "crear una versión"
         };
@@ -375,6 +407,9 @@ fn describir(receta: &Receta, hecho: &Item) -> String {
     if receta.recorte.is_some() {
         return "sin fondo".into();
     }
+    if let Some(t) = receta.tramo {
+        return format!("{}–{}", reloj(t.desde_ms), reloj(t.hasta_ms));
+    }
     let mut s = receta.formato.to_ascii_lowercase();
     if receta.lado > 0 {
         s.push_str(&format!(" {} px", hecho.width.max(hecho.height)));
@@ -383,6 +418,18 @@ fn describir(receta: &Receta, hecho: &Item) -> String {
         s.push_str(&format!(" {} %", receta.calidad.clamp(1, 100)));
     }
     s
+}
+
+/// `75 300` ms → `1:15,3`: minutos y segundos con décimas, como se lee un
+/// tramo.
+fn reloj(ms: u64) -> String {
+    let s = ms / 1000;
+    let d = (ms % 1000) / 100;
+    if s >= 3600 {
+        format!("{}:{:02}:{:02},{d}", s / 3600, s / 60 % 60, s % 60)
+    } else {
+        format!("{}:{:02},{d}", s / 60, s % 60)
+    }
 }
 
 /// Si la calidad cuenta: en JPEG siempre, en WebP por debajo de 100.
@@ -730,6 +777,7 @@ mod tests {
             calidad: 70,
             lado: 600,
             recorte: None,
+            tramo: None,
         };
         let v = lib.crear_version(&original, &receta).unwrap();
         let version = lib.load_item(&v).unwrap();
@@ -774,6 +822,7 @@ mod tests {
             calidad: 80,
             lado: 4000,
             recorte: None,
+            tramo: None,
         };
         let out = codificar(&img, "webp", &r).unwrap();
         let back = image::load_from_memory(&out).unwrap();
@@ -787,6 +836,7 @@ mod tests {
             calidad: 80,
             lado: 0,
             recorte: None,
+            tramo: None,
         };
         assert!(lib.crear_version(&a, &r).is_err());
     }
@@ -824,6 +874,7 @@ mod tests {
             calidad: 60,
             lado: 400,
             recorte: None,
+            tramo: None,
         };
         let e = lib.estimar_version(&id, &receta).unwrap();
         assert_eq!((e.ancho, e.alto), (400, 267));
@@ -842,6 +893,7 @@ mod tests {
             calidad: q,
             lado: 0,
             recorte: None,
+            tramo: None,
         };
         let perdida = lib.estimar_version(&id, &con(75)).unwrap().peso;
         let sin = lib.estimar_version(&id, &con(100)).unwrap().peso;
@@ -859,6 +911,7 @@ mod tests {
             calidad: 100,
             lado: 0,
             recorte: Some("isnet-general-use".into()),
+            tramo: None,
         };
         let fuera = foto(d.path(), "recorte.png", 300, 200, 4);
         let v = lib.anadir_version(&id, &fuera, &receta).unwrap();
@@ -912,5 +965,59 @@ mod tests {
         assert_eq!(malla(&lib), vec!["a", "c"]);
         lib.deshacer(&nada).unwrap();
         assert_eq!(malla(&lib), vec!["a", "b", "c", "e"]);
+    }
+
+    /// Lo que dura un archivo según ffprobe, en segundos.
+    fn duracion(ruta: &Path) -> f64 {
+        let o = std::process::Command::new("ffprobe")
+            .args(["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0"])
+            .arg(ruta)
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&o.stdout).trim().parse().unwrap()
+    }
+
+    #[test]
+    fn un_tramo_de_un_video_entra_como_version_rapido_o_exacto() {
+        if !crate::externo::hay("ffmpeg") || !crate::externo::hay("ffprobe") {
+            eprintln!("sin ffmpeg o ffprobe: prueba saltada");
+            return;
+        }
+        let (d, mut lib) = biblioteca();
+        let mp4 = d.path().join("clip.mp4");
+        crate::externo::correr(
+            "ffmpeg",
+            &[
+                "-v", "error", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=25:duration=6",
+                "-f", "lavfi", "-i", "sine=frequency=440:duration=6", "-g", "250",
+                "-pix_fmt", "yuv420p", "-shortest", "-y", &mp4.to_string_lossy(),
+            ],
+            std::time::Duration::from_secs(60),
+        )
+        .unwrap();
+        let rep = import::import(&mut lib, &[mp4], &ImportOptions::default(), &|_, _| {}).unwrap();
+        let id = rep.ids[0].clone();
+
+        let rapido = lib
+            .recortar_tramo(&id, Tramo { desde_ms: 2500, hasta_ms: 4500, exacto: false })
+            .unwrap();
+        let exacto = lib
+            .recortar_tramo(&id, Tramo { desde_ms: 2500, hasta_ms: 4500, exacto: true })
+            .unwrap();
+        for v in [&rapido, &exacto] {
+            let it = lib.load_item(v).unwrap();
+            assert_eq!(it.pila.as_deref(), Some(id.as_str()), "va en la pila del original");
+            assert_eq!(it.ext, "mp4");
+            assert!(it.name.ends_with("(0:02,5–0:04,5)"), "{}", it.name);
+        }
+        // Los dos duran lo pedido: el rápido lleva desde el fotograma clave de
+        // antes, pero su lista de edición lo deja en su sitio.
+        let de = |v: &str| duracion(&lib.original_path(&lib.load_item(v).unwrap()));
+        assert!((de(&exacto) - 2.0).abs() < 0.15, "{}", de(&exacto));
+        assert!((de(&rapido) - 2.0).abs() < 0.3, "{}", de(&rapido));
+        // Y se deshace como cualquier versión.
+        lib.deshacer(&nada).unwrap();
+        assert!(lib.load_item(&exacto).unwrap().trashed);
+        assert!(lib.recortar_tramo(&id, Tramo { desde_ms: 3000, hasta_ms: 1000, exacto: false }).is_err());
     }
 }

@@ -176,6 +176,7 @@ Rectangle {
                     rebote.stop()
                     ventana.textoBusqueda = campo.text
                     ventana.consultar()
+                    ventana.guardarEnDinamica()
                     ventana.ayudante.cerrado = true
                 }
                 Keys.onEscapePressed: {
@@ -184,8 +185,7 @@ Rectangle {
                         ventana.ayudante.cerrado = true
                         return
                     }
-                    ventana.textoBusqueda = ""
-                    ventana.consultar()
+                    ventana.aplicarBusqueda("")
                     focus = false
                 }
 
@@ -195,6 +195,22 @@ Rectangle {
                     onTriggered: {
                         ventana.textoBusqueda = campo.text
                         ventana.consultar()
+                        ventana.guardarEnDinamica()
+                    }
+                }
+
+                // El `text: ventana.textoBusqueda` de arriba se rompe en cuanto
+                // alguien escribe `campo.text = …` (el ayudante lo hace al
+                // elegir una etiqueta), y desde ahí vaciar la búsqueda quitaba
+                // el filtro pero dejaba el `#` escrito. Esto lo vuelve a juntar
+                // siempre que la búsqueda cambia por otro lado.
+                Connections {
+                    target: ventana
+                    function onTextoBusquedaChanged() {
+                        if (campo.text !== ventana.textoBusqueda) {
+                            rebote.stop()
+                            campo.text = ventana.textoBusqueda
+                        }
                     }
                 }
             }
@@ -216,11 +232,11 @@ Rectangle {
                 anchors.rightMargin: tema.hueco * 0.3
                 visible: campo.text.length > 0
                 icono: "cerrar"
-                pista: qsTr("vaciar la búsqueda (Esc)")
-                onPulsado: {
-                    ventana.textoBusqueda = ""
-                    ventana.consultar()
-                }
+                pista: ventana.dinamicaActual.length > 0 ? qsTr("salir de la carpeta (Esc)")
+                                                         : qsTr("vaciar la búsqueda (Esc)")
+                // Dentro de una carpeta dinámica, la cruz sale de ella y no le
+                // borra los filtros: para eso se quitan uno a uno.
+                onPulsado: ventana.aplicarBusqueda("")
             }
         }
 
