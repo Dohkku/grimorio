@@ -358,6 +358,7 @@ Item {
         // veces, y solo se callaba al elegir algo que no fuera un vídeo.
         // Ya arrancará `onEnPantallaChanged` cuando se vea.
         pendiente = String(fuente).length > 0 && enPantalla
+        seguirSalida()
         if (pendiente) reproduccion.play()
     }
 
@@ -499,6 +500,32 @@ Item {
         }
     }
 
+    // Sonar por la salida que el sistema tenga ahora, no por la que tenía al
+    // abrir el programa.
+    //
+    // `AudioOutput` se queda con el dispositivo por defecto de cuando se crea,
+    // y en Qt 6.4 `MediaDevices` no avisa cuando el sistema cambia de salida:
+    // el valor sí está al día si se pregunta, pero sin señal no hay atadura
+    // que se entere. Y cada tubería nueva abría el sonido pidiendo ese
+    // dispositivo viejo por su nombre, así que PipeWire lo dejaba allí aunque
+    // el resto del escritorio ya sonara por otro lado. Se pregunta al
+    // arrancar y, mientras suena, cada dos segundos.
+    MediaDevices { id: dispositivos }
+
+    function seguirSalida() {
+        if (silencio) return
+        const d = dispositivos.defaultAudioOutput
+        if (d.isNull || String(d.id) === String(salidaAudio.device.id)) return
+        salidaAudio.device = d
+    }
+
+    Timer {
+        interval: 2000
+        repeat: true
+        running: reproductor.enMarcha && !reproductor.silencio
+        onTriggered: reproductor.seguirSalida()
+    }
+
     MediaPlayer {
         id: reproduccion
         source: reproductor.efectiva
@@ -529,8 +556,10 @@ Item {
             reproductor.pendiente = false
             if (debe && playbackState !== MediaPlayer.PlayingState) play()
         }
+        onPlaybackStateChanged: if (playbackState === MediaPlayer.PlayingState) reproductor.seguirSalida()
         loops: reproductor.bucle ? MediaPlayer.Infinite : 1
         audioOutput: AudioOutput {
+            id: salidaAudio
             muted: reproductor.silencio
             volume: reproductor.volumen
         }
