@@ -11,6 +11,9 @@ import "textos.js" as Textos
 Item {
     id: visor
     signal cerrar()
+    /// Clic derecho en (x, y) de la ventana: el menú de lo que se ve, en vez
+    /// de salir. Para salir quedan Esc y el doble clic.
+    signal menu(real x, real y)
 
     readonly property int foco: modelo.actual
     readonly property string idFoco: foco >= 0 ? modelo.idDe(foco) : ""
@@ -86,8 +89,38 @@ Item {
     /// vídeo. Mover el ratón o tocar una tecla los trae de vuelta. Antes los
     /// mandos solo bajaban a medio transparentar y nunca se iban.
     property bool quietoRaton: false
-    readonly property bool interfazFuera: quietoRaton && visible && hayQueReproducir && !esSonido
-        && rep !== null && rep.enMarcha && !rep.ratonEnMandos
+    readonly property bool interfazFuera: quietoRaton && visible && !ratonEnBarras
+        && !(rep !== null && hayQueReproducir && rep.ratonEnMandos)
+        && (sinMarcos || hayQueReproducir && !esSonido && rep !== null && rep.enMarcha)
+
+    // ------------------------------------------------ solo el elemento
+    /// «Solo el elemento» (H o el botón de arriba): la foto o el vídeo de
+    /// borde a borde en la ventana, sin pasar a pantalla completa, y la
+    /// interfaz encima apartándose sola en cuanto el ratón se queda quieto.
+    /// Se queda puesto al pasar de elemento y al cerrar y volver a abrir.
+    property bool limpio: false
+    /// Sin hueco para la interfaz: con «solo el elemento» o a pantalla
+    /// completa, lo que se mira llega a los bordes y la interfaz va encima.
+    readonly property bool sinMarcos: limpio || pantallaCompleta
+
+    function alternarLimpio() {
+        limpio = !limpio
+        despertar()
+        estado.avisar(limpio ? qsTr("solo el elemento · H para volver") : qsTr("con la interfaz"))
+    }
+
+    /// Lo que la interfaz ocupa arriba y abajo cuando tiene su sitio. Lo que
+    /// se mira se encaja en lo que queda: antes iba de borde a borde y la
+    /// barra de un vídeo le tapaba el pie, y las versiones el de una foto.
+    readonly property real reservaArriba: sinMarcos ? 0
+        : estrellas.y + estrellas.height + tema.hueco
+          + (esVideo && versiones.visible ? versiones.height + tema.hueco : 0)
+    readonly property real reservaAbajo: sinMarcos ? 0
+        : tema.margen + rotulo.height + tema.hueco
+          + (!esVideo && versiones.visible ? versiones.height + tema.hueco : 0)
+    readonly property real reservaLados: sinMarcos ? 0 : tema.margen * 2
+    /// El ratón encima de las versiones o de los botones: ahí no se apartan.
+    readonly property bool ratonEnBarras: sobreVersiones.hovered || sobreAcciones.hovered
     /// El reproductor cargado, o null. Como `var`: sus propiedades son de un
     /// archivo que importa QtMultimedia, y qmllint no las ve.
     readonly property var rep: reproductor.status === Loader.Ready ? reproductor.item : null
@@ -155,15 +188,26 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: tema.fondo
-        opacity: visor.pantallaCompleta ? 1 : 0.97
+        opacity: visor.sinMarcos ? 1 : 0.97
     }
 
     Rectangle {
         id: lienzo
-        anchors.centerIn: parent
-        width: parent.width - (visor.pantallaCompleta ? 0 : tema.margen * 4)
-        height: parent.height - (visor.pantallaCompleta ? 0 : tema.margen * 6)
+        anchors.fill: parent
+        anchors.topMargin: visor.reservaArriba
+        anchors.bottomMargin: visor.reservaAbajo
+        anchors.leftMargin: visor.reservaLados
+        anchors.rightMargin: visor.reservaLados
         color: "transparent"
+
+        // Donde cae el vídeo: con los mandos en su sitio, encima de ellos, y
+        // la portada en el mismo sitio para que no salte al arrancar.
+        Item {
+            id: huecoPortada
+            anchors.fill: parent
+            anchors.bottomMargin: visor.esVideo && visor.rep !== null && !visor.sinMarcos
+                                  ? visor.rep.alturaMandos : 0
+        }
 
         // La portada, con el giro guardado del elemento. Es lo que se ve
         // mientras arranca el vídeo o llega la previa de una foto: sin girar,
@@ -171,9 +215,9 @@ Item {
         // luego se daba la vuelta.
         Item {
             readonly property bool deLado: modelo.giroFoco % 180 !== 0
-            anchors.centerIn: parent
-            width: deLado ? parent.height : parent.width
-            height: deLado ? parent.width : parent.height
+            anchors.centerIn: huecoPortada
+            width: deLado ? huecoPortada.height : huecoPortada.width
+            height: deLado ? huecoPortada.width : huecoPortada.height
             rotation: modelo.giroFoco
 
             Image {
@@ -220,9 +264,14 @@ Item {
         altoPista: visor.version ? visor.version.alto
                    : nucleo.ficha.id === visor.idFoco ? (nucleo.ficha.alto || 0) : 0
         giro: modelo.giroFoco
+        margenArriba: visor.reservaArriba
+        margenAbajo: visor.reservaAbajo
+        margenLados: visor.reservaLados
+        interfazFuera: visor.interfazFuera
         onPedirGiro: function (grados) { visor.guardarGiro(grados) }
         onSiguiente: visor.mover(1)
         onCerrar: visor.cerrar()
+        onMenu: function (x, y) { visor.menu(x, y) }
     }
 
     // Encima de la previsualización y no en su lugar: mientras el reproductor
@@ -283,6 +332,12 @@ Item {
         target: reproductor.item
         property: "mandosOcultos"
         value: visor.interfazFuera
+        when: reproductor.status === Loader.Ready
+    }
+    Binding {
+        target: reproductor.item
+        property: "reservarMandos"
+        value: !visor.sinMarcos
         when: reproductor.status === Loader.Ready
     }
     Binding {
@@ -378,14 +433,16 @@ Item {
         id: versiones
         z: 3
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: visor.esVideo ? undefined : rotulo.top
-        anchors.bottomMargin: tema.hueco
-        anchors.top: visor.esVideo ? estrellas.bottom : undefined
-        anchors.topMargin: tema.hueco
+        // Con `y` y no con anclas: al pasar de un vídeo a una foto las dos
+        // anclas, arriba y abajo, llegaban a estar puestas a la vez, la fila
+        // se estiraba a todo el alto y el hueco de la foto se quedaba en nada.
+        y: visor.esVideo ? estrellas.y + estrellas.height + tema.hueco
+                         : rotulo.y - height - tema.hueco
         spacing: tema.hueco * 0.5
         visible: (visor.esImagen || visor.esVideo) && visor.pila.length > 1
         opacity: visor.interfazFuera ? 0 : 1
         Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
+        HoverHandler { id: sobreVersiones }
 
         Repeater {
             model: versiones.visible ? visor.pila : []
@@ -480,6 +537,78 @@ Item {
         Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
     }
 
+    // Lo que se hace con lo que se mira, arriba a la derecha: editar, quitar
+    // el fondo, y dos formas de quitarse la interfaz de en medio. Con una
+    // versión de la pila delante, editar y quitar el fondo no salen: harían
+    // su trabajo sobre la principal, que no es lo que se ve.
+    Row {
+        id: acciones
+        z: 3
+        anchors.right: parent.right
+        anchors.rightMargin: tema.margen
+        anchors.verticalCenter: estrellas.verticalCenter
+        spacing: tema.hueco * 0.5
+        visible: visor.esImagen || visor.esVideo
+        opacity: visor.interfazFuera ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
+        HoverHandler { id: sobreAcciones }
+
+        Boton {
+            id: botonEditar
+            icono: "lapiz"
+            texto: qsTr("editar")
+            readonly property bool conEditor: visor.foco >= 0 && editor.sabe(visor.foco)
+            pista: conEditor ? qsTr("recortar en el editor (E)") : qsTr("girar, sacar versiones…")
+            visible: visor.version === null && (conEditor || visor.esImagen)
+            onPulsado: {
+                if (conEditor) { ventana.hacerConElemento("editor"); return }
+                // Una foto no tiene editor propio todavía: lo que se le puede
+                // hacer, en un menú debajo del botón.
+                let a = [
+                    { texto: qsTr("girar a la izquierda"), valor: "girarIzq", icono: "girarIzq", atajo: "Mayús+R" },
+                    { texto: qsTr("girar a la derecha"), valor: "girarDer", icono: "girarDer", atajo: "R" },
+                    { texto: qsTr("crear versión…"), valor: "version", icono: "pila" }
+                ]
+                a.push({ separador: true },
+                       { texto: qsTr("abrir con otro programa"), valor: "fuera", icono: "externo" })
+                const p = botonEditar.mapToItem(null, 0, botonEditar.height + tema.hueco * 0.5)
+                desplegable.abrirEn(p.x, p.y, {
+                    opciones: a,
+                    alElegir: function (v) { ventana.hacerConElemento(v, p.x, p.y) }
+                })
+            }
+        }
+        Boton {
+            icono: "fotograma"
+            texto: qsTr("guardar fotograma")
+            pista: qsTr("lo que se ve ahora, como imagen aparte en tu biblioteca (S)")
+            visible: visor.esVideo
+            onPulsado: visor.sacarFotograma()
+        }
+        Boton {
+            icono: "recorte"
+            texto: qsTr("quitar el fondo")
+            pista: qsTr("saca una versión sin fondo en la pila; se hace en tu ordenador")
+            visible: visor.esImagen && visor.version === null && recorte.hayPrograma
+            onPulsado: ventana.hacerConElemento("fondo")
+        }
+        Boton {
+            icono: "ojo"
+            activo: visor.limpio
+            pista: visor.limpio ? qsTr("volver a la interfaz (H)")
+                                : qsTr("solo el elemento, de borde a borde (H)")
+            onPulsado: visor.alternarLimpio()
+        }
+        Boton {
+            icono: "pantalla"
+            activo: visor.pantallaCompleta
+            // El vídeo ya lo tiene en sus mandos.
+            visible: !visor.hayQueReproducir
+            pista: qsTr("pantalla completa (F)")
+            onPulsado: visor.alternarPantallaCompleta()
+        }
+    }
+
     Estrellas {
         id: estrellas
         // Igual que las versiones: a pantalla completa el vídeo llega arriba.
@@ -492,6 +621,12 @@ Item {
         Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
         valor: modelo.estrellasFoco
         onElegido: function (n) { nucleo.estrellas(modelo.seleccion, n) }
+    }
+
+    /// Guarda lo que se ve del vídeo ahora mismo como una imagen aparte.
+    function sacarFotograma() {
+        if (!esVideo || rep === null) return
+        ventana.sacarFotograma(version ? version.id : idFoco, urlFoco, idFoco, rep.posicionPedida())
     }
 
     /// El giro se guarda en el elemento: se queda al volver a verlo, en la
@@ -509,6 +644,43 @@ Item {
             if (version ? pila[j].id === version.id : pila[j].principal) i = j
         const otra = pila[(i + paso + pila.length) % pila.length]
         idVersion = otra.principal ? "" : otra.id
+        return true
+    }
+
+    /// Supr con una pila delante tira la versión que se está viendo en
+    /// grande, no la pila entera ni la que manda en la galería: es la única
+    /// que se tiene delante y la única que uno cree estar borrando.
+    ///
+    /// Si es una versión, se va sola y el visor pasa a la de al lado, como al
+    /// tirar en la galería. Si es la principal, también se va sola: la más
+    /// pesada de las que quedan hereda la pila —la misma regla que el núcleo,
+    /// misma cuenta aquí— y es la que se enseña al volver la vista. Las dos
+    /// cosas se deshacen con Ctrl+Z. Devuelve si se ocupó de la tecla.
+    function tirarLoQueSeVe() {
+        if (!(esImagen || esVideo) || pila.length < 2) return false
+        let i = 0
+        for (let j = 0; j < pila.length; j++)
+            if (version ? pila[j].id === version.id : pila[j].principal) i = j
+        const tirada = pila[i]
+        if (!tirada.principal) {
+            const otra = pila[i + 1 < pila.length ? i + 1 : i - 1]
+            idVersion = otra.principal ? "" : otra.id
+            nucleo.papelera([tirada.id], true, false)
+            return true
+        }
+        let nueva = null
+        for (let k = 0; k < pila.length; k++) {
+            const v = pila[k]
+            if (v.principal) continue
+            if (!nueva || v.peso > nueva.peso || (v.peso === nueva.peso && v.id < nueva.id))
+                nueva = v
+        }
+        // Por si la heredera no entra en la búsqueda que hay puesta: entonces
+        // se va de la vista y se pasa página como al tirar cualquier cosa.
+        ventana.apuntarSitio()
+        ventana.porEnsenar = nueva.id
+        ventana.herencia = { de: tirada.id, a: nueva.id }
+        nucleo.papelera([tirada.id], true, false)
         return true
     }
 
@@ -547,6 +719,16 @@ Item {
         const conMayus = (evento.modifiers & Qt.ShiftModifier) !== 0
         if (evento.key === Qt.Key_F && !(evento.modifiers & Qt.ControlModifier)) {
             alternarPantallaCompleta()
+            evento.accepted = true
+            return
+        }
+        if (evento.key === Qt.Key_S && !(evento.modifiers & Qt.ControlModifier) && esVideo) {
+            sacarFotograma()
+            evento.accepted = true
+            return
+        }
+        if (evento.key === Qt.Key_H && !(evento.modifiers & Qt.ControlModifier)) {
+            alternarLimpio()
             evento.accepted = true
             return
         }
@@ -639,10 +821,14 @@ Item {
         z: -1
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: function (evento) {
-            // Clic derecho o doble clic para salir; clic izquierdo avanza,
-            // como en cualquier visor de fotos.
-            if (evento.button === Qt.RightButton) visor.cerrar()
-            else visor.mover(1)
+            // Clic izquierdo avanza, como en cualquier visor de fotos; el
+            // derecho abre el menú de lo que se ve y el doble clic sale.
+            if (evento.button === Qt.RightButton) {
+                const p = mapToItem(null, evento.x, evento.y)
+                visor.menu(p.x, p.y)
+            } else {
+                visor.mover(1)
+            }
         }
         onDoubleClicked: visor.cerrar()
         // La rueda pasa de elemento, salvo donde el visor propio la usa: en un

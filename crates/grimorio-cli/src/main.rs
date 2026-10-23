@@ -624,6 +624,7 @@ fn run(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
                 lado: *lado,
                 recorte: None,
                 tramo: None,
+                fotograma: None,
             };
             let nuevo = lib.crear_version(&id, &receta)?;
             let original = lib.load_item(&id)?;

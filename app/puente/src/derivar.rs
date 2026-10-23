@@ -41,6 +41,20 @@ pub enum Peticion {
         #[serde(default)]
         exacto: bool,
     },
+    /// Un fotograma de un vídeo, para guardarlo como imagen aparte.
+    Fotograma {
+        raiz: PathBuf,
+        id: String,
+        ruta: PathBuf,
+        ms: u64,
+    },
+    /// Dónde están los fotogramas clave de un vídeo: si un recorte se copia o
+    /// se recodifica.
+    Claves {
+        raiz: PathBuf,
+        id: String,
+        ruta: PathBuf,
+    },
     /// Onda y espectro de un sonido.
     Onda {
         raiz: PathBuf,
@@ -99,6 +113,8 @@ pub fn responder(peticion: &[u8]) -> Value {
         | Peticion::Tira { raiz, id, ruta, .. }
         | Peticion::Tramo { raiz, id, ruta, .. }
         | Peticion::Onda { raiz, id, ruta }
+        | Peticion::Claves { raiz, id, ruta }
+        | Peticion::Fotograma { raiz, id, ruta, .. }
         | Peticion::PdfPagina { raiz, id, ruta, .. }
         | Peticion::Malla { raiz, id, ruta, .. } => mismo_elemento(raiz, id, ruta),
         Peticion::PdfMedidas { .. } => Ok(()),
@@ -143,6 +159,12 @@ pub fn responder(peticion: &[u8]) -> Value {
         .map(|r| json!({ "ruta": r })),
         Peticion::Onda { raiz, id, ruta } => {
             derivado::onda(&raiz, &id, &ruta).map(|r| json!({ "ruta": r }))
+        }
+        Peticion::Fotograma { raiz, ruta, ms, .. } => {
+            derivado::fotograma(&raiz, &ruta, ms).map(|r| json!({ "ruta": r }))
+        }
+        Peticion::Claves { ruta, .. } => {
+            derivado::claves_video(&ruta).map(|c| json!({ "claves": c }))
         }
         Peticion::PdfMedidas { ruta } => {
             derivado::medidas_pdf(&ruta).map(|m| json!({ "paginas": m }))

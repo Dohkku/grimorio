@@ -39,6 +39,10 @@ var trazos = {
     "orden":       "M7 4 V20 M4 16.8 L7 19.8 L10 16.8 M17 20 V4 M14 7.2 L17 4.2 L20 7.2",
     // Las cuatro esquinas, abiertas hacia fuera: ocupar la pantalla entera.
     "pantalla":    "M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15",
+    // Un marco con una montaña: una foto sacada de lo que se ve.
+    "fotograma":   "M4 5 H20 V19 H4 Z M4 16 L9 11 L13 15 L15.5 12.5 L20 17 M15.5 8.5 A1.3 1.3 0 1 0 15.5 8.6",
+    // Un imán de herradura: lo que se pega a los fotogramas clave.
+    "iman":        "M5 4 H10 V12 A2 2 0 0 0 14 12 V4 H19 V12 A7 7 0 0 1 5 12 Z M5 8 H10 M14 8 H19",
     // Un arco por encima con la punta al final: girar un cuarto.
     "girarDer":    "M5.5 15 A7 7 0 1 1 18.5 15 M18.5 15 L15.4 14.3 M18.5 15 L19.7 12",
     "girarIzq":    "M18.5 15 A7 7 0 1 0 5.5 15 M5.5 15 L8.6 14.3 M5.5 15 L4.3 12",

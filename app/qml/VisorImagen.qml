@@ -36,6 +36,8 @@ Item {
 
     signal siguiente()
     signal cerrar()
+    /// Clic derecho en (x, y) de la ventana: el menú de lo que se ve.
+    signal menu(real x, real y)
 
     // -------------------------------------------------------------- medidas
     // Las medidas de cada imagen se apuntan al cargar, con el id del que son,
@@ -82,12 +84,30 @@ Item {
     /// Girar es pedirlo: el visor lo guarda en el elemento y vuelve por `giro`.
     signal pedirGiro(int grados)
 
-    /// Ajustada usa el mismo hueco que el visor de siempre. En las medidas del
-    /// marco que gira: girada un cuarto, el ancho de la foto va a lo alto.
-    readonly property real vistaW: girada ? height - tema.margen * 6 : width - tema.margen * 4
-    readonly property real vistaH: girada ? width - tema.margen * 4 : height - tema.margen * 6
+    /// Lo que deja libre la interfaz del visor alrededor: la foto se ajusta
+    /// y se mueve dentro de lo que queda, y así las estrellas, las versiones
+    /// y el nombre no se le montan encima. Con todo a cero, de borde a borde.
+    property real margenArriba: tema.margen * 3
+    property real margenAbajo: tema.margen * 3
+    property real margenLados: tema.margen * 2
+    /// La interfaz del visor se ha apartado: los datos y el giro, también.
+    property bool interfazFuera: false
+
+    Item {
+        id: hueco
+        anchors.fill: parent
+        anchors.topMargin: vi.margenArriba
+        anchors.bottomMargin: vi.margenAbajo
+        anchors.leftMargin: vi.margenLados
+        anchors.rightMargin: vi.margenLados
+    }
+
+    /// Ajustada llena el hueco. En las medidas del marco que gira: girada un
+    /// cuarto, el ancho de la foto va a lo alto.
+    readonly property real vistaW: girada ? hueco.height : hueco.width
+    readonly property real vistaH: girada ? hueco.width : hueco.height
     /// Encajar no agranda: una imagen pequeña se ve a su tamaño, no borrosa.
-    readonly property real encaje: hayMedidas ? Math.min(1, vistaW / natW, vistaH / natH) : 1
+    readonly property real encaje: hayMedidas ? Math.max(0.01, Math.min(1, vistaW / natW, vistaH / natH)) : 1
     readonly property real maxEscala: 64
 
     /// Si sigue encajada. Mientras lo está, cambiar el tamaño de la ventana la
@@ -212,9 +232,9 @@ Item {
     // visor cambiadas: su ancho es el alto de la pantalla.
     Item {
         id: marco
-        anchors.centerIn: parent
-        width: vi.girada ? vi.height : vi.width
-        height: vi.girada ? vi.width : vi.height
+        anchors.centerIn: hueco
+        width: vi.girada ? hueco.height : hueco.width
+        height: vi.girada ? hueco.width : hueco.height
         rotation: vi.giro
 
         Image {
@@ -324,7 +344,11 @@ Item {
             }
             onClicked: function (e) {
                 if (movido) return
-                if (e.button === Qt.RightButton) { vi.cerrar(); return }
+                if (e.button === Qt.RightButton) {
+                    const p = raton.mapToItem(null, e.x, e.y)
+                    vi.menu(p.x, p.y)
+                    return
+                }
                 // El clic suelto espera un momento por si es doble: si no, el
                 // primer clic del doble pasaba a la siguiente foto y se acercaba
                 // a esa.
@@ -362,7 +386,9 @@ Item {
         color: tema.panel
         border.color: tema.borde
         border.width: 1
-        opacity: vi.ajustada && !vi.dentro ? 0.55 : 0.95
+        opacity: vi.interfazFuera ? 0 : vi.ajustada && !vi.dentro ? 0.55 : 0.95
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
 
         Row {
             id: fila

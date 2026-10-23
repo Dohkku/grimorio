@@ -149,7 +149,12 @@ principal:
   recodificó para cortar en el fotograma justo (si no, se copió sin
   recodificar y el archivo arranca en el fotograma clave de antes, con una
   lista de edición que lo deja empezar donde se pidió). El formato es el del
-  original.
+  original. Un tramo guardado «como vídeo nuevo» lleva su `receta` pero no
+  `pila`: es un elemento aparte, con las carpetas, las etiquetas y el giro
+  del original.
+- `receta.fotograma`, si está, es el milisegundo de un vídeo del que se
+  sacó esta imagen (un PNG). Como un tramo aparte, va sin `pila` y con las
+  carpetas, las etiquetas y el giro del vídeo.
 - Las etiquetas, carpetas, estrellas y nota son de la principal: es lo que se
   ve en la malla. Las versiones no salen en la malla ni en los recuentos.
 - Una versión cuya principal no existe o está en la papelera se ve suelta:

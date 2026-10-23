@@ -8,6 +8,35 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.16
+
+- **Más sitio para mirar.** En el visor, la foto o el vídeo ya no queda
+  tapado por la barra de reproducción ni por las versiones de su pila. Y con
+  H, o el botón del ojo, desaparece toda la interfaz y lo que miras ocupa la
+  ventana entera sin pasar a pantalla completa. La interfaz vuelve al mover
+  el ratón y se va sola al dejarlo quieto. H o Esc la devuelven.
+- **Botones en el visor.** Arriba a la derecha tienes editar, quitar el fondo
+  (en fotos), guardar fotograma (en vídeos), solo el elemento y pantalla
+  completa.
+- **Clic derecho en el visor.** Abre el menú de lo que estás viendo en vez de
+  cerrar el visor. Para salir siguen Esc y el doble clic.
+- **Supr borra la versión que ves.** Con una pila abierta en el visor, Supr
+  manda a la papelera la versión que tienes en grande, no la pila entera.
+  Ctrl+Z la devuelve.
+- **Guardar un fotograma.** En un vídeo, «guardar fotograma» (o S) guarda lo
+  que se ve como imagen en tu biblioteca, en las mismas carpetas y con las
+  mismas etiquetas que el vídeo.
+- **Un editor de vídeo más cómodo.** Se abre con el vídeo entero elegido.
+  Las asas de los extremos son más grandes y enseñan su tiempo, y el tramo se
+  arrastra entero sin cambiar lo que dura. El imán pega el inicio y el fin a
+  tiempos redondos, cada medio segundo (se cambia en Ajustes, «editor»). El
+  recorte se guarda como versión o como vídeo nuevo, y antes de guardar ves
+  si será instantáneo o si hay que recodificar.
+- **Arrastrar la barra de un vídeo** lo pausa mientras arrastras y lo vuelve
+  a poner en marcha al soltar.
+- **Arreglado:** al abrir el editor por segunda vez con el mismo vídeo, el
+  tramo se quedaba en un solo fotograma, en bucle.
+
 ## 0.1.15
 
 - **Arreglado:** al cambiar la salida de sonido del ordenador (de cascos a

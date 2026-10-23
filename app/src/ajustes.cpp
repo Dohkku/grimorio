@@ -14,6 +14,7 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_tema = m_disco.value(QStringLiteral("interfaz/tema"), QStringLiteral("oscuro")).toString();
     m_buscarVersiones = m_disco.value(QStringLiteral("novedades/buscar"), true).toBool();
     m_borrarPila = m_disco.value(QStringLiteral("pilas/borrar"), QString()).toString();
+    m_pasoIman = qBound(0.05, m_disco.value(QStringLiteral("editor/pasoIman"), 0.5).toReal(), 60.0);
 }
 
 void Ajustes::guardar(const char *clave, const QVariant &valor)
@@ -117,6 +118,14 @@ void Ajustes::ponerOrientacion3d(const QString &id, int v)
     if (v == 0) m_disco.remove(clave);
     else m_disco.setValue(clave, v);
     m_disco.sync();
+}
+
+void Ajustes::setPasoIman(qreal v)
+{
+    v = qBound(0.05, v, 60.0);
+    if (qFuzzyCompare(m_pasoIman, v)) return;
+    m_pasoIman = v;
+    guardar("editor/pasoIman", v);
 }
 
 void Ajustes::setBorrarPila(const QString &v)

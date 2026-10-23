@@ -175,10 +175,11 @@ QString Derivados::pedir(const QString &que, const QString &id, const QUrl &orig
                 yo->m_enCamino.remove(clave);
                 // Los fallos no se recuerdan: si faltaba ffmpeg y se instala,
                 // volver a abrir el elemento tiene que volver a intentarlo.
-                // Un tramo cortado tampoco: su archivo se lo lleva la
-                // biblioteca al meterlo en la pila, y repetir el mismo corte
+                // Un tramo cortado o un fotograma sacado tampoco: su archivo
+                // se lo lleva la biblioteca al meterlo, y repetir lo mismo
                 // devolvería una ruta que ya no existe.
-                if (r.value(QStringLiteral("ok")).toBool() && !clave.startsWith(QLatin1String("tramo:")))
+                if (r.value(QStringLiteral("ok")).toBool() && !clave.startsWith(QLatin1String("tramo:"))
+                    && !clave.startsWith(QLatin1String("fotograma:")))
                     yo->m_hechos.insert(clave, r);
                 emit yo->listo(clave, r);
             },

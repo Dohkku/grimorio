@@ -108,12 +108,24 @@ Rectangle {
             readonly property real sobre: Math.max(0, Math.min(1, mouseX / barra.width))
             // Arrastrar es buscar: el vídeo sigue al ratón punto a punto, y
             // soltar deja la reproducción como estaba.
+            //
+            // En pausa mientras se arrastra. Saltar con el vídeo corriendo
+            // obliga a vaciar la tubería y volver a ponerla en marcha en cada
+            // salto, y el visor iba a tirones donde el editor —que salta con
+            // el vídeo parado— iba fino. Al soltar sigue si estaba siguiendo.
+            property bool seguia: false
             function llevar(x) {
                 if (transporte.hayRep && transporte.dur > 0)
                     transporte.rep.irA(Math.max(0, Math.min(1, x / barra.width)) * transporte.dur)
             }
-            onPressed: function (e) { llevar(e.x) }
+            onPressed: function (e) {
+                seguia = transporte.hayRep && transporte.rep.enMarcha
+                if (seguia) transporte.rep.alternar()
+                llevar(e.x)
+            }
             onPositionChanged: function (e) { if (pressed) llevar(e.x) }
+            onReleased: if (seguia && transporte.hayRep && !transporte.rep.enMarcha) transporte.rep.alternar()
+            onCanceled: if (seguia && transporte.hayRep && !transporte.rep.enMarcha) transporte.rep.alternar()
         }
 
         // La vista previa: el tiempo exacto, y en un vídeo el fotograma de la

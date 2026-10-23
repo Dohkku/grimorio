@@ -528,6 +528,48 @@ Item {
                     }
                 }
 
+                Seccion { text: qsTr("editor") }
+
+                // El imán del editor de vídeo: a cada cuánto se pegan el
+                // inicio y el fin al arrastrarlos.
+                Item {
+                    width: parent.width
+                    height: textoIman.height + opcionesIman.height + tema.hueco * 1.2
+                    Column {
+                        id: textoIman
+                        width: parent.width
+                        spacing: tema.hueco * 0.15
+                        Text {
+                            width: parent.width
+                            text: qsTr("el imán al recortar")
+                            color: tema.texto
+                            font.pixelSize: tema.fuente
+                        }
+                        Text {
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                            text: qsTr("con el imán puesto, el inicio y el fin se pegan a múltiplos de este tiempo: con 0,5 s, un corte en 8,04 queda en 8,0")
+                            color: tema.textoTenue
+                            font.pixelSize: tema.fuente * 0.85
+                        }
+                    }
+                    Row {
+                        id: opcionesIman
+                        anchors.top: textoIman.bottom
+                        anchors.topMargin: tema.hueco * 0.6
+                        spacing: tema.hueco * 0.5
+                        Repeater {
+                            model: [0.1, 0.25, 0.5, 1, 2, 5]
+                            delegate: Boton {
+                                required property var modelData
+                                texto: String(modelData).replace(".", ",") + " s"
+                                activo: Math.abs(ajustes.pasoIman - modelData) < 0.001
+                                onPulsado: ajustes.pasoIman = modelData
+                            }
+                        }
+                    }
+                }
+
                 Seccion { text: qsTr("versiones") }
 
                 Interruptor {

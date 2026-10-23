@@ -47,6 +47,7 @@ fn completo() -> Item {
             hasta_ms: 2,
             exacto: true,
         }),
+        fotograma: Some(3),
     });
     it
 }

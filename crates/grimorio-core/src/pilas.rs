@@ -267,6 +267,7 @@ impl Library {
             lado: 0,
             recorte: None,
             tramo: Some(tramo),
+            fotograma: None,
         };
         let r = self.anadir_version(id, &tmp, &receta);
         let _ = std::fs::remove_file(&tmp);
@@ -298,6 +299,24 @@ impl Library {
     /// temporales de la biblioteca entra moviéndolo; cualquier otra cosa, copiándola:
     /// el archivo de otro no se le quita de su sitio.
     pub fn anadir_version(&mut self, id: &str, archivo: &Path, receta: &Receta) -> Result<String> {
+        self.anadir_hecho(id, archivo, receta, true)
+    }
+
+    /// Lo mismo que [`Library::anadir_version`], pero el archivo entra como
+    /// un elemento más, fuera de la pila: el tramo de un vídeo que se quiere
+    /// tener aparte. Hereda las carpetas y las etiquetas del original, para
+    /// que aparezca donde se estaba mirando.
+    pub fn anadir_suelto(&mut self, id: &str, archivo: &Path, receta: &Receta) -> Result<String> {
+        self.anadir_hecho(id, archivo, receta, false)
+    }
+
+    fn anadir_hecho(
+        &mut self,
+        id: &str,
+        archivo: &Path,
+        receta: &Receta,
+        en_pila: bool,
+    ) -> Result<String> {
         let fuente = self.load_item(id)?;
         let principal = self.principal_de(id)?;
         let temporales = self.root().join("cache").join("versiones");
@@ -324,13 +343,23 @@ impl Library {
 
         let mut item = self.load_item(&nuevo)?;
         item.name = format!("{} ({})", fuente.name, describir(receta, &item));
-        item.pila = Some(principal);
+        if en_pila {
+            item.pila = Some(principal);
+        } else {
+            item.folders = fuente.folders.clone();
+            item.tags = fuente.tags.clone();
+            // Girado como se miraba: un vídeo de pie guardado tumbado se ve
+            // derecho por su giro, y su fotograma tiene que verse igual.
+            item.rotation = fuente.rotation;
+        }
         item.receta = Some(receta.clone());
         item.origin.path = None;
         self.save_item(&item)?;
 
         let titulo = if receta.recorte.is_some() {
             "quitar el fondo"
+        } else if receta.fotograma.is_some() {
+            "sacar un fotograma"
         } else if receta.tramo.is_some() {
             "recortar"
         } else {
@@ -409,6 +438,9 @@ fn describir(receta: &Receta, hecho: &Item) -> String {
     }
     if let Some(t) = receta.tramo {
         return format!("{}–{}", reloj(t.desde_ms), reloj(t.hasta_ms));
+    }
+    if let Some(ms) = receta.fotograma {
+        return format!("fotograma {}", reloj(ms));
     }
     let mut s = receta.formato.to_ascii_lowercase();
     if receta.lado > 0 {
@@ -778,6 +810,7 @@ mod tests {
             lado: 600,
             recorte: None,
             tramo: None,
+            fotograma: None,
         };
         let v = lib.crear_version(&original, &receta).unwrap();
         let version = lib.load_item(&v).unwrap();
@@ -823,6 +856,7 @@ mod tests {
             lado: 4000,
             recorte: None,
             tramo: None,
+            fotograma: None,
         };
         let out = codificar(&img, "webp", &r).unwrap();
         let back = image::load_from_memory(&out).unwrap();
@@ -837,6 +871,7 @@ mod tests {
             lado: 0,
             recorte: None,
             tramo: None,
+            fotograma: None,
         };
         assert!(lib.crear_version(&a, &r).is_err());
     }
@@ -875,6 +910,7 @@ mod tests {
             lado: 400,
             recorte: None,
             tramo: None,
+            fotograma: None,
         };
         let e = lib.estimar_version(&id, &receta).unwrap();
         assert_eq!((e.ancho, e.alto), (400, 267));
@@ -894,6 +930,7 @@ mod tests {
             lado: 0,
             recorte: None,
             tramo: None,
+            fotograma: None,
         };
         let perdida = lib.estimar_version(&id, &con(75)).unwrap().peso;
         let sin = lib.estimar_version(&id, &con(100)).unwrap().peso;
@@ -912,6 +949,7 @@ mod tests {
             lado: 0,
             recorte: Some("isnet-general-use".into()),
             tramo: None,
+            fotograma: None,
         };
         let fuera = foto(d.path(), "recorte.png", 300, 200, 4);
         let v = lib.anadir_version(&id, &fuera, &receta).unwrap();
@@ -925,6 +963,60 @@ mod tests {
         std::fs::copy(&fuera, &tmp).unwrap();
         lib.anadir_version(&id, &tmp, &receta).unwrap();
         assert!(!tmp.exists(), "el temporal entra moviéndolo");
+    }
+
+    #[test]
+    fn un_tramo_suelto_entra_fuera_de_la_pila_donde_estaba_el_original() {
+        let (d, mut lib) = biblioteca();
+        let id = importa(&mut lib, &[foto(d.path(), "a.png", 300, 200, 3)])[0].clone();
+        let mut it = lib.load_item(&id).unwrap();
+        it.tags = vec!["baile".into()];
+        it.folders = vec!["CARPETA".into()];
+        lib.save_item(&it).unwrap();
+        let receta = Receta {
+            formato: "png".into(),
+            calidad: 100,
+            lado: 0,
+            recorte: None,
+            tramo: Some(crate::Tramo {
+                desde_ms: 3000,
+                hasta_ms: 10_500,
+                exacto: false,
+            }),
+            fotograma: None,
+        };
+        let fuera = foto(d.path(), "tramo.png", 300, 200, 4);
+        let v = lib.anadir_suelto(&id, &fuera, &receta).unwrap();
+        let hecho = lib.load_item(&v).unwrap();
+        assert_eq!(hecho.pila, None, "suelto: no entra en la pila");
+        assert_eq!(hecho.tags, vec!["baile".to_string()]);
+        assert_eq!(hecho.folders, vec!["CARPETA".to_string()]);
+        assert!(hecho.name.ends_with("(0:03,0–0:10,5)"), "{}", hecho.name);
+        assert_eq!(lib.que_se_deshace(), Some("recortar"));
+    }
+
+    #[test]
+    fn un_fotograma_sacado_entra_aparte_con_su_momento_en_el_nombre() {
+        let (d, mut lib) = biblioteca();
+        let id = importa(&mut lib, &[foto(d.path(), "clip.png", 300, 200, 3)])[0].clone();
+        let mut it = lib.load_item(&id).unwrap();
+        it.rotation = 90;
+        lib.save_item(&it).unwrap();
+        let receta = Receta {
+            formato: "png".into(),
+            calidad: 100,
+            lado: 0,
+            recorte: None,
+            tramo: None,
+            fotograma: Some(8_040),
+        };
+        let fuera = foto(d.path(), "fotograma.png", 300, 200, 4);
+        let v = lib.anadir_suelto(&id, &fuera, &receta).unwrap();
+        let hecho = lib.load_item(&v).unwrap();
+        assert_eq!(hecho.pila, None);
+        assert_eq!(hecho.rotation, 90, "girado como se miraba el vídeo");
+        assert!(hecho.name.ends_with("(fotograma 0:08,0)"), "{}", hecho.name);
+        assert_eq!(lib.que_se_deshace(), Some("sacar un fotograma"));
     }
 
     #[test]

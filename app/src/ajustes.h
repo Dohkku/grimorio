@@ -52,6 +52,9 @@ class Ajustes : public QObject {
     /// entera a la papelera) o vacío, que es preguntar cada vez. Se recuerda
     /// solo si quien contesta lo pide, y se vuelve a preguntar desde ajustes.
     Q_PROPERTY(QString borrarPila READ borrarPila WRITE setBorrarPila NOTIFY cambio)
+    /// Cada cuánto se pegan el inicio y el fin con el imán del editor, en
+    /// segundos: 0,5 deja los cortes en el segundo y el medio segundo.
+    Q_PROPERTY(qreal pasoIman READ pasoIman WRITE setPasoIman NOTIFY cambio)
 
 public:
     explicit Ajustes(QObject *padre = nullptr);
@@ -68,6 +71,7 @@ public:
     QString tema() const { return m_tema; }
     bool buscarVersiones() const { return m_buscarVersiones; }
     QString borrarPila() const { return m_borrarPila; }
+    qreal pasoIman() const { return m_pasoIman; }
 
     void setAnchoLateral(qreal v);
     void setAnchoInspector(qreal v);
@@ -81,6 +85,7 @@ public:
     void setTema(const QString &v);
     void setBuscarVersiones(bool v);
     void setBorrarPila(const QString &v);
+    void setPasoIman(qreal v);
 
     /// Cómo se endereza un modelo 3D concreto: `vueltasX + 4 * vueltasZ`, 0
     /// si nunca se tocó. Es de quien lo mira, como el resto de esto: no cambia
@@ -107,4 +112,5 @@ private:
     QString m_tema;
     bool m_buscarVersiones = true;
     QString m_borrarPila;
+    qreal m_pasoIman = 0.5;
 };

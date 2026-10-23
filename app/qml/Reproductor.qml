@@ -39,6 +39,13 @@ Item {
     property bool mandosOcultos: false
     /// Si la ventana está a pantalla completa, para el botón que la alterna.
     property bool enPantallaCompleta: false
+    /// El vídeo encaja encima de los mandos en vez de por debajo: en el
+    /// visor, con la interfaz puesta, la barra tapaba el pie del vídeo. Sin
+    /// esto (pantalla completa, «solo el elemento», el panel) los mandos van
+    /// encima y se apartan solos.
+    property bool reservarMandos: false
+    /// Lo que mide la barra de los mandos, para quien encaja cosas alrededor.
+    readonly property real alturaMandos: transporte.height
     signal pedirPantallaCompleta()
     /// El ratón se ha movido encima del vídeo: quien esconde los mandos
     /// tiene que volver a enseñarlos.
@@ -627,6 +634,7 @@ Item {
     // pagar por nada en cada celda de la malla.
     Item {
         anchors.fill: parent
+        anchors.bottomMargin: reproductor.reservarMandos && transporte.visible ? transporte.height : 0
         clip: reproductor.zoom > 1
 
         // Lo que gira: el vídeo con su zoom. Girado un cuarto, con las

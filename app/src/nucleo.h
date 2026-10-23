@@ -181,9 +181,13 @@ public:
     /// cuesta nada: es leer un JSON pequeño en el hilo del núcleo.
     Q_INVOKABLE void pedirFicha(const QString &id);
     Q_INVOKABLE void pedirSugerencias(const QStringList &ids);
-    /// Mete un tramo ya cortado (derivado `tramo`) como versión de `id`.
+    /// Mete un tramo ya cortado (derivado `tramo`) como versión de `id`, o
+    /// con `suelto` como un elemento aparte, en las carpetas del original.
     Q_INVOKABLE void anadirTramo(const QString &id, const QString &ruta, double desdeMs,
-                                 double hastaMs, bool exacto);
+                                 double hastaMs, bool exacto, bool suelto = false);
+    /// Mete un fotograma sacado de un vídeo (derivado `fotograma`) como una
+    /// imagen aparte, en las carpetas y con las etiquetas de `id`.
+    Q_INVOKABLE void anadirFotograma(const QString &id, const QString &ruta, double ms);
     /// Una ruta del disco como URL. Hecho a mano en QML se rompe con un «#»
     /// en el nombre o con la letra de unidad de Windows.
     Q_INVOKABLE QUrl urlDeRuta(const QString &ruta) const { return QUrl::fromLocalFile(ruta); }

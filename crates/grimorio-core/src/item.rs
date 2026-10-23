@@ -162,6 +162,9 @@ pub struct Receta {
     /// Si es un trozo de un vídeo o de un sonido: de dónde a dónde.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tramo: Option<Tramo>,
+    /// Si es un fotograma sacado de un vídeo: en qué milisegundo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fotograma: Option<u64>,
 }
 
 /// Un trozo de un vídeo o de un sonido.

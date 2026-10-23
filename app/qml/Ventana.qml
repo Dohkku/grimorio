@@ -562,6 +562,62 @@ Window {
         })
     }
 
+    /// El menú del clic derecho dentro del visor: el de la celda, sobre lo que
+    /// se ve en grande. Sin «ver», que ya se está viendo. Con una versión de
+    /// la pila delante, copiar, abrir fuera y tirar van a esa versión, como
+    /// Supr; y se puede hacer principal desde aquí.
+    function abrirMenuVisor(px, py) {
+        const v = visor.version
+        let opciones = accionesElemento().filter(function (o) { return o.valor !== "ver" })
+        if (v) {
+            // Lo que trabaja sobre el archivo de la principal no se ofrece
+            // mirando otra: girar o exportar «esto» tocaría lo que no se ve.
+            const deLaPrincipal = ["exportar", "renombrar", "girarIzq", "girarDer",
+                                   "version", "fondo", "editor"]
+            opciones = opciones.filter(function (o) { return deLaPrincipal.indexOf(o.valor) < 0 })
+            // Sin lo de en medio, dos rayas pueden quedar juntas.
+            opciones = opciones.filter(function (o, i, a) {
+                return !(o.separador && i > 0 && a[i - 1].separador)
+            })
+            opciones = opciones.map(function (o) {
+                if (o.valor === "copiar") return Object.assign({}, o, { texto: qsTr("copiar esta versión") })
+                if (o.valor === "papelera") return Object.assign({}, o, { texto: qsTr("esta versión a la papelera") })
+                return o
+            })
+            opciones.unshift({ texto: qsTr("hacer principal"), valor: "principal", icono: "pila" },
+                             { separador: true })
+        }
+        desplegable.abrirEn(px, py, {
+            titulo: v ? qsTr("esta versión · %1×%2").arg(v.ancho).arg(v.alto) : "",
+            opciones: opciones,
+            alElegir: function (valor) { ventana.hacerEnVisor(valor, px, py) }
+        })
+    }
+
+    function hacerEnVisor(accion, px, py) {
+        const v = visor.version
+        switch (accion) {
+        case "principal":
+            if (v) { nucleo.hacerPrincipal(v.id); visor.idVersion = "" }
+            break
+        case "copiar":
+            if (v) {
+                if (portapapeles.copiarArchivos([nucleo.urlDeRuta(v.ruta)]) > 0)
+                    estado.avisar(qsTr("copiada esta versión"))
+            } else {
+                copiarElegidos()
+            }
+            break
+        case "fuera": nucleo.abrirFuera(v ? v.id : modelo.idDe(modelo.actual)); break
+        case "papelera":
+            if (enPapelera || modelo.elegidos !== 1 || !visor.tirarLoQueSeVe()) tirar()
+            break
+        // El nombre se escribe en el panel, que el visor tapa.
+        case "renombrar": visorAbierto = false; renombrar(); break
+        default: hacerConElemento(accion, px, py)
+        }
+    }
+
     function abrirAjustes(pagina) {
         panelAjustes.abrir(pagina || "general")
     }
@@ -878,6 +934,7 @@ Window {
         anchors.fill: parent
         visible: ventana.visorAbierto
         onCerrar: ventana.visorAbierto = false
+        onMenu: function (x, y) { ventana.abrirMenuVisor(x, y) }
     }
 
     Editor {
@@ -1163,6 +1220,8 @@ Window {
             // A pantalla completa, Esc sale de ella y deja el visor abierto,
             // como en cualquier reproductor; el siguiente Esc ya lo cierra.
             else if (ventana.visorAbierto && visor.pantallaCompleta) visor.alternarPantallaCompleta()
+            // Igual con «solo el elemento»: el primer Esc devuelve la interfaz.
+            else if (ventana.visorAbierto && visor.limpio) visor.alternarLimpio()
             else if (ventana.visorAbierto) ventana.visorAbierto = false
             else if (modelo.elegidos > 0) modelo.limpiarSeleccion()
         }
@@ -1176,8 +1235,45 @@ Window {
     Shortcut {
         sequences: [StandardKey.Undo]
         enabled: !ventana.escribiendo
-        onActivated: nucleo.deshacer()
+        onActivated: {
+            // Deshacer la principal tirada desde el visor devuelve la heredera
+            // a la pila, y el visor se quedaba en negro mirándola. Si es lo
+            // que se mira, se vuelve a enseñar la que se había tirado.
+            const h = ventana.herencia
+            ventana.herencia = null
+            if (h && ventana.visorAbierto && modelo.actual >= 0
+                    && modelo.idDe(modelo.actual) === h.a)
+                ventana.porEnsenar = h.de
+            nucleo.deshacer()
+        }
     }
+    /// Saca el fotograma de `ms` del vídeo `url` (que es el de `idVideo`: la
+    /// principal o una versión) y lo guarda como imagen aparte, con las
+    /// carpetas y las etiquetas de `idDestino`.
+    property var fotogramasPedidos: ({})
+    function sacarFotograma(idVideo, url, idDestino, ms) {
+        if (idVideo.length === 0 || String(url).length === 0) return
+        ms = Math.max(0, Math.round(ms))
+        const clave = derivados.pedir("fotograma", idVideo, url, { "ms": ms })
+        const p = fotogramasPedidos
+        p[clave] = { id: idDestino, ms: ms }
+        fotogramasPedidos = p
+        estado.avisar(qsTr("sacando el fotograma…"))
+    }
+    Connections {
+        target: derivados
+        function onListo(clave, r) {
+            const p = ventana.fotogramasPedidos[clave]
+            if (!p) return
+            delete ventana.fotogramasPedidos[clave]
+            if (r.ok) nucleo.anadirFotograma(p.id, r.ruta, p.ms)
+            else estado.avisar(qsTr("no se pudo sacar el fotograma: %1").arg(r.error))
+        }
+    }
+
+    /// La última principal tirada desde el visor y la versión que la heredó,
+    /// para que Ctrl+Z vuelva a enseñar la de antes (`Visor.tirarLoQueSeVe`).
+    property var herencia: null
     Shortcut {
         sequences: [StandardKey.Redo]
         enabled: !ventana.escribiendo
@@ -1188,7 +1284,14 @@ Window {
         enabled: modelo.elegidos > 0 && !ventana.escribiendo && !ventana.editorAbierto
         // En la papelera, Supr borra para siempre, pero siempre preguntando
         // antes: la tecla que se pulsa sin mirar no puede borrar sin más.
-        onActivated: ventana.tirar()
+        // Con el visor abierto sobre una pila, lo que se tira es la versión
+        // que se ve en grande (`Visor.tirarLoQueSeVe`).
+        onActivated: {
+            if (ventana.visorAbierto && !ventana.enPapelera && modelo.elegidos === 1
+                    && visor.tirarLoQueSeVe())
+                return
+            ventana.tirar()
+        }
     }
     Shortcut {
         sequence: "Ctrl+Shift+N"

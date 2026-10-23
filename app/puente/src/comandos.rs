@@ -154,6 +154,12 @@ pub enum Comando {
         /// O el tramo que se cortó de un vídeo o de un sonido.
         #[serde(default)]
         tramo: Option<grimorio_core::Tramo>,
+        /// O el fotograma que se sacó de un vídeo, en qué milisegundo.
+        #[serde(default)]
+        fotograma: Option<u64>,
+        /// Como elemento aparte y no en la pila: «guardar como vídeo nuevo».
+        #[serde(default)]
+        suelto: bool,
     },
     /// Varias pilas de una vez, como una sola cosa que se deshace.
     ApilarGrupos {
@@ -1060,6 +1066,8 @@ pub fn ejecutar(
             ruta,
             recorte,
             tramo,
+            fotograma,
+            suelto,
         } => {
             let formato = std::path::Path::new(ruta)
                 .extension()
@@ -1072,8 +1080,26 @@ pub fn ejecutar(
                 lado: 0,
                 recorte: recorte.clone(),
                 tramo: *tramo,
+                fotograma: *fotograma,
             };
-            let nuevo = lib.anadir_version(id, std::path::Path::new(ruta), &receta)?;
+            let archivo = std::path::Path::new(ruta);
+            if *suelto {
+                let nuevo = lib.anadir_suelto(id, archivo, &receta)?;
+                let v = lib.load_item(&nuevo)?;
+                // Un elemento más en la vista, y en los números de la barra.
+                let q = consulta_actual(vista);
+                republicar(lib, q, id_cmd, aviso, vista)?;
+                eventos::carpetas(aviso, lib);
+                eventos::registro(aviso, lib);
+                let que = if fotograma.is_some() {
+                    "fotograma guardado"
+                } else {
+                    "recortado aparte"
+                };
+                eventos::hecho_con_id(aviso, id_cmd, format!("{que}: {}", humano(v.size)), nuevo);
+                return Ok(());
+            }
+            let nuevo = lib.anadir_version(id, archivo, &receta)?;
             let v = lib.load_item(&nuevo)?;
             pila_cambiada(lib, id, id_cmd, aviso, vista)?;
             let que = if recorte.is_some() {

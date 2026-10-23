@@ -446,16 +446,27 @@ void Nucleo::anadirVersion(const QString &id, const QString &ruta, const QString
 }
 
 void Nucleo::anadirTramo(const QString &id, const QString &ruta, double desdeMs, double hastaMs,
-                         bool exacto)
+                         bool exacto, bool suelto)
 {
     if (id.isEmpty() || ruta.isEmpty()) return;
     mandar({ { QStringLiteral("cmd"), QStringLiteral("anadir_version") },
              { QStringLiteral("id"), id },
              { QStringLiteral("ruta"), ruta },
+             { QStringLiteral("suelto"), suelto },
              { QStringLiteral("tramo"),
                QJsonObject { { QStringLiteral("desde_ms"), qint64(desdeMs) },
                              { QStringLiteral("hasta_ms"), qint64(hastaMs) },
                              { QStringLiteral("exacto"), exacto } } } });
+}
+
+void Nucleo::anadirFotograma(const QString &id, const QString &ruta, double ms)
+{
+    if (id.isEmpty() || ruta.isEmpty()) return;
+    mandar({ { QStringLiteral("cmd"), QStringLiteral("anadir_version") },
+             { QStringLiteral("id"), id },
+             { QStringLiteral("ruta"), ruta },
+             { QStringLiteral("suelto"), true },
+             { QStringLiteral("fotograma"), qint64(ms) } });
 }
 
 void Nucleo::apilarGrupos(const QVariantList &grupos)

@@ -301,6 +301,97 @@ pub fn cortar_tramo(raiz: &Path, original: &Path, tramo: crate::Tramo) -> Result
     }
 }
 
+/// Un fotograma de un vídeo, en `ms`, como PNG sin pérdida.
+///
+/// Va a los temporales de las versiones, como un tramo cortado: de ahí lo
+/// recoge la biblioteca al meterlo como elemento (`anadir_suelto`).
+///
+/// Lo que se ve en un momento es el último fotograma que empezó antes de él,
+/// no el siguiente: con `-ss` en el momento justo ffmpeg daba el de después
+/// (en 0,921 s salía el de 0,933 en vez del de 0,900). Así que se entra medio
+/// segundo antes, se leen solo esos fotogramas, se quedan los que empiezan
+/// hasta el momento pedido y el archivo se reescribe con cada uno: queda el
+/// último.
+pub fn fotograma(raiz: &Path, original: &Path, ms: u64) -> Result<PathBuf> {
+    let dir = raiz.join("cache").join("versiones");
+    std::fs::create_dir_all(&dir).map_err(|source| Error::Io {
+        path: dir.clone(),
+        source,
+    })?;
+    let destino = dir.join(format!("{}.png", crate::id::new_id()));
+    let antes = ms.min(500);
+    let entra = format!("{:.3}", (ms - antes) as f64 / 1000.0);
+    let lee = format!("{:.3}", (antes + 50) as f64 / 1000.0);
+    let filtro = format!("select=lte(t\\,{:.3})", antes as f64 / 1000.0);
+    let orig = original.to_string_lossy();
+    let sal = destino.to_string_lossy();
+    let args = [
+        "-v", "error", "-y", "-ss", &entra, "-t", &lee, "-i", &orig, "-map", "0:v:0", "-vf",
+        &filtro, "-fps_mode", "passthrough", "-update", "1", &sal,
+    ];
+    if let Err(f) = externo::correr("ffmpeg", &args, TOPE_PAGINA) {
+        let _ = std::fs::remove_file(&destino);
+        return Err(fallo("ffmpeg", f));
+    }
+    match std::fs::metadata(&destino) {
+        Ok(m) if m.len() > 0 => Ok(destino),
+        _ => {
+            let _ = std::fs::remove_file(&destino);
+            Err(mal("ffmpeg no sacó ningún fotograma de ahí"))
+        }
+    }
+}
+
+/// Dónde están los fotogramas clave de un vídeo, en milisegundos desde que
+/// empieza a verse.
+///
+/// Son los puntos donde un corte sin recodificar (`cortar_tramo` sin
+/// `exacto`) empieza limpio en cualquier reproductor: el editor los mira
+/// para saber si un tramo se puede copiar tal cual o hay que recodificarlo.
+/// Sale de los paquetes, sin decodificar nada: en un vídeo de una hora es leer
+/// el archivo una vez.
+pub fn claves_video(original: &Path) -> Result<Vec<u64>> {
+    let orig = original.to_string_lossy();
+    // El reproductor cuenta desde el principio del archivo, y los tiempos de
+    // los paquetes desde donde diga el contenedor: se resta su comienzo.
+    let inicio = externo::correr_leyendo(
+        "ffprobe",
+        &["-v", "error", "-show_entries", "format=start_time", "-of", "csv=p=0", &orig],
+        TOPE_TIRA,
+    )
+    .map_err(|f| fallo("ffprobe", f))?;
+    let inicio: f64 = inicio.trim().parse().unwrap_or(0.0);
+    let dijo = externo::correr_leyendo(
+        "ffprobe",
+        &[
+            "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,flags",
+            "-of", "csv=p=0", &orig,
+        ],
+        TOPE_TIRA,
+    )
+    .map_err(|f| fallo("ffprobe", f))?;
+    Ok(leer_claves(&dijo, inicio))
+}
+
+/// Las líneas de ffprobe (`1.234000,K__`) a milisegundos, en orden y sin
+/// repetir. Aparte para probarlo sin ffprobe.
+fn leer_claves(dijo: &str, inicio: f64) -> Vec<u64> {
+    let mut v: Vec<u64> = dijo
+        .lines()
+        .filter_map(|l| {
+            let (t, flags) = l.trim().split_once(',')?;
+            if !flags.starts_with('K') {
+                return None;
+            }
+            let s: f64 = t.parse().ok()?;
+            Some(((s - inicio).max(0.0) * 1000.0).round() as u64)
+        })
+        .collect();
+    v.sort_unstable();
+    v.dedup();
+    v
+}
+
 // ------------------------------------------------------------------ audio
 
 /// Tasa a la que se analiza. 44,1 kHz llega hasta 22 kHz, lo que oye una
@@ -826,6 +917,12 @@ mod tests {
     }
 
     #[test]
+    fn las_claves_se_leen_de_los_paquetes_y_cuentan_desde_el_principio() {
+        let dijo = "0.023000,K__\n0.056000,___\n2.023000,K__\nN/A,K__\n1.023000,K_\n";
+        assert_eq!(leer_claves(dijo, 0.023), vec![0, 1000, 2000]);
+    }
+
+    #[test]
     fn la_tira_de_un_video_largo_sale_de_los_fotogramas_clave() {
         if !externo::hay("ffmpeg") {
             eprintln!("sin ffmpeg: prueba saltada");
@@ -847,6 +944,45 @@ mod tests {
         let (w, h) = image::image_dimensions(&r).unwrap();
         assert_eq!(w, TIRA_ANCHO * 10);
         assert!(h > 0);
+    }
+
+    #[test]
+    fn el_fotograma_de_un_momento_es_el_que_se_esta_viendo_y_no_el_siguiente() {
+        if !externo::hay("ffmpeg") {
+            eprintln!("sin ffmpeg: prueba saltada");
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let mp4 = dir.path().join("diez.mp4");
+        // Diez fotogramas por segundo, cada uno distinto, y claves cada 3 s:
+        // el momento cae lejos de una clave.
+        externo::correr(
+            "ffmpeg",
+            &[
+                "-v", "error", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=10:duration=5",
+                "-g", "30", "-pix_fmt", "yuv420p", "-y", &mp4.to_string_lossy(),
+            ],
+            Duration::from_secs(60),
+        )
+        .unwrap();
+        // En 3,95 s se ve el fotograma 39, el que empieza en 3,9.
+        let hecho = fotograma(dir.path(), &mp4, 3_950).unwrap();
+        let esperado = dir.path().join("39.png");
+        externo::correr(
+            "ffmpeg",
+            &[
+                "-v", "error", "-i", &mp4.to_string_lossy(), "-vf", "select=eq(n\\,39)",
+                "-frames:v", "1", "-y", &esperado.to_string_lossy(),
+            ],
+            Duration::from_secs(60),
+        )
+        .unwrap();
+        let a = image::open(&hecho).unwrap().to_rgb8();
+        let b = image::open(&esperado).unwrap().to_rgb8();
+        assert_eq!(a.dimensions(), (160, 90));
+        assert!(a == b, "salió otro fotograma");
+        // Y en el principio, el primero.
+        assert!(fotograma(dir.path(), &mp4, 0).is_ok());
     }
 
     #[test]
