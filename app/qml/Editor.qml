@@ -719,10 +719,10 @@ Item {
             }
             Boton {
                 icono: "iman"
-                texto: qsTr("imán %1 s").arg(String(ajustes.pasoIman).replace(".", ","))
+                texto: qsTr("imán %1 s").arg(Textos.decimal(ajustes.pasoIman))
                 activo: editor.iman
                 pista: editor.iman
-                       ? qsTr("el inicio y el fin se pegan a múltiplos de %1 s (las marcas de debajo); el paso se cambia en ajustes, «editor». Quítalo para dejarlos donde quieras").arg(String(ajustes.pasoIman).replace(".", ","))
+                       ? qsTr("el inicio y el fin se pegan a múltiplos de %1 s (las marcas de debajo); el paso se cambia en ajustes, «editor». Quítalo para dejarlos donde quieras").arg(Textos.decimal(ajustes.pasoIman))
                        : qsTr("el inicio y el fin van donde los sueltes. Ponlo para que se peguen a tiempos redondos")
                 onPulsado: {
                     editor.iman = !editor.iman

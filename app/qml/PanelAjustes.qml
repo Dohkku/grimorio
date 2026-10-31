@@ -8,6 +8,7 @@
 //
 //   Ctrl+,   abrir y cerrar
 import QtQuick
+import "textos.js" as Textos
 
 Item {
     id: panel
@@ -377,6 +378,51 @@ Item {
                     }
                 }
 
+                // Los nombres de los idiomas, cada uno en el suyo: quien no
+                // entiende el que está puesto tiene que reconocer el propio.
+                Item {
+                    width: parent.width
+                    height: Math.max(textoIdioma.height, filaIdioma.height) + tema.hueco * 0.8
+                    Column {
+                        id: textoIdioma
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - filaIdioma.width - tema.hueco
+                        spacing: tema.hueco * 0.15
+                        Text {
+                            text: qsTr("idioma")
+                            color: tema.texto
+                            font.pixelSize: tema.fuente
+                        }
+                        Text {
+                            width: parent.width
+                            visible: (ajustes.idioma.length > 0 ? ajustes.idioma : ajustes.idiomaEnUso)
+                                     !== ajustes.idiomaEnUso
+                            text: qsTr("se cambia al volver a abrir Grimorio")
+                            color: tema.textoTenue
+                            font.pixelSize: tema.fuente * 0.85
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                    Row {
+                        id: filaIdioma
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        spacing: tema.hueco * 0.4
+                        Repeater {
+                            model: [
+                                { clave: "", texto: qsTr("el del sistema") },
+                                { clave: "es", texto: "español" },
+                                { clave: "en", texto: "English" }
+                            ]
+                            delegate: Boton {
+                                required property var modelData
+                                texto: modelData.texto
+                                activo: ajustes.idioma === modelData.clave
+                                onPulsado: ajustes.idioma = modelData.clave
+                            }
+                        }
+                    }
+                }
+
                 Item {
                     width: parent.width
                     height: filaEscala.height + tema.hueco * 0.8
@@ -562,7 +608,7 @@ Item {
                             model: [0.1, 0.25, 0.5, 1, 2, 5]
                             delegate: Boton {
                                 required property var modelData
-                                texto: String(modelData).replace(".", ",") + " s"
+                                texto: Textos.decimal(modelData) + " s"
                                 activo: Math.abs(ajustes.pasoIman - modelData) < 0.001
                                 onPulsado: ajustes.pasoIman = modelData
                             }

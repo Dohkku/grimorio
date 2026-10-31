@@ -1,3 +1,5 @@
+English · [Español](README.es.md)
+
 <p align="center">
   <img src="app/icono/grimorio-256.png" width="128" alt="Grimorio">
 </p>
@@ -5,55 +7,56 @@
 <h1 align="center">Grimorio</h1>
 
 <p align="center">
-  Tu biblioteca visual, en tu disco.<br>
-  Guarda, ordena y encuentra referencias: imágenes, vídeo, sonido, PDF y modelos 3D.<br>
-  Libre, nativa, para Linux y Windows. Sin nube y sin un navegador dentro.
+  Your visual library, on your own disk.<br>
+  Keep, organize and find references: images, video, audio, PDF and 3D models.<br>
+  Free, native, for Linux and Windows. No cloud and no browser inside.
 </p>
 
 <p align="center">
-  <a href="https://grimorio.frederickandrade.com">Web</a> ·
-  <a href="https://github.com/Dohkku/grimorio/releases/latest">Descargar</a> ·
-  <a href="#english">English</a>
+  <a href="https://grimorio.frederickandrade.com">Website</a> ·
+  <a href="https://github.com/Dohkku/grimorio/releases/latest">Download</a>
 </p>
 
 <p align="center">
-  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-sonido.mp4">
-    <img src="docs/capturas/trailer.gif" width="760" alt="Fragmento del tráiler de Grimorio: las imágenes vuelan a la ventana y se ordenan solas">
+  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-en-sonido.mp4">
+    <img src="docs/capturas/trailer.gif" width="760" alt="Clip from the Grimorio trailer: images fly into the window and sort themselves">
   </a><br>
-  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-sonido.mp4">Ver el tráiler completo (55 s, con sonido)</a>
+  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-en-sonido.mp4">Watch the full trailer (55 s, with sound)</a>
 </p>
 
-## Qué hace
+## What it does
 
-- **Todo en un sitio.** Imágenes (también PSD, AI, EPS, Krita, Sketch y RAW),
-  vídeo que se reproduce al pasar el ratón, sonido con su onda y su espectro,
-  PDF con visor y modelos 3D (STL, OBJ, PLY, glTF, 3MF, y `.blend`/`.fbx` con
-  Blender instalado).
-- **Ordenar sin esfuerzo.** Etiquetas con grupos y colores, estrellas, notas,
-  carpetas anidadas con color y **carpetas dinámicas** que se rellenan solas
-  con un filtro.
-- **Encontrar al instante.** Un buscador que entiende `#etiqueta`,
-  `estrellas:>=4`, `tipo:vídeo`, fechas y colores, deja fuera con un menos
-  (`#comida -#picante`) y sugiere mientras escribes. Responde en milisegundos con cien mil elementos.
-- **Mirar de verdad.** Visor con zoom hasta el píxel y cuentagotas, onda de
-  los sonidos, páginas de los PDF y modelos 3D con ejes como en Blender.
-- **Con el teclado.** Estrellas con los números, `Ctrl+K` para etiquetar,
-  `F2` para renombrar (también en lote, con patrón), `Ctrl+Z` para deshacer
-  cualquier cosa.
-- **La misma imagen, en varios pesos.** Las versiones de una imagen se apilan
-  y en la galería se ve una sola. Puedes crear versiones más ligeras y quitar
-  el fondo, sin tocar el original.
-- **Recortar al momento.** Un editor para vídeos y sonidos (E, o clic
-  derecho): entrada, salida y listo. El tramo sale como versión en su pila
-  sin recodificar, así que tarda lo mismo con un vídeo de una hora.
-- **A tu manera.** Tema noche o papel, tamaño de la interfaz, modo seguro que
-  difumina lo marcado como +18, repetidos, carpetas del disco vinculadas,
-  capturas de pantalla, pegar desde el portapapeles o una URL.
+- **Everything in one place.** Images (including PSD, AI, EPS, Krita, Sketch
+  and RAW), video that plays when you hover over it, audio with its waveform
+  and spectrum, PDF with a viewer, and 3D models (STL, OBJ, PLY, glTF, 3MF,
+  and `.blend`/`.fbx` when Blender is installed).
+- **Effortless organizing.** Tags with groups and colors, ratings, notes,
+  nested folders with colors and **smart folders** that fill themselves from
+  a filter.
+- **Find things instantly.** A search box that understands `#tag`,
+  `stars:>=4`, `type:video`, dates and colors (in English or in Spanish:
+  `estrellas:>=4`, `tipo:vídeo`), excludes with a minus sign
+  (`#food -#spicy`) and suggests as you type. It answers in milliseconds
+  with a hundred thousand items.
+- **Really look at things.** A viewer with zoom down to the pixel and a color
+  picker, waveforms for audio, pages for PDFs and 3D models with axes like in
+  Blender.
+- **Keyboard first.** Ratings with the number keys, `Ctrl+K` to tag, `F2` to
+  rename (also in batch, with a pattern), `Ctrl+Z` to undo anything.
+- **The same image, in several sizes.** The versions of an image are stacked
+  and the grid shows just one. You can create lighter versions and remove the
+  background without touching the original.
+- **Trim on the spot.** An editor for videos and sounds (E, or right click):
+  in point, out point, done. The clip is added as a version in its stack
+  without re-encoding, so it takes the same time with an hour-long video.
+- **Your way.** English or Spanish, night or paper theme, interface size, a safe mode that blurs
+  whatever is marked as adult content, duplicates, linked folders on disk,
+  screen capture, paste from the clipboard or from a URL.
 
-## Tus datos son tuyos
+## Your data is yours
 
-La biblioteca es una carpeta. Cada elemento tiene su original y un
-`item.json` legible al lado:
+The library is a folder. Each item has its original and a readable
+`item.json` next to it:
 
 ```json
 {
@@ -65,48 +68,48 @@ La biblioteca es una carpeta. Cada elemento tiene su original y un
 }
 ```
 
-`index.sqlite` y las miniaturas son derivados: se pueden borrar y
-`grim reindex` los rehace. La carpeta se sincroniza con Syncthing o Dropbox y
-se copia como cualquier otra. El formato está especificado en
+`index.sqlite` and the thumbnails are derived files: they can be deleted and
+`grim reindex` rebuilds them. The folder syncs with Syncthing or Dropbox and
+can be copied like any other. The format is specified in
 [docs/FORMATO.md](docs/FORMATO.md).
 
-## Las cuatro decisiones
+## The four decisions
 
-1. **Tus datos son tuyos y son legibles.** Un JSON por elemento; el índice se
-   reconstruye.
-2. **Nada de webview.** Ni Electron, ni Tauri, ni WebKitGTK. Qt 6 nativo.
-3. **El núcleo no sabe qué es una ventana.** `grimorio-core` compila y se
-   prueba sin escritorio; la interfaz y `grim` son clientes.
-4. **El estilo es dato.** Ni un color ni una medida a mano en la interfaz:
-   todo sale de un tema JSON que se recarga al guardarlo.
+1. **Your data is yours, and it is readable.** One JSON per item; the index
+   can be rebuilt.
+2. **No webview.** No Electron, no Tauri, no WebKitGTK. Native Qt 6.
+3. **The core does not know what a window is.** `grimorio-core` builds and is
+   tested without a desktop; the interface and `grim` are clients.
+4. **Style is data.** Not a single hardcoded color or size in the interface:
+   everything comes from a JSON theme that reloads when you save it.
 
-## Instalar
+## Install
 
-- **Windows:** el instalador `Grimorio-x.y.z-windows-x64-instalador.exe` o el `.zip` portable
-  de la [última versión](https://github.com/Dohkku/grimorio/releases/latest).
-- **Linux:** el `.tar.gz` de la misma página (usa el Qt 6 del sistema), o compilar (abajo).
+- **Windows:** the `Grimorio-x.y.z-windows-x64-instalador.exe` installer or the portable `.zip`
+  from the [latest release](https://github.com/Dohkku/grimorio/releases/latest).
+- **Linux:** the `.tar.gz` from the same page (it uses the system Qt 6), or build it (below).
 
-Opcionales, para sacar más de cada archivo: `ffmpeg` (vídeo y sonido),
-`pdftoppm` de Poppler (PDF), Blender (`.blend`, `.fbx`), ImageMagick (PSD,
-AI, EPS). Sin ellos los archivos entran igual, con menos detalle.
+Optional, to get more out of each file: `ffmpeg` (video and audio),
+`pdftoppm` from Poppler (PDF), Blender (`.blend`, `.fbx`), ImageMagick (PSD,
+AI, EPS). Without them the files are still imported, with less detail.
 
-## Compilar
+## Build
 
-Hace falta Rust estable, CMake y Qt 6.4 o más nuevo (Quick, Qml, Multimedia,
-OpenGL, Network; DBus en Linux).
+You need stable Rust, CMake and Qt 6.4 or newer (Quick, Qml, Multimedia,
+OpenGL, Network; DBus on Linux).
 
 ```sh
-cargo build --release                         # núcleo y `grim`
+cargo build --release                         # core and `grim`
 cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release
 cmake --build app/build -j
 ./app/build/grimorio ~/Referencias.grimorio
 ```
 
-En Ubuntu 24.04 los paquetes están listados en
-[docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md); Windows, en
+The packages for Ubuntu 24.04 are listed in
+[docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md); Windows is covered in
 [docs/WINDOWS.md](docs/WINDOWS.md).
 
-### Desde la terminal
+### From the terminal
 
 ```sh
 export GRIMORIO_LIB=~/Referencias.grimorio
@@ -116,51 +119,31 @@ grim search "#cartel estrellas:>=4 orientacion:vertical"
 grim stats
 ```
 
-## Probar y medir
+## Test and measure
 
 ```sh
-cargo test --release                          # núcleo, CLI y puente
-(cd app/build && ctest)                       # interfaz: lint, malla, arrastre
+cargo test --release                          # core, CLI and bridge
+(cd app/build && ctest)                       # interface: lint, grid, drag
 grim synth /tmp/cien-mil.grimorio --items 100000
-grim -L /tmp/cien-mil.grimorio bench query    # presupuesto: p95 < 30 ms
+grim -L /tmp/cien-mil.grimorio bench query    # budget: p95 < 30 ms
 ```
 
-Y pruebas de usuario de verdad: la app manejada con ratón y teclado simulados
-en una pantalla virtual, comprobando en disco cada gesto
+And real user tests: the app driven with simulated mouse and keyboard on a
+virtual display, checking every gesture on disk
 ([herramientas/recorrido](herramientas/recorrido/recorrido.py)).
 
-## Documentación
+## Documentation
 
-- [NOVEDADES.md](NOVEDADES.md): qué trae cada versión
-- [docs/PLAN.md](docs/PLAN.md): alcance, arquitectura e hitos
-- [docs/FORMATO.md](docs/FORMATO.md): el formato de biblioteca
-- [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md): qué entra y con qué licencia
-- [app/README.md](app/README.md): la aplicación y todos sus atajos
-- [CONTRIBUTING.md](CONTRIBUTING.md): cómo contribuir
+- [CHANGELOG.md](CHANGELOG.md): what each version brings (in Spanish: [NOVEDADES.md](NOVEDADES.md))
+- [docs/PLAN.md](docs/PLAN.md): scope, architecture and milestones
+- [docs/FORMATO.md](docs/FORMATO.md): the library format
+- [docs/DEPENDENCIAS.md](docs/DEPENDENCIAS.md): what goes in and under which license
+- [app/README.md](app/README.md): the application and all its shortcuts
+- [CONTRIBUTING.md](CONTRIBUTING.md): how to contribute
 
-## Licencia
+Code identifiers, comments and some of the docs are written in Spanish;
+issues and pull requests in English are welcome.
 
-[AGPL-3.0](LICENSE.md), software libre. Hecho por [Frederick Andrade](https://frederickandrade.com).
+## License
 
----
-
-<a id="english"></a>
-
-## English
-
-**Grimorio** is a free, open-source visual reference library for Linux and
-Windows, an alternative to Eagle. It keeps images (including PSD, AI, EPS,
-Krita, Sketch and RAW previews), video, audio, PDFs and 3D models in a
-library you can search instantly, with tags, stars, colors, nested folders and
-dynamic folders that fill themselves from a filter. It is native (Rust core,
-Qt 6 interface), with no cloud and no embedded browser.
-
-Your library is a plain folder with one readable `item.json` per item; the
-search index and thumbnails are derived and can be rebuilt with
-`grim reindex`. Sync it with Syncthing or Dropbox, back it up by copying it.
-
-Download it from the [releases page](https://github.com/Dohkku/grimorio/releases/latest)
-or [watch the trailer](https://grimorio.frederickandrade.com/media/trailer/trailer-v12-en-sonido.mp4) (55 s, with sound).
-Build instructions are above (`cargo build --release`, then CMake). The code,
-comments and docs are written in Spanish; issues and pull requests in English
-are welcome.
+[AGPL-3.0](LICENSE.md), free software. Made by [Frederick Andrade](https://frederickandrade.com).

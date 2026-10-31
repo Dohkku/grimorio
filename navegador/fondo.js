@@ -23,7 +23,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "guardar",
-      title: "Guardar en Grimorio",
+      title: textoGrimorio("menuGuardar"),
       contexts: ["image", "video", "link", "page"],
     });
   });
@@ -36,7 +36,7 @@ async function hablar(mensaje) {
     const texto = String((e && e.message) || e);
     if (/not found|no se encontr/i.test(texto)) {
       return { ok: false, sinConectar: true,
-               error: "falta conectar Grimorio con el navegador: ejecuta «grim navegador instalar»" };
+               error: textoGrimorio("errorSinConectar") };
     }
     return { ok: false, error: texto };
   }
@@ -81,7 +81,7 @@ async function guardarUno({ url, alternativas, origen, nombre }, carpeta) {
     }
   }
   const direccion = grande || url;
-  if (!/^https?:/.test(direccion)) return { ok: false, error: "esa imagen no tiene dirección que bajar" };
+  if (!/^https?:/.test(direccion)) return { ok: false, error: textoGrimorio("errorSinDireccion") };
   return hablar({ ...pedido, url: direccion });
 }
 
@@ -96,7 +96,7 @@ async function guardarLista(lista) {
   const carpeta = await carpetaElegida();
   const resultados = [];
   for (const p of lista) {
-    const r = (await guardarUno(p, carpeta)) || { ok: false, error: "Grimorio no contestó" };
+    const r = (await guardarUno(p, carpeta)) || { ok: false, error: textoGrimorio("errorSinRespuesta") };
     resultados.push({ ...r, nombre: r.nombre || p.nombre || "" });
   }
   await apuntar(resultados);
@@ -154,7 +154,7 @@ async function alPulsarMenu(info, tab) {
       return { ok: false, error: String(e.message || e) };
     }
   }
-  if (tab) await avisarEn(tab, { estado: "en curso", titulo: "Guardando en Grimorio…" });
+  if (tab) await avisarEn(tab, { estado: "en curso", titulo: textoGrimorio("avisoGuardando") });
   let r;
   if ((info.mediaType === "image" || info.mediaType === "video") && info.srcUrl) {
     r = await guardarLista([{ url: info.srcUrl, origen: info.pageUrl, nombre: tab && tab.title }]);

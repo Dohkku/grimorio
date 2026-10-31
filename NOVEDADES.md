@@ -8,6 +8,25 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.17
+
+- **Grimorio en inglés.** En Ajustes → apariencia → idioma eliges español,
+  English o el del sistema (si tu sistema está en español, sigue en
+  español). Se aplica al volver a abrir Grimorio. Va todo: menús, avisos,
+  lo que se deshace con Ctrl+Z, las novedades y la extensión del navegador,
+  que habla el idioma del navegador.
+- **El buscador entiende los dos idiomas.** `tipo:vídeo` y `type:video`,
+  `estrellas:>=4` y `stars:>=4`, `fecha:hoy` y `date:today`. Los botones de
+  filtro escriben en el idioma de la interfaz, y una carpeta dinámica
+  guardada en uno sigue funcionando en el otro. Al renombrar en lote valen
+  también `{name}` y `{date}`.
+- **Los colores de los vídeos, bien al reproducir.** En Linux, al dar al
+  play algunos vídeos cambiaban de color: los rojos tiraban a naranja y la
+  piel amarilleaba, aunque la miniatura se veía bien. Era un fallo del Qt
+  que trae Ubuntu con los vídeos en HD (casi todos: OBS, YouTube, móviles).
+  Ahora se ven con los mismos colores que la miniatura.
+- **Botones del panel de detalle más cortos**, para que no se corten.
+
 ## 0.1.16
 
 - **Más sitio para mirar.** En el visor, la foto o el vídeo ya no queda

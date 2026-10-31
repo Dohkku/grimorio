@@ -565,7 +565,7 @@ Item {
                 // Una foto no tiene editor propio todavía: lo que se le puede
                 // hacer, en un menú debajo del botón.
                 let a = [
-                    { texto: qsTr("girar a la izquierda"), valor: "girarIzq", icono: "girarIzq", atajo: "Mayús+R" },
+                    { texto: qsTr("girar a la izquierda"), valor: "girarIzq", icono: "girarIzq", atajo: qsTr("Mayús+R") },
                     { texto: qsTr("girar a la derecha"), valor: "girarDer", icono: "girarDer", atajo: "R" },
                     { texto: qsTr("crear versión…"), valor: "version", icono: "pila" }
                 ]

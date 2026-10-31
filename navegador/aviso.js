@@ -8,6 +8,11 @@
 // en la biblioteca) y «error». Con un id, ofrece verlo en Grimorio.
 "use strict";
 
+/// Un texto en el idioma del navegador (_locales/), con sus huecos $1, $2….
+/// Lo usan también fondo.js y los scripts de cada web, que cargan antes este.
+var textoGrimorio = textoGrimorio || ((clave, ...huecos) =>
+  chrome.i18n.getMessage(clave, huecos.map(String)) || clave);
+
 var avisoGrimorio = avisoGrimorio || (() => {
   let raiz = null;
   let caja = null;
@@ -52,11 +57,13 @@ var avisoGrimorio = avisoGrimorio || (() => {
       <div class="caja"><div class="dentro">
         <div class="icono"></div>
         <div class="textos"><div class="titulo"></div><div class="detalle"></div>
-          <button class="ver" hidden>ver en Grimorio</button></div>
-        <button class="cerrar" title="cerrar">×</button>
+          <button class="ver" hidden></button></div>
+        <button class="cerrar">×</button>
       </div></div>`;
     (document.body || document.documentElement).appendChild(raiz);
     caja = sombra.querySelector(".caja");
+    sombra.querySelector(".ver").textContent = textoGrimorio("avisoVer");
+    sombra.querySelector(".cerrar").title = textoGrimorio("avisoCerrar");
     sombra.querySelector(".cerrar").addEventListener("click", () => { caja.style.display = "none"; });
     // Con el ratón encima no se va: da tiempo a leerlo y a pulsar «ver».
     caja.addEventListener("mouseenter", () => clearTimeout(olvido));
@@ -102,26 +109,26 @@ function avisoDeResultado(r, cuantos) {
   const mal = res.filter((x) => !x.ok);
   const primero = nuevas[0] || ya[0];
   if (res.length === 0 || (mal.length === res.length)) {
-    return { estado: "error", titulo: "No se ha guardado",
-             detalle: (mal[0] && mal[0].error) || (r && r.error) || "Grimorio no contestó" };
+    return { estado: "error", titulo: textoGrimorio("avisoNoGuardado"),
+             detalle: (mal[0] && mal[0].error) || (r && r.error) || textoGrimorio("errorSinRespuesta") };
   }
   if (cuantos === 1 && camino.length === 1) {
-    return { estado: "en curso", titulo: "Grimorio sigue bajándola",
-             detalle: "Es grande; entrará en unos momentos." };
+    return { estado: "en curso", titulo: textoGrimorio("avisoSigueBajando"),
+             detalle: textoGrimorio("avisoEsGrande") };
   }
   if (cuantos === 1) {
     return primero.estado === "repetida"
-      ? { estado: "repetida", titulo: "Ya la tenías en Grimorio", detalle: primero.nombre, id: primero.id }
-      : { estado: "guardada", titulo: "Guardada en Grimorio", detalle: primero.nombre, id: primero.id };
+      ? { estado: "repetida", titulo: textoGrimorio("avisoYaLaTenias"), detalle: primero.nombre, id: primero.id }
+      : { estado: "guardada", titulo: textoGrimorio("avisoGuardada"), detalle: primero.nombre, id: primero.id };
   }
   const partes = [];
-  if (nuevas.length) partes.push(`${nuevas.length} nueva${nuevas.length === 1 ? "" : "s"}`);
-  if (ya.length) partes.push(`${ya.length} ya la${ya.length === 1 ? "" : "s"} tenías`);
-  if (camino.length) partes.push(`${camino.length} en camino`);
-  if (mal.length) partes.push(`${mal.length} con error`);
+  if (nuevas.length) partes.push(textoGrimorio(nuevas.length === 1 ? "cuentaNueva" : "cuentaNuevas", nuevas.length));
+  if (ya.length) partes.push(textoGrimorio(ya.length === 1 ? "cuentaYaLaTenias" : "cuentaYaLasTenias", ya.length));
+  if (camino.length) partes.push(textoGrimorio("cuentaEnCamino", camino.length));
+  if (mal.length) partes.push(textoGrimorio("cuentaConError", mal.length));
   return { estado: mal.length ? "error" : nuevas.length ? "guardada" : "repetida",
-           titulo: `${bien.length + camino.length} de ${res.length} en Grimorio`,
+           titulo: textoGrimorio("avisoDeTantos", bien.length + camino.length, res.length),
            detalle: partes.join(" · "), id: primero && primero.id };
 }
 
-if (typeof module !== "undefined") module.exports = { avisoDeResultado };
+if (typeof module !== "undefined") module.exports = { avisoDeResultado, textoGrimorio };

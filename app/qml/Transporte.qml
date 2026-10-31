@@ -199,7 +199,7 @@ Rectangle {
             Boton {
                 visible: !transporte.compacto
                 // Un fotograma atrás. En el sonido no hay fotogramas: una décima.
-                texto: transporte.esVideo ? "‹ 1" : "‹ 0,1 s"
+                texto: transporte.esVideo ? "‹ 1" : "‹ " + Textos.decimal(0.1) + " s"
                 pista: transporte.esVideo ? qsTr("un fotograma atrás (,)") : qsTr("una décima atrás (,)")
                 onPulsado: transporte.esVideo ? transporte.rep.paso(-1) : transporte.rep.irA(transporte.pos - 100)
             }
@@ -212,7 +212,7 @@ Rectangle {
             }
             Boton {
                 visible: !transporte.compacto
-                texto: transporte.esVideo ? "1 ›" : "0,1 s ›"
+                texto: transporte.esVideo ? "1 ›" : Textos.decimal(0.1) + " s ›"
                 pista: transporte.esVideo ? qsTr("un fotograma adelante (.)") : qsTr("una décima adelante (.)")
                 onPulsado: transporte.esVideo ? transporte.rep.paso(1) : transporte.rep.irA(transporte.pos + 100)
             }
@@ -253,7 +253,7 @@ Rectangle {
             Boton {
                 id: botonVelocidad
                 readonly property real v: transporte.hayRep ? transporte.rep.velocidad : 1
-                texto: String(v).replace(".", ",") + "×"
+                texto: Textos.decimal(v) + "×"
                 activo: v !== 1
                 pista: qsTr("velocidad: clic sube, clic derecho baja, rueda ([ y ])")
                 onPulsado: transporte.rep.cambiarVelocidad(1)

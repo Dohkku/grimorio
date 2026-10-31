@@ -54,7 +54,9 @@ void Exportar::copiar(const QList<QUrl> &urls, const QString &destino)
                 yo->m_enMarcha = false;
                 emit yo->enMarchaCambio();
                 if (mal == 0)
-                    emit yo->aviso(tr("%1 exportado%2 a %3").arg(bien).arg(bien == 1 ? "" : "s", destino), false);
+                    emit yo->aviso(bien == 1 ? tr("1 exportado a %1").arg(destino)
+                                             : tr("%1 exportados a %2").arg(bien).arg(destino),
+                                   false);
                 else
                     emit yo->aviso(tr("%1 exportados, %2 no se pudieron copiar a %3").arg(bien).arg(mal).arg(destino),
                                    true);

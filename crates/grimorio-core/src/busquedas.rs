@@ -56,7 +56,7 @@ pub fn anadir(raiz: &Path, nombre: &str, consulta: &str) -> Result<String> {
     let consulta = consulta.trim();
     if nombre.is_empty() {
         return Err(Error::Invalid(
-            "una carpeta inteligente necesita nombre".into(),
+            crate::idioma::t("una carpeta inteligente necesita nombre", "a smart folder needs a name").into(),
         ));
     }
     let mut todas = cargar(raiz)?;
@@ -75,7 +75,7 @@ pub fn borrar(raiz: &Path, id: &str) -> Result<()> {
     let antes = todas.len();
     todas.retain(|b| b.id != id);
     if todas.len() == antes {
-        return Err(Error::Invalid(format!("no existe la búsqueda {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("smart folder {id} doesn't exist") } else { format!("no existe la búsqueda {id}") }));
     }
     guardar(raiz, &todas)
 }
@@ -83,11 +83,11 @@ pub fn borrar(raiz: &Path, id: &str) -> Result<()> {
 pub fn renombrar(raiz: &Path, id: &str, nombre: &str) -> Result<()> {
     let nombre = nombre.trim();
     if nombre.is_empty() {
-        return Err(Error::Invalid("el nombre no puede quedar vacío".into()));
+        return Err(Error::Invalid(crate::idioma::t("el nombre no puede quedar vacío", "the name can't be empty").into()));
     }
     let mut todas = cargar(raiz)?;
     let Some(b) = todas.iter_mut().find(|b| b.id == id) else {
-        return Err(Error::Invalid(format!("no existe la búsqueda {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("smart folder {id} doesn't exist") } else { format!("no existe la búsqueda {id}") }));
     };
     b.nombre = nombre.to_string();
     guardar(raiz, &todas)
@@ -97,7 +97,7 @@ pub fn renombrar(raiz: &Path, id: &str, nombre: &str) -> Result<()> {
 pub fn cambiar_consulta(raiz: &Path, id: &str, consulta: &str) -> Result<()> {
     let mut todas = cargar(raiz)?;
     let Some(b) = todas.iter_mut().find(|b| b.id == id) else {
-        return Err(Error::Invalid(format!("no existe la búsqueda {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("smart folder {id} doesn't exist") } else { format!("no existe la búsqueda {id}") }));
     };
     b.consulta = consulta.trim().to_string();
     guardar(raiz, &todas)

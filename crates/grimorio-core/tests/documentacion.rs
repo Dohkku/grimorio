@@ -11,6 +11,7 @@ use serde_json::Value;
 
 const FORMATO: &str = include_str!("../../../docs/FORMATO.md");
 const NOVEDADES: &str = include_str!("../../../NOVEDADES.md");
+const CHANGELOG: &str = include_str!("../../../CHANGELOG.md");
 
 /// Un elemento con todos los campos puestos, para que ninguno se omita al
 /// escribirlo.
@@ -115,5 +116,9 @@ fn la_version_tiene_su_apartado_en_novedades() {
     assert!(
         NOVEDADES.lines().any(|l| l.trim() == format!("## {v}")),
         "NOVEDADES.md no tiene el apartado «## {v}»: escribe qué trae esta versión"
+    );
+    assert!(
+        CHANGELOG.lines().any(|l| l.trim() == format!("## {v}")),
+        "CHANGELOG.md no tiene el apartado «## {v}»: lo mismo que NOVEDADES.md, en inglés"
     );
 }

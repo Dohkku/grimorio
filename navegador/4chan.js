@@ -7,7 +7,7 @@
 (() => {
   async function guardar(medio) {
     const a = archivo4chan(medio, location);
-    if (!a) return guardarYAvisar([], "no sé de qué post es");
+    if (!a) return guardarYAvisar([], textoGrimorio("motivoDeQuePost"));
     return guardarYAvisar([{ url: a.url, origen: a.origen, nombre: a.nombre || document.title }], a.como);
   }
 

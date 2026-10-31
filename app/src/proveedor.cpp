@@ -4,6 +4,7 @@
 #include "original.h"
 
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QFile>
 #include <QImage>
 #include <QImageReader>
@@ -149,7 +150,7 @@ public:
             // Sin miniatura no es un error de verdad: la celda se queda con su
             // color dominante.
             QMetaObject::invokeMethod(
-                m_resp, [r = m_resp] { r->fallar(QStringLiteral("sin miniatura")); },
+                m_resp, [r = m_resp] { r->fallar(QCoreApplication::translate("Proveedor", "sin miniatura")); },
                 Qt::QueuedConnection);
             return;
         }
@@ -209,7 +210,7 @@ public:
             QMetaObject::invokeMethod(
                 m_resp,
                 [r = m_resp, ruta = m_ruta] {
-                    r->fallar(QStringLiteral("no pude leer %1").arg(ruta));
+                    r->fallar(QCoreApplication::translate("Proveedor", "no pude leer %1").arg(ruta));
                 },
                 Qt::QueuedConnection);
             return;
@@ -243,7 +244,7 @@ public:
             QMetaObject::invokeMethod(
                 m_resp,
                 [r = m_resp, ruta = m_ruta] {
-                    r->fallar(QStringLiteral("no pude abrir %1").arg(ruta));
+                    r->fallar(QCoreApplication::translate("Proveedor", "no pude abrir %1").arg(ruta));
                 },
                 Qt::QueuedConnection);
             return;
@@ -313,7 +314,7 @@ QQuickImageResponse *Proveedor::requestImageResponse(const QString &id, const QS
             id.mid(8).toLatin1(),
             QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
         if (ruta.isEmpty() || !QFile::exists(ruta)) {
-            resp->fallar(QStringLiteral("no existe: %1").arg(ruta));
+            resp->fallar(QCoreApplication::translate("Proveedor", "no existe: %1").arg(ruta));
             return resp;
         }
         QThreadPool::globalInstance()->start(new TareaOriginal(resp, ruta));
@@ -341,7 +342,7 @@ QQuickImageResponse *Proveedor::requestImageResponse(const QString &id, const QS
         }
         if (mia) grim_vista_soltar(mia);
         if (ruta.isEmpty()) {
-            resp->fallar(QStringLiteral("no está en la vista: %1").arg(id));
+            resp->fallar(QCoreApplication::translate("Proveedor", "no está en la vista: %1").arg(id));
             return resp;
         }
         QThreadPool::globalInstance()->start(new TareaOriginal(resp, ruta));
@@ -363,7 +364,7 @@ QQuickImageResponse *Proveedor::requestImageResponse(const QString &id, const QS
             }
             if (i < 0) {
                 if (mia) grim_vista_soltar(mia);
-                resp->fallar(QStringLiteral("no está en la vista: %1").arg(id));
+                resp->fallar(QCoreApplication::translate("Proveedor", "no está en la vista: %1").arg(id));
                 return resp;
             }
             QThreadPool::globalInstance()->start(new TareaMalla(this, resp, mia, i, pedido));
@@ -379,7 +380,7 @@ QQuickImageResponse *Proveedor::requestImageResponse(const QString &id, const QS
         // No estar en la vista no se recuerda: Qt no guarda en caché un fallo,
         // así que cuando la celda vuelva a pedirlo con la vista buena, saldrá.
         if (mia) grim_vista_soltar(mia);
-        resp->fallar(QStringLiteral("no está en la vista: %1").arg(id));
+        resp->fallar(QCoreApplication::translate("Proveedor", "no está en la vista: %1").arg(id));
         return resp;
     }
     // La tarea se queda con la referencia y la suelta al terminar: mientras

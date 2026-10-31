@@ -58,7 +58,7 @@ fn color_valido(c: &str) -> bool {
 fn editar<T>(raiz: &Path, id: &str, f: impl FnOnce(&mut Grupo) -> T) -> Result<T> {
     let mut todos = cargar(raiz)?;
     let Some(g) = todos.iter_mut().find(|g| g.id == id) else {
-        return Err(Error::Invalid(format!("no existe el grupo {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("group {id} doesn't exist") } else { format!("no existe el grupo {id}") }));
     };
     let r = f(g);
     guardar(raiz, &todos)?;
@@ -68,10 +68,10 @@ fn editar<T>(raiz: &Path, id: &str, f: impl FnOnce(&mut Grupo) -> T) -> Result<T
 pub fn crear(raiz: &Path, nombre: &str, color: &str) -> Result<String> {
     let nombre = nombre.trim();
     if nombre.is_empty() {
-        return Err(Error::Invalid("un grupo necesita nombre".into()));
+        return Err(Error::Invalid(crate::idioma::t("un grupo necesita nombre", "a group needs a name").into()));
     }
     if !color_valido(color) {
-        return Err(Error::Invalid(format!("color no válido: {color}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("invalid color: {color}") } else { format!("color no válido: {color}") }));
     }
     let mut todos = cargar(raiz)?;
     let id = crate::id::new_id();
@@ -88,14 +88,14 @@ pub fn crear(raiz: &Path, nombre: &str, color: &str) -> Result<String> {
 pub fn renombrar(raiz: &Path, id: &str, nombre: &str) -> Result<()> {
     let nombre = nombre.trim();
     if nombre.is_empty() {
-        return Err(Error::Invalid("el nombre no puede quedar vacío".into()));
+        return Err(Error::Invalid(crate::idioma::t("el nombre no puede quedar vacío", "the name can't be empty").into()));
     }
     editar(raiz, id, |g| g.nombre = nombre.to_string())
 }
 
 pub fn colorear(raiz: &Path, id: &str, color: &str) -> Result<()> {
     if !color_valido(color) {
-        return Err(Error::Invalid(format!("color no válido: {color}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("invalid color: {color}") } else { format!("color no válido: {color}") }));
     }
     editar(raiz, id, |g| g.color = color.to_lowercase())
 }
@@ -106,7 +106,7 @@ pub fn borrar(raiz: &Path, id: &str) -> Result<()> {
     let antes = todos.len();
     todos.retain(|g| g.id != id);
     if todos.len() == antes {
-        return Err(Error::Invalid(format!("no existe el grupo {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("group {id} doesn't exist") } else { format!("no existe el grupo {id}") }));
     }
     guardar(raiz, &todos)
 }
@@ -117,7 +117,7 @@ pub fn agrupar(raiz: &Path, etiqueta: &str, grupo: Option<&str>) -> Result<()> {
     let mut todos = cargar(raiz)?;
     if let Some(id) = grupo {
         if !todos.iter().any(|g| g.id == id) {
-            return Err(Error::Invalid(format!("no existe el grupo {id}")));
+            return Err(Error::Invalid(if crate::idioma::ingles() { format!("group {id} doesn't exist") } else { format!("no existe el grupo {id}") }));
         }
     }
     for g in todos.iter_mut() {

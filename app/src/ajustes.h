@@ -55,6 +55,12 @@ class Ajustes : public QObject {
     /// Cada cuánto se pegan el inicio y el fin con el imán del editor, en
     /// segundos: 0,5 deja los cortes en el segundo y el medio segundo.
     Q_PROPERTY(qreal pasoIman READ pasoIman WRITE setPasoIman NOTIFY cambio)
+    /// El idioma de la interfaz: "es", "en" o vacío, que es el del sistema
+    /// (español si el sistema está en español; si no, inglés). Se aplica al
+    /// arrancar: ver `idiomaEfectivo` y `main.cpp`.
+    Q_PROPERTY(QString idioma READ idioma WRITE setIdioma NOTIFY cambio)
+    /// El que se está usando ahora, ya resuelto: "es" o "en".
+    Q_PROPERTY(QString idiomaEnUso READ idiomaEnUso CONSTANT)
 
 public:
     explicit Ajustes(QObject *padre = nullptr);
@@ -72,6 +78,10 @@ public:
     bool buscarVersiones() const { return m_buscarVersiones; }
     QString borrarPila() const { return m_borrarPila; }
     qreal pasoIman() const { return m_pasoIman; }
+    QString idioma() const { return m_idioma; }
+    QString idiomaEnUso() const { return m_idiomaEnUso; }
+    /// "es" o "en" para un ajuste de `idioma`, mirando el sistema si va vacío.
+    static QString idiomaEfectivo(const QString &elegido);
 
     void setAnchoLateral(qreal v);
     void setAnchoInspector(qreal v);
@@ -86,6 +96,7 @@ public:
     void setBuscarVersiones(bool v);
     void setBorrarPila(const QString &v);
     void setPasoIman(qreal v);
+    void setIdioma(const QString &v);
 
     /// Cómo se endereza un modelo 3D concreto: `vueltasX + 4 * vueltasZ`, 0
     /// si nunca se tocó. Es de quien lo mira, como el resto de esto: no cambia
@@ -113,4 +124,6 @@ private:
     bool m_buscarVersiones = true;
     QString m_borrarPila;
     qreal m_pasoIman = 0.5;
+    QString m_idioma;
+    QString m_idiomaEnUso;
 };

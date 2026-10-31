@@ -268,11 +268,15 @@ impl Item {
         // con forma de ruta se rechaza aquí, en la puerta, y no en cada sitio
         // que lo use: ver `id::es_valido`.
         if !crate::id::es_valido(&item.id) {
-            return Err(Error::Invalid(format!(
-                "{}: el id «{}» no es un identificador de Grimorio",
-                path.display(),
-                item.id
-            )));
+            return Err(Error::Invalid(if crate::idioma::ingles() {
+                format!("{}: the id «{}» is not a Grimorio id", path.display(), item.id)
+            } else {
+                format!(
+                    "{}: el id «{}» no es un identificador de Grimorio",
+                    path.display(),
+                    item.id
+                )
+            }));
         }
         Ok(item)
     }
@@ -288,7 +292,13 @@ impl Item {
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let dir = path
         .parent()
-        .ok_or_else(|| Error::Invalid(format!("{} no tiene directorio padre", path.display())))?;
+        .ok_or_else(|| {
+            Error::Invalid(if crate::idioma::ingles() {
+                format!("{} has no parent directory", path.display())
+            } else {
+                format!("{} no tiene directorio padre", path.display())
+            })
+        })?;
     std::fs::create_dir_all(dir).map_err(|e| Error::io(dir, e))?;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, bytes).map_err(|e| Error::io(&tmp, e))?;

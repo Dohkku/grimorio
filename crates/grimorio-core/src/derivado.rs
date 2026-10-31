@@ -16,6 +16,7 @@
 
 use crate::error::{Error, Result};
 use crate::externo::{self, Fallo, Temporal};
+use crate::idioma::t;
 use crate::{modelo3d, senal};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -35,6 +36,9 @@ fn mal(e: impl std::fmt::Display) -> Error {
 
 fn fallo(programa: &str, f: Fallo) -> Error {
     match f {
+        Fallo::NoEsta if crate::idioma::ingles() => {
+            Error::Invalid(format!("{programa} is needed and it's not installed"))
+        }
         Fallo::NoEsta => Error::Invalid(format!("hace falta {programa} y no está instalado")),
         otro => Error::Invalid(format!("{programa} {otro}")),
     }
@@ -99,7 +103,7 @@ impl Parcial {
     fn colocar(&self, hecho: &Path, destino: &Path) -> Result<()> {
         match std::fs::metadata(hecho) {
             Ok(m) if m.len() > 0 => {}
-            _ => return Err(mal("la herramienta terminó sin escribir nada")),
+            _ => return Err(mal(t("la herramienta terminó sin escribir nada", "the tool ended without writing anything"))),
         }
         std::fs::rename(hecho, destino).map_err(|source| Error::Io {
             path: destino.to_path_buf(),
@@ -203,7 +207,7 @@ pub fn tira_video(
     duracion_s: f32,
 ) -> Result<(PathBuf, Tira)> {
     if !(duracion_s.is_finite() && duracion_s > 0.0) {
-        return Err(mal("el vídeo no dice cuánto dura"));
+        return Err(mal(t("el vídeo no dice cuánto dura", "the video doesn't say how long it is")));
     }
     // Uno por segundo en los cortos, cien como mucho en los largos.
     let n = (duracion_s.ceil() as u32).clamp(1, 100);
@@ -255,7 +259,7 @@ pub fn tira_video(
 /// pueden enseñar ese trozo de más. Con `exacto` se recodifica y corta justo.
 pub fn cortar_tramo(raiz: &Path, original: &Path, tramo: crate::Tramo) -> Result<PathBuf> {
     if tramo.hasta_ms <= tramo.desde_ms {
-        return Err(mal("el tramo acaba antes de empezar"));
+        return Err(mal(t("el tramo acaba antes de empezar", "the clip ends before it starts")));
     }
     let ext = original
         .extension()
@@ -296,7 +300,7 @@ pub fn cortar_tramo(raiz: &Path, original: &Path, tramo: crate::Tramo) -> Result
         Ok(m) if m.len() > 0 => Ok(destino),
         _ => {
             let _ = std::fs::remove_file(&destino);
-            Err(mal("ffmpeg no sacó nada de ese tramo"))
+            Err(mal(t("ffmpeg no sacó nada de ese tramo", "ffmpeg got nothing out of that clip")))
         }
     }
 }
@@ -337,7 +341,7 @@ pub fn fotograma(raiz: &Path, original: &Path, ms: u64) -> Result<PathBuf> {
         Ok(m) if m.len() > 0 => Ok(destino),
         _ => {
             let _ = std::fs::remove_file(&destino);
-            Err(mal("ffmpeg no sacó ningún fotograma de ahí"))
+            Err(mal(t("ffmpeg no sacó ningún fotograma de ahí", "ffmpeg got no frame out of there")))
         }
     }
 }
@@ -392,6 +396,85 @@ fn leer_claves(dijo: &str, inicio: f64) -> Vec<u64> {
     v
 }
 
+/// Con qué cuentas hay que pasar un vídeo a colores de pantalla.
+///
+/// Un vídeo no guarda rojo, verde y azul: guarda brillo y dos diferencias de
+/// color, y la matriz que las vuelve a convertir depende de cómo se grabó. El
+/// reproductor la saca de las etiquetas del archivo; aquí se dice cuál va a
+/// elegir, para que la interfaz pueda corregirlo cuando la elige bien pero la
+/// aplica mal (ver `Reproductor.qml`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColorVideo {
+    /// `bt709`, `bt601`, `bt2020`, `rgb` u `otra`.
+    pub matriz: &'static str,
+    /// `limitado` (16 a 235, lo normal en vídeo) o `completo` (0 a 255).
+    pub rango: &'static str,
+}
+
+pub fn color_video(original: &Path) -> Result<ColorVideo> {
+    let dijo = externo::correr_leyendo(
+        "ffprobe",
+        &[
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=pix_fmt,color_space,color_range,height",
+            "-of",
+            "default=nw=1",
+            &original.to_string_lossy(),
+        ],
+        TOPE_PAGINA,
+    )
+    .map_err(|f| fallo("ffprobe", f))?;
+    leer_color(&dijo).ok_or_else(|| mal(t("ffprobe no encontró imagen en ese archivo", "ffprobe found no image in that file")))
+}
+
+/// Las líneas de ffprobe (`color_space=bt709`) a lo que hará el reproductor.
+/// Aparte para probarlo sin ffprobe.
+///
+/// Sin etiqueta se decide por el tamaño, como hacen GStreamer y Qt: más de 576
+/// líneas es alta definición y va con BT.709; lo de antes, con BT.601.
+fn leer_color(dijo: &str) -> Option<ColorVideo> {
+    let mut pix = "";
+    let mut espacio = "";
+    let mut rango = "";
+    let mut alto = 0u32;
+    for l in dijo.lines() {
+        match l.trim().split_once('=') {
+            Some(("pix_fmt", v)) => pix = v,
+            Some(("color_space", v)) => espacio = v,
+            Some(("color_range", v)) => rango = v,
+            Some(("height", v)) => alto = v.parse().unwrap_or(0),
+            _ => {}
+        }
+    }
+    if pix.is_empty() {
+        return None;
+    }
+    let es_rgb = ["rgb", "bgr", "gbr", "argb", "abgr", "0rgb", "0bgr"]
+        .iter()
+        .any(|p| pix.starts_with(p));
+    let matriz = if es_rgb || espacio == "gbr" {
+        "rgb"
+    } else {
+        match espacio {
+            "bt709" => "bt709",
+            "bt470bg" | "smpte170m" => "bt601",
+            "bt2020nc" | "bt2020c" => "bt2020",
+            "smpte240m" | "ycgco" | "ictcp" | "chroma-derived-nc" | "chroma-derived-c" => "otra",
+            // `unknown`, `fcc`, nada: GStreamer no lo distingue y Qt elige.
+            _ if alto > 576 => "bt709",
+            _ => "bt601",
+        }
+    };
+    // Los `yuvj` son los de las cámaras que graban como JPEG: rango completo
+    // aunque la etiqueta no lo diga.
+    let rango = if rango == "pc" || pix.starts_with("yuvj") { "completo" } else { "limitado" };
+    Some(ColorVideo { matriz, rango })
+}
+
 // ------------------------------------------------------------------ audio
 
 /// Tasa a la que se analiza. 44,1 kHz llega hasta 22 kHz, lo que oye una
@@ -444,7 +527,7 @@ pub fn analizar_audio(original: &Path, tasa: u32) -> Result<senal::Analisis> {
     .map_err(|f| fallo("ffmpeg", f))?;
     let a = senal::analizar_archivo(&pcm.ruta, tasa).map_err(mal)?;
     if a.muestras == 0 {
-        return Err(mal("el archivo no tiene sonido"));
+        return Err(mal(t("el archivo no tiene sonido", "the file has no sound")));
     }
     Ok(a)
 }
@@ -497,7 +580,7 @@ pub fn medidas_pdf(original: &Path) -> Result<Vec<[f32; 2]>> {
         }
     }
     if out.is_empty() {
-        return Err(mal("pdfinfo no dijo el tamaño de ninguna página"));
+        return Err(mal(t("pdfinfo no dijo el tamaño de ninguna página", "pdfinfo gave no page size")));
     }
     Ok(out)
 }
@@ -801,7 +884,7 @@ with open(out, 'wb') as f:
 
 pub fn blender_a_tris(original: &Path, ext: &str, destino: &Path) -> Result<()> {
     let b =
-        blender().ok_or_else(|| mal("hace falta Blender para abrir este archivo, y no está"))?;
+        blender().ok_or_else(|| mal(t("hace falta Blender para abrir este archivo, y no está", "Blender is needed to open this file, and it's not installed")))?;
     let orig = original.to_string_lossy();
     let dest = destino.to_string_lossy();
     let mut args: Vec<&str> = vec!["-b"];
@@ -823,7 +906,7 @@ pub fn blender_a_tris(original: &Path, ext: &str, destino: &Path) -> Result<()> 
     externo::correr(&b.to_string_lossy(), &args, TOPE_BLENDER).map_err(|f| fallo("Blender", f))?;
     match std::fs::metadata(destino) {
         Ok(m) if m.len() > 12 => Ok(()),
-        _ => Err(mal("Blender terminó sin volcar nada")),
+        _ => Err(mal(t("Blender terminó sin volcar nada", "Blender ended without exporting anything"))),
     }
 }
 
@@ -920,6 +1003,34 @@ mod tests {
     fn las_claves_se_leen_de_los_paquetes_y_cuentan_desde_el_principio() {
         let dijo = "0.023000,K__\n0.056000,___\n2.023000,K__\nN/A,K__\n1.023000,K_\n";
         assert_eq!(leer_claves(dijo, 0.023), vec![0, 1000, 2000]);
+    }
+
+    #[test]
+    fn el_color_de_un_video_es_el_que_elegiria_el_reproductor() {
+        let c = |s: &str| leer_color(s).map(|c| (c.matriz, c.rango));
+        // Lo de OBS, YouTube y casi todo: etiquetado BT.709 limitado.
+        let obs = "pix_fmt=yuv420p\ncolor_range=tv\ncolor_space=bt709\nheight=1080\n";
+        assert_eq!(c(obs), Some(("bt709", "limitado")));
+        // Sin etiquetas, por el tamaño.
+        let hd = "pix_fmt=yuv420p\ncolor_range=unknown\ncolor_space=unknown\nheight=720\n";
+        assert_eq!(c(hd), Some(("bt709", "limitado")));
+        let sd = "pix_fmt=yuv420p\ncolor_range=unknown\ncolor_space=unknown\nheight=480\n";
+        assert_eq!(c(sd), Some(("bt601", "limitado")));
+        // Un móvil que lo marca BT.601 aunque sea HD, y uno en HDR.
+        let movil = "pix_fmt=yuv420p\ncolor_range=tv\ncolor_space=smpte170m\nheight=1920\n";
+        assert_eq!(c(movil), Some(("bt601", "limitado")));
+        let hdr = "pix_fmt=yuv420p10le\ncolor_range=tv\ncolor_space=bt2020nc\nheight=2160\n";
+        assert_eq!(c(hdr), Some(("bt2020", "limitado")));
+        // Rango completo, dicho o por ser `yuvj`.
+        let pc = "pix_fmt=yuv420p\ncolor_range=pc\ncolor_space=bt709\nheight=1080\n";
+        assert_eq!(c(pc), Some(("bt709", "completo")));
+        let mjpeg = "pix_fmt=yuvj422p\ncolor_range=unknown\ncolor_space=unknown\nheight=1080\n";
+        assert_eq!(c(mjpeg), Some(("bt709", "completo")));
+        // Lo que ya es RGB no pasa por ninguna matriz.
+        let png = "pix_fmt=rgb24\ncolor_range=unknown\ncolor_space=unknown\nheight=1080\n";
+        assert_eq!(c(png).map(|x| x.0), Some("rgb"));
+        // Un sonido sin imagen.
+        assert_eq!(c(""), None);
     }
 
     #[test]

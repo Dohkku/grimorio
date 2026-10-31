@@ -13,6 +13,7 @@
 
 use crate::error::{Error, Result};
 use crate::folder::Folders;
+use crate::idioma::{self, t};
 use crate::index::Index;
 use crate::item::{shard_dir, write_atomic, Item, OriginMode};
 use crate::registro::{Operacion, Parche, Registro};
@@ -266,14 +267,24 @@ impl Library {
     pub fn rename(&mut self, name: &str) -> Result<()> {
         let nombre = name.trim();
         if nombre.is_empty() {
-            return Err(Error::Invalid("el nombre de la biblioteca no puede quedar vacío".into()));
+            return Err(Error::Invalid(
+                t(
+                    "el nombre de la biblioteca no puede quedar vacío",
+                    "the library name can't be empty",
+                )
+                .into(),
+            ));
         }
         let path = self.root.join(LIBRARY_FILE);
         let bytes = std::fs::read(&path).map_err(|e| Error::io(&path, e))?;
         let mut valor: serde_json::Value =
             serde_json::from_slice(&bytes).map_err(|e| Error::json(&path, e))?;
         let Some(objeto) = valor.as_object_mut() else {
-            return Err(Error::Invalid(format!("{} no es un objeto", path.display())));
+            return Err(Error::Invalid(if crate::idioma::ingles() {
+                format!("{} is not an object", path.display())
+            } else {
+                format!("{} no es un objeto", path.display())
+            }));
         };
         objeto.insert("name".into(), serde_json::Value::String(nombre.to_string()));
         let json = serde_json::to_vec_pretty(&valor).map_err(|e| Error::json(&path, e))?;
@@ -625,16 +636,30 @@ impl Library {
         if v.fallos.is_empty() {
             return Ok(v.borrados);
         }
-        let mut msg = format!(
-            "se borraron {} y {} no se pudieron borrar; siguen en la papelera:",
-            v.borrados,
-            v.fallos.len()
-        );
+        let en = idioma::ingles();
+        let mut msg = if en {
+            format!(
+                "{} deleted and {} could not be deleted; they are still in the trash:",
+                v.borrados,
+                v.fallos.len()
+            )
+        } else {
+            format!(
+                "se borraron {} y {} no se pudieron borrar; siguen en la papelera:",
+                v.borrados,
+                v.fallos.len()
+            )
+        };
         for (id, motivo) in v.fallos.iter().take(5) {
             msg.push_str(&format!("\n  {id}: {motivo}"));
         }
         if v.fallos.len() > 5 {
-            msg.push_str(&format!("\n  … y {} más", v.fallos.len() - 5));
+            let resto = v.fallos.len() - 5;
+            if en {
+                msg.push_str(&format!("\n  … and {resto} more"));
+            } else {
+                msg.push_str(&format!("\n  … y {resto} más"));
+            }
         }
         Err(Error::Invalid(msg))
     }
@@ -694,7 +719,11 @@ impl Library {
             if !crate::id::es_valido(id) || !dentro_de(&dir, &items) {
                 fallos.push((
                     id.clone(),
-                    "no es un identificador de Grimorio; no se borra nada".to_string(),
+                    t(
+                        "no es un identificador de Grimorio; no se borra nada",
+                        "not a Grimorio id; nothing is deleted",
+                    )
+                    .to_string(),
                 ));
                 continue;
             }
@@ -749,7 +778,12 @@ impl Library {
         let antes = self.folders.clone();
         let id = self.folders.crear(name, parent)?;
         self.commit_folders()?;
-        self.anotar_arbol(format!("crear «{name}»"), antes);
+        let titulo = if idioma::ingles() {
+            format!("create «{name}»")
+        } else {
+            format!("crear «{name}»")
+        };
+        self.anotar_arbol(titulo, antes);
         Ok(id)
     }
 
@@ -757,7 +791,12 @@ impl Library {
         let antes = self.folders.clone();
         self.folders.renombrar(id, name)?;
         self.commit_folders()?;
-        self.anotar_arbol(format!("renombrar a «{name}»"), antes);
+        let titulo = if idioma::ingles() {
+            format!("rename to «{name}»")
+        } else {
+            format!("renombrar a «{name}»")
+        };
+        self.anotar_arbol(titulo, antes);
         Ok(())
     }
 
@@ -766,9 +805,9 @@ impl Library {
         self.folders.colorear(id, color)?;
         self.commit_folders()?;
         let titulo = if color.is_some_and(|c| !c.trim().is_empty()) {
-            "cambiar el color de una carpeta"
+            t("cambiar el color de una carpeta", "change a folder's color")
         } else {
-            "quitar el color de una carpeta"
+            t("quitar el color de una carpeta", "remove a folder's color")
         };
         self.anotar_arbol(titulo, antes);
         Ok(())
@@ -787,7 +826,7 @@ impl Library {
         let antes = self.folders.clone();
         self.folders.recolocar(id, parent, before)?;
         self.commit_folders()?;
-        self.anotar_arbol("mover una carpeta", antes);
+        self.anotar_arbol(t("mover una carpeta", "move a folder"), antes);
         Ok(())
     }
 
@@ -833,13 +872,21 @@ impl Library {
             // El árbol en memoria vuelve a como estaba: en disco no se tocó.
             self.folders = arbol_antes;
             if op.tocados() > 0 {
-                op.titulo = format!("borrar «{nombre}» (a medias)");
+                op.titulo = if idioma::ingles() {
+                    format!("delete «{nombre}» (partly)")
+                } else {
+                    format!("borrar «{nombre}» (a medias)")
+                };
                 self.registro.empujar(op);
             }
             return Err(e);
         }
         self.commit_folders()?;
-        op.titulo = format!("borrar «{nombre}»");
+        op.titulo = if idioma::ingles() {
+            format!("delete «{nombre}»")
+        } else {
+            format!("borrar «{nombre}»")
+        };
         op.carpetas_antes = Some(arbol_antes);
         op.carpetas_despues = Some(self.folders.clone());
         self.registro.empujar(op);
@@ -857,7 +904,7 @@ impl Library {
             .collect();
         self.editar(
             std::slice::from_ref(&item_id.to_string()),
-            "cambiar de carpeta",
+            t("cambiar de carpeta", "change folder"),
             |_| Parche::carpetas(nuevas.clone()),
             &|_, _| {},
         )?;
@@ -883,9 +930,9 @@ impl Library {
             .cloned()
             .collect();
         let titulo = if ponen.is_empty() {
-            "sacar de la carpeta"
+            t("sacar de la carpeta", "remove from the folder")
         } else {
-            "meter en la carpeta"
+            t("meter en la carpeta", "add to the folder")
         };
         let (tocados, _) = self.editar(
             item_ids,

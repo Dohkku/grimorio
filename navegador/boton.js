@@ -23,11 +23,12 @@ function botonGrimorio({ medioBajo, guardar }) {
       }
       button:hover { background: rgba(20, 20, 22, .95); border-color: rgba(255,255,255,.6); }
     </style>
-    <div class="barra"><button class="una">a Grimorio</button></div>`;
+    <div class="barra"><button class="una"></button></div>`;
   document.documentElement.appendChild(anfitrion);
 
   const barra = sombra.querySelector(".barra");
   const una = sombra.querySelector(".una");
+  una.textContent = textoGrimorio("botonGuardar");
   let actual = null;
 
   function colocar() {
@@ -79,7 +80,7 @@ function botonGrimorio({ medioBajo, guardar }) {
   chrome.runtime.onMessage.addListener((m, _de, responder) => {
     if (m.tipo !== "guardarClicDerecho") return false;
     if (!bajoElClicDerecho) {
-      avisoGrimorio({ estado: "error", titulo: "No había ningún vídeo ni foto bajo el ratón" });
+      avisoGrimorio({ estado: "error", titulo: textoGrimorio("avisoNadaBajoRatonVideo") });
       responder({ ok: false, error: "nada bajo el ratón" });
       return false;
     }
@@ -98,10 +99,10 @@ function botonGrimorio({ medioBajo, guardar }) {
 /// consiguió: original, lo que se ve…— debajo.
 async function guardarYAvisar(lista, como) {
   if (lista.length === 0) {
-    avisoGrimorio({ estado: "error", titulo: "No encuentro qué guardar", detalle: como || "" });
+    avisoGrimorio({ estado: "error", titulo: textoGrimorio("avisoNadaQueGuardar"), detalle: como || "" });
     return { ok: false, error: "nada que guardar" };
   }
-  avisoGrimorio({ estado: "en curso", titulo: "Guardando en Grimorio…" });
+  avisoGrimorio({ estado: "en curso", titulo: textoGrimorio("avisoGuardando") });
   const r = await chrome.runtime.sendMessage({ tipo: "guardar", lista });
   const a = avisoDeResultado(r, lista.length);
   if (a.estado !== "error" && como) a.detalle = [a.detalle, como].filter(Boolean).join(" · ");

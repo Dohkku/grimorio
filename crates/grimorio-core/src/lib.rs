@@ -17,6 +17,7 @@ pub mod filtro;
 pub mod grupos;
 pub mod folder;
 pub mod id;
+pub mod idioma;
 pub mod image_ops;
 pub mod import;
 pub mod index;

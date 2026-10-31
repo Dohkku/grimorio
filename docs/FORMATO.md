@@ -1,54 +1,56 @@
-# El formato de biblioteca de Grimorio
+English · [Español](FORMATO.es.md)
 
-Versión de esquema: **1**
+# The Grimorio library format
 
-Esta es la parte del proyecto que promete durar más que el propio programa. Si
-Grimorio desaparece, esta especificación tiene que bastar para recuperar todo
-con un script de veinte líneas.
+Schema version: **1**
 
-## Estructura en disco
+This is the part of the project that promises to outlive the program itself. If
+Grimorio disappears, this specification has to be enough to recover everything
+with a twenty-line script.
+
+## Layout on disk
 
 ```
 MiBiblioteca.grimorio/
-├── library.json          identidad y ajustes de la biblioteca
-├── folders.json          el árbol de carpetas
-├── etiquetas.json        grupos de etiquetas con su color
-├── busquedas.json        carpetas dinámicas (búsquedas con nombre)
-├── vigiladas.json        carpetas del disco que se importan solas
-├── abierta.lock          cerrojo mientras la aplicación la tiene abierta
-├── index.sqlite          ÍNDICE DERIVADO — borrable, se reconstruye
+├── library.json          identity and settings of the library
+├── folders.json          the folder tree
+├── etiquetas.json        tag groups with their color
+├── busquedas.json        smart folders (named searches)
+├── vigiladas.json        disk folders that are imported automatically
+├── abierta.lock          lock held while the app has the library open
+├── index.sqlite          DERIVED INDEX: can be deleted, it is rebuilt
 ├── items/
-│   └── 01/JK/01JKX7…/    sharding de dos niveles por los 4 primeros
-│       ├── item.json     caracteres del id
+│   └── 01/JK/01JKX7…/    two-level sharding by the first 4
+│       ├── item.json     characters of the id
 │       └── original.jpg
-├── cache/                DERIVADO — borrable, se rehace al abrir cada cosa
-│   ├── proxy/01/JK/…mp4  copia en H.264 de los vídeos que Qt no abre
-│   ├── tira/             fotogramas en rejilla para la barra del vídeo
-│   ├── onda/             onda y espectro de cada sonido (`.onda`)
-│   ├── pdf/              páginas dibujadas, por número y ancho
-│   ├── malla/            modelos 3D listos para el visor (`.malla`)
-│   └── versiones/        temporal de una versión mientras se importa
+├── cache/                DERIVED: can be deleted, remade when each thing opens
+│   ├── proxy/01/JK/…mp4  H.264 copy of the videos Qt cannot open
+│   ├── tira/             frames in a grid for the video scrub bar
+│   ├── onda/             waveform and spectrum of each sound (`.onda`)
+│   ├── pdf/              rendered pages, by number and width
+│   ├── malla/            3D models ready for the viewer (`.malla`)
+│   └── versiones/        temporary space for a version while it is imported
 ├── thumbs/
-│   ├── grid.pack         miniaturas de 320 px concatenadas
-│   └── preview/01/…jpg   previsualizaciones de 1024 px
-├── trash/                borrado reversible
+│   ├── grid.pack         320 px thumbnails, concatenated
+│   └── preview/01/…jpg   1024 px previews
+├── trash/                reversible deletion
 ├── themes/
 └── plugins/
 ```
 
-**El sharding no es decoración.** Un directorio con 100.000 entradas hace lento
-cualquier `readdir`, y las herramientas de escritorio se atragantan. Con dos
-niveles de dos caracteres, ninguna carpeta pasa de unos cientos de entradas.
+**The sharding is there for a reason.** A directory with 100,000 entries makes
+any `readdir` slow, and desktop tools choke on it. With two levels of two
+characters, no folder goes over a few hundred entries.
 
-## Identificadores
+## Identifiers
 
-ULID de 26 caracteres en Crockford base32: 48 bits de milisegundos + 80 bits de
-azar. Dos propiedades que usamos en todas partes:
+26-character ULIDs in Crockford base32: 48 bits of milliseconds + 80 random
+bits. Two properties we rely on everywhere:
 
-- **Ordenar por id es ordenar por fecha de importación.** La vista por defecto
-  de la malla no ordena nada: lee el índice en orden de clave primaria.
-- Son únicos sin coordinación, así que se pueden generar en paralelo durante una
-  importación de miles de archivos.
+- **Sorting by id is sorting by import date.** The default grid view does not
+  sort anything: it reads the index in primary key order.
+- They are unique without coordination, so they can be generated in parallel
+  during an import of thousands of files.
 
 ## `library.json`
 
@@ -63,8 +65,8 @@ azar. Dos propiedades que usamos en todas partes:
 }
 ```
 
-`importMode` es `copy` (por defecto, el original vive dentro), `move` o `ref`
-(el original se queda donde está).
+`importMode` is `copy` (the default, the original lives inside), `move` or `ref`
+(the original stays where it is).
 
 ## `item.json`
 
@@ -93,36 +95,37 @@ azar. Dos propiedades que usamos en todas partes:
 }
 ```
 
-- `hash` es blake3 del contenido en hexadecimal: la identidad real del archivo,
-  y la base de la detección de duplicados.
-- `phash` es un dHash de 64 bits en hexadecimal, para "parecidas a esta".
-- `palette` va ordenada por peso; el primer color es el dominante.
-- `kind` es la familia: `imagen`, `raw`, `video`, `audio`, `documento`,
-  `tipografia` o `modelo`. Se saca de la extensión; está escrita para no
-  tener que saber cuál es cuál.
-- `adult` (solo si es `true`) marca lo que el modo seguro difumina.
-- `rotation` (0, 90, 180 o 270) es el giro con el que se mira. El original no
-  se gira.
-- `orden` guarda el orden a mano: por cada carpeta (su id, o `""` para
-  «Todo»), la posición del elemento. Son números con hueco entre ellos para
-  meter uno en medio sin renumerar.
-- `origin.inode` permite reencontrar un original en modo `ref` que alguien haya
-  movido de sitio.
-- `durationMs` y `pages` van en lo que dura y en lo que tiene páginas.
-- `pila` y `receta` van en las versiones (ver «Pilas de versiones», abajo).
-- `triangles` y `sizeMm` van en los modelos 3D. `sizeMm` es ancho, fondo y
-  alto en milímetros, y solo está si el formato dice sus unidades: STL (que se
-  escribe en milímetros por costumbre), 3MF, glTF y lo que sale de Blender. OBJ
-  y PLY no lo dicen, y ahí no se inventa.
-- Los campos vacíos se omiten al escribir. Un lector debe tolerar que falten.
+- `hash` is the blake3 of the content in hexadecimal: the real identity of the
+  file, and the basis of duplicate detection.
+- `phash` is a 64-bit dHash in hexadecimal, for "similar to this one".
+- `palette` is sorted by weight; the first color is the dominant one.
+- `kind` is the family: `imagen`, `raw`, `video`, `audio`, `documento`,
+  `tipografia` or `modelo`. It comes from the extension; it is written down so
+  readers do not have to know which is which.
+- `adult` (only when `true`) marks what safe mode blurs.
+- `rotation` (0, 90, 180 or 270) is the rotation it is viewed with. The
+  original is not rotated.
+- `orden` stores the manual order: for each folder (its id, or `""` for
+  «All»), the position of the item. They are numbers with gaps between them,
+  so one can be inserted in the middle without renumbering.
+- `origin.inode` makes it possible to find an original in `ref` mode again if
+  someone has moved it.
+- `durationMs` and `pages` are present on things that have a duration or pages.
+- `pila` and `receta` are present on versions (see «Version stacks» below).
+- `triangles` and `sizeMm` are present on 3D models. `sizeMm` is width, depth
+  and height in millimeters, and it is only there if the format states its
+  units: STL (which is written in millimeters by convention), 3MF, glTF and
+  whatever comes out of Blender. OBJ and PLY do not state them, and in that
+  case nothing is made up.
+- Empty fields are omitted when writing. A reader must tolerate them missing.
 
-### Pilas de versiones
+### Version stacks
 
-La misma imagen con distinto peso —una exportación para la web, la copia que
-alguien mandó recomprimida— se guarda como una **pila**: una principal y sus
-versiones. Cada versión es un elemento completo, con su carpeta en `items/`, su
-original y su miniatura; lo único que la distingue es que apunta a su
-principal:
+The same image at different file sizes (an export for the web, the copy someone
+sent recompressed) is stored as a **stack**: a main item and its versions. Each
+version is a complete item, with its own folder in `items/`, its original and
+its thumbnail; the only thing that sets it apart is that it points to its main
+item:
 
 ```json
 {
@@ -134,127 +137,125 @@ principal:
 }
 ```
 
-- `pila` es el id de la principal. Solo lo llevan las versiones; la principal
-  no tiene lista de versiones, así que no hay dos sitios que puedan dejar de
-  coincidir. Las pilas son planas: una versión nunca es principal de otra.
-- `receta` solo está si la versión la hizo Grimorio: `formato` (`jpg`, `png`
-  o `webp`), `calidad` (de 1 a 100; cuenta en JPEG y en WebP, donde 100 es
-  sin pérdida) y `lado` (el lado mayor en píxeles; 0 deja el tamaño). Nunca
-  amplía. El original no se toca.
-- `receta.recorte`, si está, dice con qué modelo se quitó el fondo
-  (`isnet-general-use`): la versión es un PNG del mismo tamaño con
-  transparencia donde estaba el fondo.
-- `receta.tramo`, si está, es un trozo de un vídeo o de un sonido sacado con
-  el editor: `desde_ms` y `hasta_ms` sobre el original, y `exacto` si se
-  recodificó para cortar en el fotograma justo (si no, se copió sin
-  recodificar y el archivo arranca en el fotograma clave de antes, con una
-  lista de edición que lo deja empezar donde se pidió). El formato es el del
-  original. Un tramo guardado «como vídeo nuevo» lleva su `receta` pero no
-  `pila`: es un elemento aparte, con las carpetas, las etiquetas y el giro
-  del original.
-- `receta.fotograma`, si está, es el milisegundo de un vídeo del que se
-  sacó esta imagen (un PNG). Como un tramo aparte, va sin `pila` y con las
-  carpetas, las etiquetas y el giro del vídeo.
-- Las etiquetas, carpetas, estrellas y nota son de la principal: es lo que se
-  ve en la malla. Las versiones no salen en la malla ni en los recuentos.
-- Una versión cuya principal no existe o está en la papelera se ve suelta:
-  apuntar a nada no puede esconder un archivo.
+- `pila` is the id of the main item. Only versions carry it; the main item has
+  no list of versions, so there are never two places that can fall out of
+  sync. Stacks are flat: a version is never the main item of another.
+- `receta` is only there if Grimorio made the version: `formato` (`jpg`, `png`
+  or `webp`), `calidad` (1 to 100; it applies to JPEG and WebP, where 100 is
+  lossless) and `lado` (the longest side in pixels; 0 keeps the size). It
+  never upscales. The original is not touched.
+- `receta.recorte`, if present, says which model removed the background
+  (`isnet-general-use`): the version is a PNG of the same size with
+  transparency where the background was.
+- `receta.tramo`, if present, is a section of a video or a sound cut with the
+  editor: `desde_ms` and `hasta_ms` on the original, and `exacto` if it was
+  re-encoded to cut on the exact frame (otherwise it was copied without
+  re-encoding and the file starts at the previous keyframe, with an edit list
+  that makes it start where requested). The format is that of the original. A
+  section saved «as a new video» carries its `receta` but no `pila`: it is a
+  separate item, with the folders, tags and rotation of the original.
+- `receta.fotograma`, if present, is the millisecond of a video this image
+  (a PNG) was taken from. Like a separate section, it has no `pila` and it
+  carries the folders, tags and rotation of the video.
+- Tags, folders, rating and note belong to the main item: that is what is
+  shown in the grid. Versions do not appear in the grid or in the counts.
+- A version whose main item does not exist or is in the trash is shown on its
+  own: pointing at nothing must never hide a file.
 
-Para sacar las pilas sin Grimorio:
+To list the stacks without Grimorio:
 
 ```sh
 find MiBiblioteca.grimorio/items -name item.json -exec cat {} + \
   | jq -c 'select(.pila) | {version: .id, principal: .pila, receta}'
 ```
 
-Toda escritura es atómica: archivo temporal en el mismo directorio y `rename`.
-Un corte de corriente deja el archivo anterior intacto, nunca uno a medias.
+Every write is atomic: a temporary file in the same directory and `rename`. A
+power cut leaves the previous file intact, never a half-written one.
 
-## Los otros archivos de la raíz
+## The other files at the root
 
-Todos son JSON con un `schema` y se escriben enteros cada vez, de forma
-atómica. Ninguno es imprescindible: sin ellos la biblioteca abre igual, sin
-carpetas, grupos, carpetas dinámicas ni carpetas vigiladas.
+They are all JSON with a `schema` and they are written whole every time,
+atomically. None is essential: without them the library still opens, with no
+folders, groups, smart folders or watched folders.
 
-- **`folders.json`**: qué carpetas existen: `{"schema", "folders": [{"id",
-  "name", "parent", "color", "pos"}]}`. `parent` falta en las de la raíz y
-  `pos` ordena entre hermanas. En qué carpetas está cada elemento lo dice su
-  `item.json` (`folders`), no este archivo.
-- **`etiquetas.json`**: grupos de etiquetas: `{"schema", "grupos": [{"id",
-  "nombre", "color", "etiquetas"}]}`. Una etiqueta está en un grupo o en
-  ninguno; su color es el del grupo.
-- **`busquedas.json`**: las carpetas dinámicas: `{"schema", "busquedas":
-  [{"id", "nombre", "consulta"}]}`. `consulta` es la línea del buscador tal
-  cual (`#comida -#picante tipo:video`); puede estar vacía en una recién
-  creada.
-- **`vigiladas.json`**: carpetas del disco que se importan solas:
+- **`folders.json`**: which folders exist: `{"schema", "folders": [{"id",
+  "name", "parent", "color", "pos"}]}`. `parent` is missing on root folders
+  and `pos` orders siblings. Which folders each item is in is stated by its
+  `item.json` (`folders`), not by this file.
+- **`etiquetas.json`**: tag groups: `{"schema", "grupos": [{"id",
+  "nombre", "color", "etiquetas"}]}`. A tag is in one group or in none; its
+  color is the group's.
+- **`busquedas.json`**: smart folders: `{"schema", "busquedas":
+  [{"id", "nombre", "consulta"}]}`. `consulta` is the search bar line as is
+  (`#comida -#picante tipo:video`); it can be empty in a newly created one.
+- **`vigiladas.json`**: disk folders that are imported automatically:
   `{"schema", "vigiladas": [{"id", "ruta", "carpeta", "desde_ms"}]}`.
-  `carpeta` es la carpeta de la biblioteca donde caen (o `null`) y `desde_ms`
-  el momento de la última pasada.
-- **`abierta.lock`**: lo pone la aplicación mientras tiene la biblioteca
-  abierta (formato de `QLockFile`: el pid en la primera línea, la máquina en
-  la tercera). `grim` lo mira antes de escribir. Uno de un proceso que ya no
-  existe no cuenta.
+  `carpeta` is the library folder where things land (or `null`) and
+  `desde_ms` the time of the last pass.
+- **`abierta.lock`**: the app creates it while it has the library open
+  (`QLockFile` format: the pid on the first line, the host on the third).
+  `grim` checks it before writing. One left by a process that no longer exists
+  does not count.
 
 ## `thumbs/grid.pack`
 
-Archivo *append-only* con todas las miniaturas de malla concatenadas. Existe
-porque con 100.000 elementos, un archivo por miniatura significa 100.000
-`open()` durante un scroll; así la interfaz mapea un archivo una vez y el
-sistema operativo se encarga del caché.
+An *append-only* file with all the grid thumbnails concatenated. It exists
+because with 100,000 items, one file per thumbnail means 100,000 `open()` calls
+during a scroll; this way the interface maps one file once and the operating
+system takes care of caching.
 
 ```
-cabecera (16 bytes)
+header (16 bytes)
   0..8    "GRIMPK01"
-  8..16   reservado
+  8..16   reserved
 
-registro (repetido)
-  0       0xA5   marca de inicio
+record (repeated)
+  0       0xA5   start marker
   1       flags  0 = JPEG
-  2..4    u16 LE longitud del id
-  4..8    u32 LE longitud de los datos
-  8..     id en UTF-8, sin terminador
-  …       datos de la miniatura
+  2..4    u16 LE id length
+  4..8    u32 LE data length
+  8..     id in UTF-8, no terminator
+  …       thumbnail data
 ```
 
-Cada registro lleva su propio id, así que el pack se puede recorrer de principio
-a fin sin ayuda de nadie. Eso es lo que permite reconstruir el índice sin volver
-a generar miniaturas. Si el archivo se trunca a media escritura, el recorrido
-para limpiamente en el último registro completo.
+Each record carries its own id, so the pack can be walked from start to end
+without help from anything else. That is what makes it possible to rebuild the
+index without generating thumbnails again. If the file is truncated mid-write,
+the walk stops cleanly at the last complete record.
 
-Una miniatura sustituida se añade al final; la última entrada de un id gana. El
-espacio anterior se recupera al compactar (todavía no implementado).
+A replaced thumbnail is appended at the end; the last entry for an id wins. The
+old space is reclaimed when compacting (not implemented yet).
 
-**Un solo escritor.** Quien abre el pack para escribir toma un cerrojo exclusivo
-sobre el archivo. Dos procesos añadiendo a la vez se pisarían las posiciones y
-dejarían miniaturas cruzadas, que es de los pocos daños que `reindex` no sabe
-arreglar. Los lectores no necesitan cerrojo: el archivo solo crece.
+**A single writer.** Whoever opens the pack for writing takes an exclusive lock
+on the file. Two processes appending at once would step on each other's offsets
+and leave thumbnails mixed up, which is one of the few kinds of damage
+`reindex` cannot fix. Readers do not need a lock: the file only grows.
 
 ## `index.sqlite`
 
-Derivado. Contiene `items`, `tags`, `item_tags`, `folders`, `item_folders`,
-`meta` y una tabla FTS5 `items_fts`.
+Derived. It contains `items`, `tags`, `item_tags`, `folders`, `item_folders`,
+`meta` and an FTS5 table `items_fts`.
 
-`items.pila` (desde la versión 5 del índice, `PRAGMA user_version`) copia el
-campo del `item.json` y tiene un índice parcial que solo lleva las versiones:
-en una biblioteca sin pilas está vacío, y entonces las consultas ni siquiera
-miran la columna.
+`items.pila` (since version 5 of the index, `PRAGMA user_version`) copies the
+field from `item.json` and has a partial index that only holds versions: in a
+library with no stacks it is empty, and then queries do not even look at the
+column.
 
-Detalle que importa: `items_fts` **no** tiene columna de id. Comparte `rowid`
-con `items`, de modo que borrar y unir son operaciones de clave primaria. En la
-primera versión sí tenía una columna `id UNINDEXED`, y cada borrado escaneaba la
-tabla entera: la importación se volvía cuadrática y el índice tardaba diez veces
-más de la cuenta.
+A detail that matters: `items_fts` does **not** have an id column. It shares
+`rowid` with `items`, so deleting and joining are primary key operations. The
+first version did have an `id UNINDEXED` column, and every delete scanned the
+whole table: importing became quadratic and the index took ten times longer
+than it should.
 
-Para reconstruirlo: `grim reindex`. Recorre todos los `item.json`, lee el pack
-de miniaturas y vuelve a montar el índice entero.
+To rebuild it: `grim reindex`. It walks every `item.json`, reads the thumbnail
+pack and puts the whole index back together.
 
-## Recuperar una biblioteca sin Grimorio
+## Recovering a library without Grimorio
 
 ```sh
-# todos los metadatos, en un JSON por línea
+# all metadata, one JSON per line
 find MiBiblioteca.grimorio/items -name item.json -exec cat {} + | jq -c .
 
-# los originales, con su nombre real
+# the originals, with their real name
 find MiBiblioteca.grimorio/items -name 'original.*'
 ```

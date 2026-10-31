@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <style>
@@ -30,13 +30,13 @@
 </head>
 <body>
   <h1><img src="iconos/32.png" alt="">Grimorio</h1>
-  <div class="estado" id="estado">mirando…</div>
+  <div class="estado" id="estado" data-texto="ventanaMirando"></div>
   <div id="destino" hidden>
-    <label for="carpeta">guardar en</label>
+    <label for="carpeta" data-texto="ventanaGuardarEn"></label>
     <select id="carpeta"></select>
   </div>
-  <div id="ultimas" hidden><h2>Últimas guardadas</h2><div id="lista"></div></div>
-  <p class="pista">Clic derecho en una imagen → «Guardar en Grimorio». En Instagram, el botón sale al pasar por encima de una foto.</p>
+  <div id="ultimas" hidden><h2 data-texto="ventanaUltimas"></h2><div id="lista"></div></div>
+  <p class="pista" data-texto="ventanaPista"></p>
   <script src="ventana.js"></script>
 </body>
 </html>

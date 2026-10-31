@@ -1,488 +1,509 @@
-# app — Grimorio
+English · [Español](README.es.md)
 
-La aplicación. El núcleo está en `crates/grimorio-core`; entre los dos hay un
-puente en C ABI (`app/puente`) con hilo propio, bus de comandos en JSON y vistas
-inmutables. La explicación está en `docs/M1.md` (la aplicación) y `docs/M2.md`
-(deshacer, papelera y edición en lote).
+# app: Grimorio
 
-## Compilar
+The application. The core lives in `crates/grimorio-core`; between the two
+there is a C ABI bridge (`app/puente`) with its own thread, a JSON command bus
+and immutable views. The explanation is in `docs/M1.md` (the application) and
+`docs/M2.md` (undo, trash and batch editing).
+
+## Build
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-`cargo` se invoca solo para construir el puente.
+`cargo` is only invoked to build the bridge.
 
-## Ejecutar
+## Run
 
 ```sh
 ./build/grimorio ~/Referencias.grimorio
 ./build/grimorio ~/Referencias.grimorio --tema ../temas/papel.json
 ```
 
-El tema se recarga al guardarlo, con el programa abierto. Sin `--tema` se usa
-el elegido en los ajustes (`Ctrl+,`): «noche» o «papel», que van dentro del
-binario. Ahí también está el tamaño de la interfaz —letra, iconos, márgenes y
-paneles, del 80 al 150 %—, que se aplica multiplicando los tokens del tema y
-no con `QT_SCALE_FACTOR`, para que las miniaturas sigan nítidas.
+The theme reloads when you save it, with the program open. Without `--tema`
+the one chosen in the settings (`Ctrl+,`) is used: «night» or «paper», which
+are built into the binary. The interface size is also there (text, icons,
+margins and panels, from 80 to 150 %). It is applied by multiplying the theme
+tokens, not with `QT_SCALE_FACTOR`, so thumbnails stay sharp.
 
-Para una biblioteca de pruebas: `grim synth ~/bench.grimorio --items 100000`.
+For a test library: `grim synth ~/bench.grimorio --items 100000`.
 
-## Teclas
+## Keys
 
 | | |
 |---|---|
-| `Ctrl+F` | buscar |
-| `Ctrl+A` | elegir todo |
-| `Ctrl+Z` / `Ctrl+Mayús+Z` | deshacer y rehacer |
-| `Supr` | a la papelera (dentro de la papelera, recuperar) |
-| `Ctrl+K` | poner etiquetas a lo elegido |
-| `F2` | renombrar (con varios elegidos, renombrar con patrón) |
-| `Ctrl+C` | copiar lo elegido (archivos, y la imagen si es una) |
-| `Ctrl+V` | pegar: imagen, archivos o una dirección web |
-| `Ctrl+E` | exportar lo elegido a una carpeta |
-| `Ctrl+Mayús+N` | carpeta nueva |
-| `Ctrl+Mayús+X` | capturar una zona de la pantalla |
-| `Ctrl+L` | pasar por las tres vistas: justificado, cuadrícula y lista |
-| `Ctrl+I` | plegar o abrir el panel de detalle |
-| `Ctrl+,` | ajustes: tema, tamaño de la interfaz, malla; y «acerca de» |
-| `Ctrl+±` · `Ctrl+0` | tamaño de la interfaz; `Ctrl+0` la deja al 100 % |
-| `Ctrl`+rueda | sobre la malla: tamaño de las miniaturas |
-| `0`…`5` | estrellas a lo elegido |
-| `Intro` | abrir el visor |
-| `Espacio` | en el visor: siguiente, o parar y seguir si se reproduce |
-| `Espacio` | fuera del visor, con un vídeo en el panel de detalle: pararlo y seguir |
-| `F` · doble clic en un vídeo | en el visor: pantalla completa; `Esc` sale de ella sin cerrar el visor |
-| rueda · `Z` | en el visor, con un vídeo: acercarlo sin pararlo (arrastrar mueve el encuadre); `Z` lo devuelve |
-| rueda · `+` `−` · `Z` | en el visor, con una foto: acercar y alejar hasta el píxel; ajustar a la ventana ⇄ 100 % |
-| `C` | en el visor, con una foto: copiar el color del píxel bajo el ratón |
-| `R` / `Mayús+R` | en el visor, con una foto o un vídeo: girarlo a la derecha o a la izquierda. Se queda girado —en la malla, el panel y el visor— y se deshace con `Ctrl+Z`; el archivo no se toca |
-| `Mayús+←/→` | en el visor: diez segundos atrás o adelante |
-| `,` / `.` | en el visor: un fotograma atrás o adelante (se para primero) |
-| `[` / `]` | en el visor: más lento o más rápido, de 0,1× a 2× |
-| `I` / `O` | en el visor: principio y final del tramo que se repite |
-| `X` | en el visor: quitar el tramo |
-| `L` / `M` | en el visor: bucle y silencio |
-| `Re Pág` / `Av Pág` | en un PDF: página anterior y siguiente |
-| flechas | moverse por la malla, con `Mayús` para ir extendiendo la selección |
-| `Esc` | cerrar lo que esté abierto, o soltar la selección |
+| `Ctrl+F` | search |
+| `Ctrl+A` | select all |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | undo and redo |
+| `Del` | move to the trash (inside the trash, restore) |
+| `Ctrl+K` | tag the selection |
+| `F2` | rename (with several selected, rename with a pattern) |
+| `Ctrl+C` | copy the selection (files, and the image if it is one) |
+| `Ctrl+V` | paste: image, files or a web address |
+| `Ctrl+E` | export the selection to a folder |
+| `Ctrl+Shift+N` | new folder |
+| `Ctrl+Shift+X` | capture an area of the screen |
+| `Ctrl+L` | cycle through the three views: justified, grid and list |
+| `Ctrl+I` | collapse or open the inspector |
+| `Ctrl+,` | settings: theme, interface size, grid; and «About» |
+| `Ctrl+±` · `Ctrl+0` | interface size; `Ctrl+0` resets it to 100 % |
+| `Ctrl`+wheel | over the grid: thumbnail size |
+| `0`…`5` | rate the selection |
+| `Enter` | open the viewer |
+| `Space` | in the viewer: next, or pause and resume if it is playing |
+| `Space` | outside the viewer, with a video in the inspector: pause and resume it |
+| `F` · double click on a video | in the viewer: full screen; `Esc` leaves it without closing the viewer |
+| wheel · `Z` | in the viewer, with a video: zoom in without pausing (dragging moves the frame); `Z` resets it |
+| wheel · `+` `−` · `Z` | in the viewer, with a photo: zoom in and out down to the pixel; fit to window ⇄ 100 % |
+| `C` | in the viewer, with a photo: copy the color of the pixel under the mouse |
+| `R` / `Shift+R` | in the viewer, with a photo or a video: rotate it right or left. It stays rotated (in the grid, the inspector and the viewer) and `Ctrl+Z` undoes it; the file is not touched |
+| `Shift+←/→` | in the viewer: ten seconds back or forward |
+| `,` / `.` | in the viewer: one frame back or forward (it pauses first) |
+| `[` / `]` | in the viewer: slower or faster, from 0.1× to 2× |
+| `I` / `O` | in the viewer: start and end of the looped range |
+| `X` | in the viewer: clear the range |
+| `L` / `M` | in the viewer: loop and mute |
+| `PgUp` / `PgDn` | in a PDF: previous and next page |
+| arrows | move around the grid, with `Shift` to extend the selection |
+| `Esc` | close whatever is open, or clear the selection |
 
-Las flechas son de la malla, así que **tocar la malla le devuelve el foco**:
-pinchar una carpeta o escribir en el buscador se lo lleva —tiene que
-llevárselo—, y sin esa vuelta las flechas se quedaban hablándole al panel el
-resto de la sesión. Se elegía una foto con el ratón y moverse con el teclado no
-hacía nada. El hueco entre celdas cuenta como malla y también lo devuelve.
+The arrows belong to the grid, so **touching the grid gives it the focus
+back**: clicking a folder or typing in the search box takes the focus away (it
+has to), and without that return the arrows kept talking to the panel for the
+rest of the session. You would select a photo with the mouse and moving with
+the keyboard did nothing. The gap between cells counts as grid and also gives
+the focus back.
 
-Mientras haya un campo de texto con el foco, los atajos que compiten con
-escribir se apagan: `Intro`, `Esc`, `Supr`, `F2`, `Ctrl+Z` y los números. Un
-`Shortcut` de ventana se lleva la tecla **antes** de que llegue al campo, y sin
-esto poner nombre a una carpeta con una imagen elegida abría el visor en vez de
-crear la carpeta.
+While a text field has the focus, the shortcuts that compete with typing are
+turned off: `Enter`, `Esc`, `Del`, `F2`, `Ctrl+Z` and the numbers. A window
+`Shortcut` takes the key **before** it reaches the field, and without this,
+naming a folder while an image was selected opened the viewer instead of
+creating the folder.
 
-Los dos paneles se ensanchan arrastrando la raya que los separa, y vuelven a lo
-que diga el tema con doble clic en esa misma raya. El ancho se guarda en
-`~/.config/Grimorio/Grimorio.conf`, no en el tema: el tema es dato del proyecto
-y esto es de quien está delante.
+Both side panels are widened by dragging the line that separates them, and a
+double click on that same line returns them to what the theme says. The width
+is stored in `~/.config/Grimorio/Grimorio.conf`, not in the theme: the theme is
+project data, and this belongs to whoever is sitting at the screen.
 
-Clic para elegir, `Ctrl+clic` para sumar, `Mayús+clic` para un tramo. Clic
-derecho sobre una celda abre sus acciones (ver, abrir fuera, copiar, exportar,
-mover, renombrar, +18, papelera); son las mismas que los botones del panel. Arrastrar
-archivos a la ventana los importa.
+Click to select, `Ctrl+click` to add, `Shift+click` for a range. Right click
+on a cell opens its actions (view, open externally, copy, export, move,
+rename, adult content, trash); they are the same as the inspector buttons.
+Dragging files onto the window imports them.
 
-## La ventana
+## The window
 
-Tres columnas, como un estudio: **de dónde se mira** a la izquierda, **lo que se
-mira** en el centro y **lo elegido** a la derecha. Las dos de los lados van de
-arriba abajo; la barra de arriba y la de estado son solo del centro.
+Three columns, like a studio: **where you look from** on the left, **what you
+look at** in the middle and **what you selected** on the right. The two side
+columns run from top to bottom; the top bar and the status bar belong only to
+the middle.
 
-* **Izquierda.** El nombre de la biblioteca (pinchándolo, las demás), las
-  vistas fijas —«Todo», «Sin etiquetar», «Recientes», «Papelera»—, las
-  carpetas inteligentes y el árbol de carpetas, cada una con su punto de
-  color. Al pie, cuántos elementos hay y cuánto pesan, con el reparto por tipo
-  en una raya (al pasar por cada trozo dice de qué es).
-* **Centro.** Arriba, el nombre de lo que se mira y cuántos tiene; a la
-  derecha, el buscador, las tres vistas (justificado, cuadrícula, lista), el
-  orden y «filtros», que despliega la fila de filtros y dice cuántos hay
-  puestos aunque esté plegada. En esa fila están también «nombres» (el nombre
-  bajo cada celda) y el tamaño de celda.
-* **Derecha.** El panel de detalle, siempre puesto aunque no haya nada elegido:
-  así la malla no cambia de ancho cada vez que se elige algo. Vista grande (con
-  varios elegidos, un mosaico de los primeros), nombre —se cambia pinchándolo—,
-  estrellas, paleta —pinchar un color busca lo que se le parece—, etiquetas,
-  nota, ficha técnica con carpetas y origen, y las acciones. Se pliega con
-  `Ctrl+I`.
+* **Left.** The library name (click it for the others), the fixed views
+  («All», «Untagged», «Recent», «Trash»), the smart folders and the folder
+  tree, each with its colored dot. At the bottom, how many items there are
+  and how much space they take, with the split by type in a bar (hovering
+  over each segment says what it is).
+* **Middle.** At the top, the name of what you are looking at and how many
+  items it has; on the right, the search box, the three views (justified,
+  grid, list), the sort order and «filters», which expands the filter row and
+  shows how many are active even when collapsed. That row also holds «names»
+  (the name under each cell) and the cell size.
+* **Right.** The inspector, always present even when nothing is selected:
+  that way the grid does not change width every time something is selected.
+  Large preview (with several selected, a mosaic of the first ones), name
+  (click to change it), rating, palette (clicking a color searches for things
+  that look like it), tags, note, technical details with folders and source,
+  and the actions. `Ctrl+I` collapses it.
 
-Las vistas fijas son búsquedas como cualquier otra, escritas en el buscador:
-«Sin etiquetar» es `etiquetado:no` y «Recientes» es `fecha:7d`. El buscador
-sigue siendo lo único que decide qué se ve.
+The fixed views are searches like any other, written in the search box:
+«Untagged» is `etiquetado:no` and «Recent» is `fecha:7d`. The search box is
+still the only thing that decides what is shown.
 
-En **lista**, cada elemento es una fila con su miniatura, nombre, tipo, medidas,
-peso, estrellas y fecha. Pinchar el título de una columna ordena por ella. Es la
-misma celda que en las otras dos vistas, así que elegir, arrastrar a una
-carpeta, reordenar y moverse con las flechas funcionan igual.
+In **list** view, each item is a row with its thumbnail, name, type,
+dimensions, file size, rating and date. Clicking a column header sorts by it.
+It is the same cell as in the other two views, so selecting, dragging to a
+folder, reordering and moving with the arrows all work the same way.
 
-La vista, los nombres y el panel de detalle se recuerdan en
+The view, the names and the inspector are remembered in
 `~/.config/Grimorio/Grimorio.conf`.
 
-## Carpetas
+## Folders
 
-Una carpeta es una etiqueta con jerarquía, no un sitio donde vive el archivo: un
-elemento puede estar en varias.
+A folder is a tag with a hierarchy, and the file does not live in it: an item
+can be in several.
 
-«Todo» es *no tener ninguna elegida*: además de su fila, se vuelve pinchando
-otra vez la carpeta elegida o el hueco de debajo del árbol. Las vistas fijas de
-arriba no son carpetas y no se renombran ni se arrastran.
+«All» means *having none selected*: besides its own row, you get back to it by
+clicking the selected folder again or the empty space below the tree. The
+fixed views at the top are not folders and cannot be renamed or dragged.
 
-| Se hace | Pasa |
+| You do | What happens |
 |---|---|
-| clic en una carpeta | se mira esa carpeta |
-| clic en la que ya está elegida | se vuelve a «Todo» |
-| clic en el hueco de debajo del árbol | se vuelve a «Todo» |
-| clic derecho en una carpeta | crear dentro, renombrar, color, vincular una carpeta del disco, borrar |
-| clic derecho en el hueco | crear en la raíz |
+| click a folder | you look at that folder |
+| click the one already selected | back to «All» |
+| click the empty space below the tree | back to «All» |
+| right click a folder | create inside, rename, color, link a folder on disk, delete |
+| right click the empty space | create at the root |
 
-Tocar el panel se lleva el foco de la malla: seguir escribiendo después de pinchar
-aquí ya no le habla a las fotos.
+Touching the panel takes the focus away from the grid: if you keep typing after
+clicking here, the keys no longer reach the photos.
 
-Arrastrar tiene el sentido que espera quien arrastra:
+Dragging does what the person dragging expects:
 
-| Se arrastra | Desde | Hace |
+| Dragged | From | Does |
 |---|---|---|
-| la selección | una carpeta | la **mueve**: entra en la de destino y sale de la de origen, en una sola operación que se deshace de una vez |
-| la selección | «Todo» o una búsqueda | la **añade**, sin sacarla de nada |
-| la selección | cualquier sitio, al hueco de debajo del árbol | la saca de la carpeta en la que se estaba mirando |
-| un elemento, con `Mayús` | la malla, dentro de ella | lo **reordena**: las demás se apartan y queda donde se suelta. Sin `Mayús` la malla no se mueve, para poder sacarlo a otra aplicación sin estorbos. `Mayús+clic` sin arrastrar sigue eligiendo un tramo |
-| una carpeta | el hueco de debajo del árbol | vuelve a la raíz |
+| the selection | a folder | **moves** it: it goes into the target folder and leaves the source folder, in a single operation that is undone in one step |
+| the selection | «All» or a search | **adds** it, without taking it out of anything |
+| the selection | anywhere, onto the empty space below the tree | removes it from the folder that was being viewed |
+| an item, with `Shift` | the grid, within it | **reorders** it: the others make room and it stays where it is dropped. Without `Shift` the grid stays still, so it can be dragged out to another application without getting in the way. `Shift+click` without dragging still selects a range |
+| a folder | the empty space below the tree | goes back to the root |
 
-Una carpeta soltada sobre otra fila hace una cosa u otra según **dónde** de la
-fila se suelte, y la raya que aparece lo dice antes de soltar:
+A folder dropped on another row does one thing or another depending on
+**where** in the row it is dropped, and the line that appears says which
+before you drop:
 
 ```
-─── borde de arriba ──►  queda delante de esa, como hermana
-    centro             ►  queda dentro de esa, la última de sus hijas
-─── borde de abajo ───►  queda detrás de esa, como hermana
+─── top edge ─────►  goes before that one, as a sibling
+    middle         ►  goes inside that one, as its last child
+─── bottom edge ──►  goes after that one, as a sibling
 ```
 
-Sin las bandas, el árbol solo sabía colgar de otra y el orden entre hermanas no
-se podía tocar. Los elementos no tienen bandas: caigan donde caigan dentro de la
-fila, entran en la carpeta, porque un elemento no tiene sitio entre dos carpetas.
+Without the bands, the tree could only nest under another folder and the
+order between siblings could not be changed. Items have no bands: wherever
+they land within the row, they go into the folder, because an item has no
+place between two folders.
 
-Colgar y colocar son la **misma** operación en el núcleo —`recolocar`—, no dos:
-arrastrar una fila es un solo gesto, y dos operaciones dejarían dos entradas en
-el deshacer para algo que se vio pasar una vez. Al colocar se renumeran los
-`pos` del grupo de diez en diez; si dos hermanas empataran, el desempate
-alfabético mandaría sobre lo que acaba de decidir quien arrastró.
+Nesting and placing are the **same** operation in the core (`recolocar`), a
+single one: dragging a row is one gesture, and two operations would leave two
+undo entries for something that was seen happening once. When placing, the
+`pos` values of the group are renumbered in steps of ten; if two siblings were
+tied, the alphabetical tiebreak would override what the person dragging just
+decided.
 
-Una carpeta no se puede soltar dentro de sí misma ni de una de sus nietas: la
-fila deja de iluminarse antes de soltar, no después. Lo que no se puede hacer se
-apaga, pero la fila **no rechaza** la entrada: Qt no vuelve a avisar a una zona
-de soltar que ha rechazado una vez, así que rechazar dejaba la fila sorda el
-resto del arrastre y le quitaba también los dos bordes, que es justo donde sí se
-podía soltar.
+A folder cannot be dropped inside itself or one of its descendants: the row
+stops lighting up before the drop, not after. What cannot be done is dimmed,
+but the row **does not reject** the drag: Qt never notifies a drop area again
+once it has rejected a drag, so rejecting left the row deaf for the rest of the
+drag and also took away its two edges, which is exactly where dropping was
+allowed.
 
-### Lo que viaja en un arrastre de dentro
+### What travels in an internal drag
 
-Dos trampas de Qt Quick, las dos invisibles: se veía todo bien y no funcionaba
-nada. Están sujetas por la prueba `arrastre`, que carga las filas de verdad y
-mueve el ratón.
+Two Qt Quick traps, both invisible: everything looked right and nothing
+worked. They are pinned down by the `arrastre` test, which loads the real rows
+and moves the mouse.
 
-**La carga no va en el `Drag.mimeData`.** En un arrastre interno ese mapa no
-llega al otro lado: quien recibe la caída ve las claves y la fuente, y `formats`
-vacío, así que `getDataAsString` devuelve siempre cadena vacía. La fila de
-destino se iluminaba —eso solo mira las claves— y al soltar no pasaba nada,
-porque el identificador que había que mover llegaba en blanco. Lo que cruza es
-la clave, que dice **qué** se arrastra; el **cuál** lo guarda la ventana
-mientras dura el gesto. Las claves siguen sirviendo para lo suyo: decidir qué
-zona acepta qué. Por eso la zona de importar de la ventana entera pide
-`text/uri-list`, que es lo que trae un archivo de fuera: sin esa clave se
-quedaba con cualquier arrastre de dentro y encendía el velo de «suelta aquí para
-importar» al mover una foto de carpeta.
+**The payload does not go in `Drag.mimeData`.** In an internal drag that map
+does not reach the other side: the receiver of the drop sees the keys and the
+source, and an empty `formats`, so `getDataAsString` always returns an empty
+string. The target row lit up (that only looks at the keys) and dropping did
+nothing, because the identifier to move arrived blank. What crosses over is
+the key, which says **what kind of thing** is being dragged; **which one** is
+kept by the window for the duration of the gesture. The keys still do their
+own job: deciding which area accepts what. That is why the window-wide import
+area asks for `text/uri-list`, which is what a file from outside carries:
+without that key it grabbed any internal drag and lit up the «drop here to
+import» overlay when you moved a photo to a folder.
 
-**Se ve qué se arrastra desde el primer píxel.** Un fantasma pegado al cursor
-—la miniatura de lo elegido con cuántos van, o el nombre de la carpeta— y el
-ratón en mano cerrada. Sin eso, arrastrar era un acto de fe: la única señal
-llegaba al final del camino, cuando la fila de destino se encendía. La posición
-la manda el propio bulto, que es el que ya la sabe.
+**You can see what is being dragged from the first pixel.** A ghost attached
+to the cursor (the thumbnail of the selection with a count, or the folder
+name) and a closed-hand cursor. Without that, dragging was an act of faith:
+the only signal came at the end of the way, when the target row lit up. The
+position is set by the drag item itself, which is the one that already knows
+it.
 
-**El bulto va pegado al cursor a mano** (`Bulto.qml`). Qt busca la zona de soltar
-donde está el bulto, no donde está el ratón, y por su cuenta el bulto nace en la
-esquina del que lo suelta y encima se queda atrás el umbral de arrastre, porque
-`MouseArea` lo descuenta para que lo arrastrado no pegue un salto al empezar. Con
-filas de dos dedos de alto eso es media banda de error: se pedía «dentro» y salía
-«detrás».
+**The drag item is attached to the cursor by hand** (`Bulto.qml`). Qt looks
+for the drop area where the drag item is, not where the mouse is, and left to
+itself the item starts at the corner of whatever releases it and also falls
+behind by the drag threshold, because `MouseArea` subtracts it so the dragged
+thing does not jump when the drag starts. With rows two fingers tall that is
+half a band of error: you asked for «inside» and got «after».
 
-### Cuando un vídeo de la malla se queda quieto
+### When a grid video freezes
 
-Qt puede escribir «Failed to start video surface due to main thread blocked» al
-arrancar: el motor de multimedia le pide el relevo al hilo de interfaz para
-montar la salida, se cansa de esperar y no vuelve a pedirlo. Pasa cuando la
-malla está decodificando la primera pantalla. El reproductor sigue contando
-posición y la celda se queda siendo una foto quieta para siempre.
+Qt can print «Failed to start video surface due to main thread blocked» on
+startup: the multimedia engine asks the interface thread to take over to set
+up the output, gets tired of waiting and never asks again. It happens while the
+grid is decoding its first screen. The player keeps counting position and the
+cell stays a still photo forever.
 
-`Reproductor.qml` cuenta los fotogramas que llegan a la salida y, si en tres
-segundos no llega ninguno, vuelve a arrancar. Tres veces y para. Ni la posición
-ni el tamaño sirven para darse cuenta: la posición avanza igual —lo que falla es
-enseñar, no decodificar— y el tamaño se rellena en cuanto se conoce el formato.
-Medido: con ocho de esos avisos, los cinco reproductores decían tener tamaño y
-posición.
+`Reproductor.qml` counts the frames that reach the output and, if none arrive
+within three seconds, starts again. Three times and it gives up. Neither the
+position nor the size can tell you this is happening: the position advances
+anyway (decoding works; displaying is what fails) and the size is filled in as
+soon as the format is known. Measured: with eight of those warnings, all five
+players reported a size and a position.
 
-Un puñado de fotogramas por vuelta tampoco es estar roto: con la pantalla
-apagada el compositor deja de pedir dibujado y la ventana entera baja a un
-fotograma por segundo. Por eso vale cualquier fotograma, no un mínimo.
+A handful of frames per round does not mean it is broken either: with the
+screen off the compositor stops requesting draws and the whole window drops to
+one frame per second. That is why any frame counts, with no minimum.
 
-### Los reproductores de la malla no se destruyen, y hay que comprobarlo
+### The grid players are never destroyed, and that has to be verified
 
-Está escrito arriba del todo de `MallaVideos.qml` y aun así no se cumplía. El
-goteo que crea los reproductores de uno en uno usaba `model: <un número>`, y
-`Repeater` **rehace todos** sus hijos cada vez que ese número cambia: contando
-nacimientos y muertes, cinco reproductores nacían quince veces y morían diez.
-Justo lo que la cabecera dice que tira el programa. Ahora el modelo es una lista
-a la que solo se añade, y son cinco nacimientos y cero muertes.
+It is written at the very top of `MallaVideos.qml` and even so it was not
+true. The trickle that creates the players one at a time used
+`model: <a number>`, and `Repeater` **recreates all** its children every time
+that number changes: counting births and deaths, five players were born
+fifteen times and died ten. Exactly what the header says crashes the program.
+Now the model is a list that is only appended to, and it is five births and
+zero deaths.
 
-Tres cosas más que se pagaban en el hilo de interfaz y ya no:
+Three more things that used to be paid for on the interface thread and no
+longer are:
 
-* **Al cambiar de consulta el reparto se vacía en el acto.** Lleva índices, y un
-  índice de la vista de antes apunta en la nueva a otra cosa —muchas veces a una
-  foto, que el reproductor decodifica como un vídeo de un solo fotograma y pinta
-  donde estaba el vídeo viejo y con su tamaño—. Eso era el cuadro que aparecía
-  flotando fuera de sitio al entrar en una carpeta.
-* **Quedarse sin sitio no suelta la fuente.** La fuente se pone a mano en vez de
-  atarse al reparto: sin sitio el reproductor se calla y se esconde, pero se
-  queda con lo que tenía. Atada, se quedaba en blanco y eso desmonta la tubería
-  entera. Medido en un cambio de carpeta con vídeo automático: **2,3 s** hasta
-  ver la carpeta, contra 0,6 s con el vídeo automático apagado. Sin desmontar,
-  0,7 s con el vídeo puesto.
-* **Salir de pantalla pausa, no para**, y volver a entrar arranca. `stop` suelta
-  la tubería; `pause` no decodifica nada y vuelve al instante. Y hacía falta
-  arrancar al volver: parar era fácil de pedir y arrancar no tenía quién lo
-  pidiera, así que un vídeo que perdía su sitio y recuperaba el mismo se quedaba
-  en su portada para siempre. Era lo que pasaba al entrar en una carpeta cuyos
-  vídeos ya estaban en marcha.
-* **Pausado tres segundos, se suelta.** Pausar y ya está sale caro: una tubería
-  en pausa no decodifica pero se queda con todo lo suyo, y en una máquina con
-  decodificador de vídeo por GPU cada una arrastra su contexto. Medido rodando
-  la malla arriba y abajo cinco veces, con cinco vídeos: pausando y nada más, de
-  0,93 a 1,33 GB; soltando a los tres segundos, de 0,82 a 0,86. El plazo es lo
-  que hace que las dos cosas convivan: volver a la carpeta de la que se acaba de
-  salir no cuesta nada, y lo que no vuelve no se queda ocupando.
+* **Changing query empties the assignment immediately.** It holds indexes, and
+  an index from the previous view points to something else in the new one
+  (often a photo, which the player decodes as a one-frame video and paints
+  where the old video was, at its size). That was the square that appeared
+  floating out of place when entering a folder.
+* **Losing its slot does not release the source.** The source is set by hand
+  instead of being bound to the assignment: without a slot the player goes
+  silent and hides, but keeps what it had. When it was bound, the source went
+  blank and that tears down the whole pipeline. Measured on a folder change
+  with autoplay video: **2.3 s** until the folder appeared, against 0.6 s with
+  autoplay video off. Without tearing down, 0.7 s with video on.
+* **Leaving the screen pauses instead of stopping**, and coming back in starts
+  playback. `stop` releases the pipeline; `pause` decodes nothing and resumes
+  instantly. And starting on return was needed: stopping was easy to request
+  and nobody was there to request starting, so a video that lost its slot and
+  got the same one back stayed on its cover forever. That is what happened
+  when entering a folder whose videos were already playing.
+* **Paused for three seconds, it is released.** Just pausing is expensive: a
+  paused pipeline does not decode but holds on to everything it has, and on a
+  machine with GPU video decoding each one carries its own context. Measured
+  scrolling the grid up and down five times, with five videos: pausing only,
+  from 0.93 to 1.33 GB; releasing after three seconds, from 0.82 to 0.86. The
+  delay is what lets both things coexist: going back to the folder you just
+  left costs nothing, and what does not come back does not stay taking up
+  memory.
 
-Estas tres se arreglaron mientras existía el modo que movía todos los vídeos que
-se veían. Ese modo ya no está —las cifras que lo mataron están en
-«Reproducir»— pero los arreglos siguen valiendo: el reproductor de la malla es
-uno y va y viene igual, y el visor y el panel montan tuberías por su cuenta.
+These three were fixed while the mode that played every visible video still
+existed. That mode is gone (the numbers that killed it are in «Playback»),
+but the fixes still apply: the grid player is a single one that comes and
+goes the same way, and the viewer and the inspector set up pipelines of their
+own.
 
-## Ni un fotograma a JavaScript
+## Not a single frame to JavaScript
 
-El rescate de la malla cuenta los fotogramas que llegan a la salida, y los
-contaba con un `Connections` a `videoFrameChanged`. Cada aviso entrega el
-fotograma a JavaScript como un valor, y ese valor sujeta la textura del
-decodificador hasta que pasa el recolector, que no ve esa memoria y no tiene
-prisa. Con el vídeo por la tarjeta, una textura 1080p por fotograma: la memoria
-de vídeo subía **250 MB por segundo** con un solo vídeo en bucle, y con un
-manejador vacío igual. Pinchar entre dos vídeos lo multiplicaba —panel y malla
-reproduciendo a la vez—: en cuatro minutos el programa tenía 13,5 GB de la
-tarjeta y 14 GB de RAM, iba a tirones y moría.
+The grid rescue counts the frames that reach the output, and it used to count
+them with a `Connections` on `videoFrameChanged`. Each notification hands the
+frame to JavaScript as a value, and that value holds on to the decoder texture
+until the garbage collector runs, which cannot see that memory and is in no
+hurry. With video on the graphics card, one 1080p texture per frame: video
+memory grew by **250 MB per second** with a single looping video, and the same
+with an empty handler. Clicking between two videos multiplied it (inspector
+and grid playing at the same time): in four minutes the program held 13.5 GB
+of graphics memory and 14 GB of RAM, stuttered and died.
 
-Ahora se cuentan en C++ (`src/fotogramas.cpp`), con la conexión por el nombre
-de la señal para no enlazar QtMultimedia, y el fotograma no sale de ahí. Medido
-con el mismo vídeo en bucle: de 353 a 2580 MiB en nueve segundos antes; 284 MiB
-planos durante veintiuno después. La regla: **ninguna señal que lleve un
-`QVideoFrame` se escucha desde QML.**
+Now they are counted in C++ (`src/fotogramas.cpp`), connecting by signal name
+to avoid linking QtMultimedia, and the frame never leaves that code. Measured
+with the same looping video: from 353 to 2580 MiB in nine seconds before; a
+flat 284 MiB for twenty-one seconds after. The rule: **no signal that carries a
+`QVideoFrame` is listened to from QML.**
 
-## Cambiar de vídeo: pausar, y soltar después
+## Switching video: pause, and release later
 
-Pinchar en otro vídeo congelaba la interfaz casi un segundo. No era abrir el
-nuevo —eso va en segundo plano y vuelve en un milisegundo—, era soltar el viejo:
-Qt 6.4 baja la tubería a NULL y espera, en el hilo de interfaz, y una tubería en
-marcha tarda mucho más en bajar que una en pausa. Ahora el reproductor pausa al
-momento, esconde la salida y cambia de fuente 100 ms después. Medido cambiando
-entre dos vídeos cada segundo y medio: de **804 ms** de mediana (1,3 s de
-máximo) a **179 ms** (251). Con 50 ms de espera todavía no había asentado la
-pausa; con 200 no se gana más. Una ráfaga de cambios paga solo el último.
+Clicking another video froze the interface for almost a second. Opening the
+new one was fine (that runs in the background and comes back in a
+millisecond); the cost was releasing the old one: Qt 6.4 brings the pipeline
+down to NULL and waits, on the interface thread, and a running pipeline takes
+much longer to come down than a paused one. Now the player pauses at once,
+hides the output and switches source 100 ms later. Measured switching between
+two videos every second and a half: from a median of **804 ms** (1.3 s max) to
+**179 ms** (251). With a 50 ms wait the pause had not settled yet; with 200
+nothing more is gained. A burst of switches only pays for the last one.
 
-## El anillo del foco
+## The focus ring
 
-Elegir algo abre el panel de detalle, y abrirlo estrecha la malla: la fila
-entera se rehace y lo que se acaba de elegir cambia de sitio, a veces de fila.
-Con el borde de la propia celda y nada más, hay que volver a buscarlo con los
-ojos cada vez.
+Selecting something opens the inspector, and opening it narrows the grid: the
+whole row is laid out again and what you just selected moves, sometimes to
+another row. With only the cell's own border, you have to find it again with
+your eyes every time.
 
-Los saltos se quedan —la malla justificada es así, y evitarlos costaría reservar
-el hueco del panel siempre—, pero se puede no perderle la pista. Un anillo con
-halo marca lo que enseña el panel y **se desliza** de donde estaba a donde va,
-en 180 ms, con un golpe de luz que se apaga al llegar. Se sigue con la mirada en
-vez de buscarlo.
+The jumps stay (the justified grid works that way, and avoiding them would
+mean always reserving the inspector's space), but you can avoid losing track.
+A ring with a halo marks what the inspector shows and **slides** from where it
+was to where it goes, in 180 ms, with a flash of light that fades on arrival.
+You follow it with your eyes instead of searching for it.
 
-Tres decisiones dentro:
+Three decisions inside:
 
-* **Uno solo para toda la malla**, por encima de las celdas y de los vídeos, no
-  uno por celda. Preguntar en cada una de las trescientas ochenta y cuatro si es
-  ella la elegida son trescientas ochenta y cuatro ataduras a `modelo.actual`, y
-  esto pinta lo mismo con un nodo. Es la misma razón por la que los vídeos van
-  por encima y no dentro.
-* **La celda avisa de dónde estaba al pincharla**, antes de tocar la selección.
-  Sin eso el anillo no tiene de dónde salir: para cuando alguien se entera de
-  cuál es la elegida, la malla ya se rehizo y el sitio viejo no existe. Y el
-  aviso sale al **apretar**, no al soltar, porque elegir pasa al apretar.
-* **El halo son tres bandas**, cada una más ancha y más tenue, y son bordes
-  anchos y no rectángulos rellenos: relleno tiñe la foto de cian, y lo que hay
-  que resaltar es la foto, no taparla. Sin módulo de efectos —el Qt de Ubuntu
-  24.04 no trae `QtQuick.Effects`— un degradado es esto.
+* **A single one for the whole grid**, above the cells and the videos, rather
+  than one per cell. Asking each of the three hundred and eighty-four cells
+  whether it is the selected one means three hundred and eighty-four bindings
+  to `modelo.actual`, and this paints the same thing with one node. It is the
+  same reason the videos sit above the cells and not inside them.
+* **The cell reports where it was when clicked**, before touching the
+  selection. Without that the ring has nowhere to start from: by the time
+  anyone learns which one is selected, the grid has already been laid out
+  again and the old position no longer exists. And the report goes out on
+  **press**, not on release, because selection happens on press.
+* **The halo is three bands**, each wider and fainter, and they are wide
+  borders instead of filled rectangles: a fill tints the photo cyan, and the
+  point is to highlight the photo without covering it. Without an effects
+  module (the Qt in Ubuntu 24.04 does not ship `QtQuick.Effects`), this is
+  what a gradient looks like.
 
-## Moverse con las flechas, y lo que costaba
+## Moving with the arrows, and what it cost
 
-Cada flecha cambia el foco, y cambiar el foco movía media aplicación. Tres cosas
-que se pagaban en cada tecla y ya no:
+Each arrow changes the focus, and changing the focus moved half the
+application. Three things that were paid on every key press and no longer are:
 
-* **El aviso del modelo se traduce a ranuras.** El modelo avisa por elemento y
-  la malla sirve por ranura; el atajo que había ignoraba de qué elemento se
-  avisaba y repintaba las cuatrocientas ranuras con los ocho papeles. Elegir
-  manda dos avisos —el que se deja y el que se toma—, así que cada tecla lo
-  hacía dos veces.
-* **El visor cerrado ya no carga nada.** Su previsualización a tamaño completo
-  colgaba de `modelo.actual` sin mirar si el visor estaba abierto: cada tecla
-  descodificaba una imagen grande para nadie.
-* **El panel espera a que pares** para darle la fuente al reproductor. Sin eso,
-  pasar con las flechas por encima de los vídeos monta y desmonta una tubería de
-  multimedia por tecla, en el hilo de la interfaz.
+* **The model notification is translated to slots.** The model notifies per
+  item and the grid serves per slot; the shortcut in place ignored which item
+  was being notified and repainted all four hundred slots with all eight
+  roles. Selecting sends two notifications (the one being left and the one
+  being taken), so each key press did it twice.
+* **The closed viewer no longer loads anything.** Its full-size preview was
+  bound to `modelo.actual` without checking whether the viewer was open: each
+  key press decoded a large image for nobody.
+* **The inspector waits for you to stop** before giving the source to the
+  player. Without that, moving across videos with the arrows sets up and tears
+  down a multimedia pipeline per key press, on the interface thread.
 
-Y el anillo del foco **salta en vez de viajar cuando las teclas vienen
-seguidas**: el viaje y el brillo están para no perderle la pista a un salto, y
-yendo deprisa no se mira ninguno. Cada uno repintaba las tres bandas del halo
-sesenta veces por segundo durante medio segundo, y con una tecla cada sesenta
-milisegundos eso no paraba nunca.
+And the focus ring **jumps instead of travelling when keys come in quick
+succession**: the travel and the glow are there so you do not lose track of a
+jump, and when moving fast you are not looking at any of them. Each one
+repainted the three halo bands sixty times per second for half a second, and
+with a key every sixty milliseconds that never stopped.
 
-**Aviso sobre medir esto:** en pantalla virtual (`Xvfb`) no hay tarjeta, dibuja
-`llvmpipe` por software, y en un paseo con flechas **el 97 % del tiempo de CPU
-se lo llevan sus hilos**. Ahí cualquier medida dice «lo que cuesta es repintar»
-y tapa todo lo demás. Las cifras de arriba salen de comparar con la pieza
-quitada, no de un perfil; y el número absoluto de una pantalla virtual no vale
-para decidir nada sobre una máquina con GPU.
+**A warning about measuring this:** on a virtual display (`Xvfb`) there is no
+graphics card, `llvmpipe` draws in software, and during an arrow-key walk
+**97 % of the CPU time goes to its threads**. There, any measurement says «the
+cost is repainting» and hides everything else. The numbers above come from
+comparing with the piece removed, not from a profile; and the absolute number
+on a virtual display is useless for deciding anything about a machine with a
+GPU.
 
-## Cambiar rápido de carpeta
+## Switching folders quickly
 
-Dos fallos que se veían igual —celdas con la foto de otro elemento— y que solo
-salían alternando deprisa entre dos carpetas. Los dos quedan escritos porque
-no se ven en una captura tranquila: hace falta la ráfaga.
+Two bugs that looked the same (cells showing the photo of another item) and
+only showed up when switching quickly between two folders. Both are written
+down because they do not show in a calm screenshot: you need the burst.
 
-**Las ranuras no se enteraban de que cambiaba su contenido.** La malla reparte
-los elementos en ranuras y `repartir` solo avisa de las que cambian de sitio o
-de medida. Si en la vista nueva el elemento de una ranura tenía la misma forma
-y caía en el mismo sitio que el de la vista anterior, la ranura se quedaba con
-el id viejo. Ahora, al reiniciarse el modelo, se refresca el contenido de todas.
+**The slots did not notice that their content changed.** The grid distributes
+items into slots and `repartir` only notifies the ones that change position or
+size. If in the new view the item in a slot had the same shape and landed in
+the same place as the one in the previous view, the slot kept the old id. Now,
+when the model resets, the content of all of them is refreshed.
 
-**El proveedor de imágenes buscaba en una vista y decodificaba de otra.** Corre
-en el hilo de carga de imágenes: buscaba la posición del id en la vista
-publicada y luego tomaba otra referencia para decodificar. Si entre las dos
-cosas el hilo de la interfaz cambiaba de vista, se leía la posición de la vieja
-en la nueva, y como el caché de Qt guarda la imagen con la URL del id pedido,
-la foto equivocada se quedaba pegada. Ahora toma la vista una vez y hace todo
-con esa. Y cambiar de vista y clonarla van bajo el mismo cerrojo: antes, clonar
-la vieja justo cuando se soltaba era tocar memoria ya liberada.
+**The image provider looked up in one view and decoded from another.** It runs
+on the image loading thread: it looked up the id's position in the published
+view and then took another reference to decode. If the interface thread
+switched views between those two steps, the old view's position was read in
+the new one, and since the Qt cache stores the image under the URL of the
+requested id, the wrong photo stuck. Now it takes the view once and does
+everything with it. And switching views and cloning them happen under the same
+lock: before, cloning the old one right as it was being released meant touching
+memory that had already been freed.
 
-## Renombrar la biblioteca y sus carpetas vinculadas
+## Renaming the library and its linked folders
 
-«Renombrar esta biblioteca…», en el menú del nombre de arriba a la izquierda,
-cambia el nombre que se enseña y nada más: la carpeta `.grimorio` se queda
-donde y como está, porque su ruta vive en las recientes, en los accesos
-directos y en lo que otros programas tengan apuntado. En `library.json` se toca
-solo `name`; lo demás del archivo, aunque sea de una versión más nueva, sigue
-ahí. Las recientes enseñan ese nombre y no el de la carpeta.
+«Rename this library…», in the menu of the name at the top left, changes the
+displayed name and nothing else: the `.grimorio` folder stays where and as it
+is, because its path lives in the recent list, in shortcuts and in whatever
+other programs point to. In `library.json` only `name` is touched; everything
+else in the file stays there, even if it comes from a newer version. The
+recent list shows that name and not the folder's.
 
-Las **carpetas vinculadas** son las del disco cuyo contenido nuevo entra solo
-en la biblioteca. Antes se decía «vigilar», que en castellano suena a
-vigilancia; por dentro sigue siendo `vigiladas.json` y los mismos comandos,
-para no cambiar el formato. El menú de la biblioteca abre su vista de nodos
-(`PanelVinculos.qml`): la biblioteca a la izquierda, con la carpeta donde vive;
-cada carpeta vinculada a la derecha, con adónde entra lo suyo; una línea entre
-las dos por la que corren trazos hacia la biblioteca, y que late cuando de
-verdad entra algo. Una carpeta que no está (un disco sin conectar) se ve
-apagada, con la línea punteada y quieta, y vuelve a funcionar cuando vuelve.
-Desde ahí se conecta una nueva (el nodo «+») y se desconecta una (su ×); lo que
-ya entró se queda. Las rutas se pulsan para abrirlas en el explorador, y el
-eslabón de una carpeta vinculada en el árbol abre la misma vista.
+**Linked folders** are folders on disk whose new content goes into the library
+automatically. They used to be called «vigilar» («watch»), which in Spanish
+sounds like surveillance; internally it is still `vigiladas.json` and the same
+commands, so the format does not change. The library menu opens their node view
+(`PanelVinculos.qml`): the library on the left, with the folder it lives in;
+each linked folder on the right, with where its content goes; a line between
+the two along which strokes run towards the library, and which pulses when
+something actually comes in. A folder that is not there (an unplugged disk)
+appears dimmed, with a dotted, still line, and works again when it comes back.
+From there you connect a new one (the «+» node) and disconnect one (its ×);
+whatever already came in stays. Paths can be clicked to open them in the file
+manager, and the link icon of a linked folder in the tree opens the same view.
 
-## Una ventana por biblioteca
+## One window per library
 
-Abrirla dos veces sobre la misma carpeta no da un aviso: da dos programas
-escribiendo en `folders.json` y en el índice, y el segundo en guardar pisa al
-primero. Con el vídeo automático puesto además se pelean por el decodificador de
-la tarjeta —cada vídeo es una tubería, y dos programas son el doble—: la tarjeta
-se queda sin sesiones y la reproducción se cae con «No decoder available».
+Opening it twice on the same folder means two programs writing to
+`folders.json` and to the index, with the
+second one to save overwriting the first. With autoplay video on, they also
+fight over the graphics card's decoder (each video is a pipeline, and two
+programs are twice as many): the card runs out of sessions and playback fails
+with «No decoder available».
 
-Así que la segunda no arranca y lo dice:
+So the second one does not start, and says so:
 
 ```
 error: «~/Referencias.grimorio» ya está abierta (proceso 2274646)
 ```
 
-El cerrojo es `abierta.lock` dentro de la biblioteca y guarda el pid de quien la
-tiene. Un cierre a lo bruto no la deja condenada: la siguiente ve que ese proceso
-ya no está y se lo queda. `grim` no pasa por aquí: la línea de órdenes sigue
-funcionando con la ventana abierta.
+The lock is `abierta.lock` inside the library and it stores the pid of the
+process holding it. A hard shutdown does not leave it locked forever: the next
+one sees that process is gone and takes it over. `grim` does not go through
+this: the command line keeps working with the window open.
 
-## Qué biblioteca se abre
+## Which library opens
 
-Por orden: la ruta que se pase (o `GRIMORIO_LIB`), la última que se abrió, y si
-no hay ninguna, una nueva en `Documentos/Grimorio.grimorio`. Una ruta que es un
-archivo de dentro de la biblioteca abre esa biblioteca.
+In order: the path passed in (or `GRIMORIO_LIB`), the last one opened, and if
+there is none, a new one at `Documentos/Grimorio.grimorio`. A path to a file
+inside the library opens that library.
 
-Una ruta que no lleva a ninguna —un disco sin montar, una carpeta movida, un
-`GRIMORIO_LIB` viejo— **no deja sin ventana**: se abre la siguiente de la lista
-y la barra de estado dice cuál no se encontró. Antes el programa se cerraba, y
-encima con «ya está abierta», porque el cerrojo no se puede crear en una carpeta
-que no existe. Las pasadas automáticas (`--bench`, `--captura`, `--guion`…) sí
-fallan: medir otra biblioteca sin decirlo daría números que no son.
+A path that leads to no library (an unmounted disk, a moved folder, an old
+`GRIMORIO_LIB`) **does not leave you without a window**: the next one in the
+list opens and the status bar says which one was not found. Before, the
+program quit, and with «already open» on top of that, because the lock cannot
+be created in a folder that does not exist. The automated runs (`--bench`,
+`--captura`, `--guion`…) do fail: measuring another library without saying so
+would produce numbers that are wrong.
 
-## Buscar
+## Search
 
-El campo de arriba entiende filtros además de palabras, y el botón «filtros»
-escribe en ese mismo campo:
+The field at the top understands filters as well as words, and the «filters»
+button writes into that same field:
 
 ```
 tipografía etiqueta:rótulo estrellas:>=4 peso:>2mb orientacion:vertical
 ```
 
-Campos: `etiqueta:` (o `#etiqueta`), `tipo:`, `ext:`, `estrellas:`, `ancho:`,
+Fields: `etiqueta:` (or `#etiqueta`), `tipo:`, `ext:`, `estrellas:`, `ancho:`,
 `alto:`, `peso:`, `orientacion:`, `color:#rrggbb`, `orden:`, `papelera:`,
-`etiquetado:` (`etiquetado:no` es lo que no tiene ninguna etiqueta; es un campo
-aparte y no `etiqueta:no`, que buscaría la etiqueta «no»).
-Aceptan `>=`, `>`, `<=`, `<`; un número a secas quiere decir «exactamente ese».
-Lo que no se entiende se busca como texto.
+`etiquetado:` (`etiquetado:no` is whatever has no tag at all; it is a separate
+field and not `etiqueta:no`, which would search for the tag «no»).
+They accept `>=`, `>`, `<=`, `<`; a bare number means «exactly that».
+Anything that is not understood is searched as text.
 
-`tipo:` elige solo entre familia y extensión: `tipo:video` son todos los vídeos
-y `tipo:png` son los PNG. `adulto:` y `+18:` son lo mismo.
+`tipo:` picks only between family and extension: `tipo:video` is all videos
+and `tipo:png` is the PNGs. `adulto:` and `+18:` are the same.
 
-El `grim search` del CLI entiende esta misma línea: es el mismo analizador, no
-uno parecido.
+The CLI's `grim search` understands this same line: it uses the very same
+parser, shared by both.
 
-## Modo seguro
+## Safe mode
 
-Un elemento se marca como +18 desde el panel de la derecha, o desde el CLI con
-`grim adult ID`. La marca vive en el `item.json`, se deshace como todo lo demás
-y se busca con `adulto:si` (o `+18:si`).
+An item is marked as adult content from the inspector, or from the CLI with
+`grim adult ID`. The mark lives in `item.json`, is undone like everything else
+and is searched with `adulto:si` (or `+18:si`).
 
-Marcar no esconde nada por sí solo: quien decide es el **modo seguro**, el botón
-de arriba, que solo aparece si hay algo marcado o si está puesto. Con él:
+Marking does not hide anything by itself: what decides is **safe mode**, the
+button at the top, which only appears if something is marked or if it is on.
+With it:
 
-- en la malla y en el panel, lo marcado sale difuminado y con un `+18` encima;
-- un vídeo marcado no se reproduce solo al pasar por encima;
-- **el visor lo enseña entero**: entrar en un elemento es pedir verlo. Al volver
-  a la malla sigue difuminado. Lo único que lo levanta del todo es apagar el
-  modo.
+- in the grid and in the inspector, marked items are blurred with a `+18` on
+  top;
+- a marked video does not play on hover;
+- **the viewer shows it in full**: opening an item means asking to see it.
+  Back in the grid it is blurred again. The only thing that lifts it entirely
+  is turning the mode off.
 
-El difuminado es la propia miniatura pedida diminuta y estirada hasta la celda.
-No hace falta ningún módulo de efectos —el Qt de Ubuntu 24.04 no trae
-`QtQuick.Effects` ni el compilador de sombreadores— y, lo que importa más, los
-píxeles de verdad no llegan a estar en pantalla: lo que se decodifica son unas
-decenas de píxeles, no la imagen tapada con algo encima.
+The blur is the thumbnail itself requested tiny and stretched to the cell. No
+effects module is needed (the Qt in Ubuntu 24.04 ships neither
+`QtQuick.Effects` nor the shader compiler) and, more importantly, the real
+pixels never reach the screen: what gets decoded is a few dozen pixels, rather
+than the image with something covering it.
 
-## Versiones nuevas
+## New versions
 
-Grimorio avisa de las versiones nuevas, y se actualiza solo **si se le pide**.
-Una vez al día (y ocho segundos después de arrancar, para no competir con la
-primera pantalla de miniaturas) pide
+Grimorio tells you about new versions, and updates itself only **if you ask
+it to**. Once a day (and eight seconds after startup, so it does not compete
+with the first screen of thumbnails) it requests
 `https://grimorio.frederickandrade.com/version.json`:
 
 ```json
@@ -498,334 +519,347 @@ primera pantalla de miniaturas) pide
 }
 ```
 
-Si es más nueva que la suya, la barra de estado enseña una píldora del color de
-la selección, «Grimorio 0.2.0 disponible · actualizar», con una × que la ignora
-hasta la siguiente; el engranaje de arriba a la izquierda lleva un punto, y
-Ajustes abre con una tarjeta arriba del todo: «actualizar ahora», «ver la
-página» y «ahora no». Antes era un texto del tamaño de los avisos en una
-esquina, y no se veía. «Avisar de versiones nuevas» lo apaga del todo y
-«comprobar ahora» pregunta en el acto (y vuelve a enseñar una versión
-ignorada).
+If it is newer than its own, the status bar shows a pill in the selection
+color, «Grimorio 0.2.0 available · update», with an × that ignores it until
+the next one; the gear at the top left gets a dot, and Settings opens with a
+card at the very top: «update now», «see the page» and «not now». Before, it
+was a notice-sized text in a corner, and nobody saw it. «Notify about new
+versions» turns it off completely and «check now» asks right away (and shows
+an ignored version again).
 
-**Actualizar ahora** baja el paquete de su sistema, comprueba que su SHA-256 es
-el del `version.json` y lo instala:
+**Update now** downloads the package for its system, checks that its SHA-256
+matches the one in `version.json` and installs it:
 
-- **Windows**: lanza el instalador con `/SILENT /actualizar=1`, en el mismo
-  modo en que se instaló (`/ALLUSERS` si está en Archivos de programa,
-  `/CURRENTUSER` si no: si no, quedarían dos copias) y se cierra. El `.iss` lo
-  vuelve a abrir al acabar, como quien lo usa y no como administrador.
-- **Linux**: abre el `.tar.gz`, copia `grimorio` y `grim` al lado como
-  `.nuevo`, y cambia cada uno con un renombrado; el de antes queda como
-  `.anterior`. Se vuelve a abrir con la misma biblioteca, por un `sh` que
-  espera a que el proceso viejo suelte el cerrojo.
+- **Windows**: it launches the installer with `/SILENT /actualizar=1`, in the
+  same mode it was installed in (`/ALLUSERS` if it is in Program Files,
+  `/CURRENTUSER` otherwise; otherwise there would be two copies) and quits.
+  The `.iss` reopens it when it finishes, as the user and not as
+  administrator.
+- **Linux**: it opens the `.tar.gz`, copies `grimorio` and `grim` alongside as
+  `.nuevo`, and swaps each one with a rename; the previous one stays as
+  `.anterior`. It reopens with the same library, through an `sh` that waits for
+  the old process to release the lock.
 
-Solo lo hacen los **paquetes publicados** (`-DGRIMORIO_PAQUETE=ON`, que pone
-`release.yml`), instalados donde se puedan cambiar: con el instalador en
-Windows (no el zip portable) y en una carpeta de quien lo usa en Linux. Un
-build de desarrollo, el portable o un `/opt` de root abren la página de
-descargas, como antes. `paquetes` es nuevo en la 0.1.4: las versiones de antes
-no lo miran y siguen abriendo la página.
+Only **published packages** do this (`-DGRIMORIO_PAQUETE=ON`, which
+`release.yml` sets), installed somewhere they can be replaced: with the
+installer on Windows (not the portable zip) and in a folder owned by the user
+on Linux. A development build, the portable version or a root-owned `/opt`
+open the download page, as before. `paquetes` is new in 0.1.4: earlier
+versions do not look at it and keep opening the page.
 
-- **La web y no la API de GitHub.** El archivo es nuestro: si las descargas se
-  mueven, se cambia el enlace y los programas ya instalados siguen sirviendo.
-  GitHub además limita las consultas sin cuenta.
-- **No manda nada.** Un GET sin cookies y con el agente `Grimorio` a secas, sin
-  la versión. La página de privacidad de la web lo cuenta. Bajar el paquete es
-  otro GET igual, y solo al pulsar.
-- **Solo de las releases, y con huella.** Un paquete vale si es `https`, de
-  `github.com/Dohkku/grimorio/releases/download/` y trae un SHA-256; lo bajado
-  que no coincide se borra sin instalar, y la tarjeta dice por qué. Lo que se
-  ejecuta tiene que ser lo publicado, bit a bit.
-- **Lo último que se supo se guarda** (`novedades/*` en los ajustes): el aviso
-  sale al arrancar aunque ese día no toque preguntar o no haya red.
-- **Solo un enlace https.** El aviso abre el navegador con lo que diga el
-  archivo; cualquier otra cosa se cambia por la portada.
-- **Las pasadas automáticas no preguntan** (`--bench`, `--captura`, `--visor`,
-  `--lote`, `--guion`), ni nada que arranque con `GRIMORIO_SIN_RED=1`, como el
-  recorrido de pruebas: una prueba no puede depender de la red ni sacar un
-  aviso en lo que captura.
-- **Para probarlo**, `GRIMORIO_NOVEDADES_URL` cambia de dónde se lee el
-  `version.json` (un `python3 -m http.server` con uno propio basta).
+- **The website and not the GitHub API.** The file is ours: if the downloads
+  move, the link changes and the programs already installed keep working.
+  GitHub also rate-limits anonymous requests.
+- **It sends nothing.** A GET without cookies and with a bare `Grimorio` user
+  agent, without the version. The website's privacy page explains this.
+  Downloading the package is another identical GET, and only when you click.
+- **Only from the releases, and with a checksum.** A package is valid if it is
+  `https`, from `github.com/Dohkku/grimorio/releases/download/` and comes with
+  a SHA-256; a download that does not match is deleted without installing, and
+  the card says why. What runs has to be exactly what was published, bit for
+  bit.
+- **The last known result is saved** (`novedades/*` in the settings): the
+  notice appears on startup even if that day there is no check due or no
+  network.
+- **Only an https link.** The notice opens the browser with whatever the file
+  says; anything else is replaced with the home page.
+- **Automated runs do not check** (`--bench`, `--captura`, `--visor`,
+  `--lote`, `--guion`), nor does anything started with `GRIMORIO_SIN_RED=1`,
+  such as the test walkthrough: a test cannot depend on the network or show a
+  notice in what it captures.
+- **To test it**, `GRIMORIO_NOVEDADES_URL` changes where `version.json` is read
+  from (a `python3 -m http.server` serving your own is enough).
 
-La comparación y la lectura del archivo están en `src/version.h`, sin red, y
-las prueba `version`. Cómo se publica el número nuevo: `docs/WINDOWS.md`.
+The comparison and the parsing of the file are in `src/version.h`, without
+networking, and the `version` test covers them. How the new number is
+published: `docs/WINDOWS.md`.
 
-### Qué hay de nuevo
+### What's new
 
-`NOVEDADES.md`, en la raíz, es la única fuente de lo que trae cada versión: un
-apartado `## X.Y.Z` por versión. Va dentro del programa como recurso, y la
-primera vez que se abre una versión después de actualizar, la ventana enseña
-los apartados de las versiones que no se habían visto (`novedades/vistos` en
-los ajustes); «entendido» lo da por visto. Quien lo instala por primera vez no
-ve nada: si no había ajustes de antes (`bibliotecas/recientes`), no hay nada
-«nuevo». Quien viene de una versión anterior a esto ve solo lo de la actual,
-porque no se sabe de cuál viene. Ajustes → acerca de → «novedades» las enseña
-todas, cuando se quiera. No dependen de la red; solo las pasadas automáticas
-no las enseñan.
+`NOVEDADES.md` (Spanish) and `CHANGELOG.md` (English), at the root, are the
+single source of what each version brings: one `## X.Y.Z` section per version,
+the same in both. The app shows the one in its language. It is built into the program as a
+resource, and the first time a version is opened after updating, the window
+shows the sections of the versions that had not been seen
+(`novedades/vistos` in the settings); «got it» marks them as seen. Someone
+installing for the first time sees nothing: if there were no previous settings
+(`bibliotecas/recientes`), there is nothing «new». Someone coming from a
+version older than this feature sees only the current one, because there is
+no way to know which one they came from. Settings → About → «What's new»
+shows all of them, whenever you want. They do not depend on the network; only
+automated runs skip them.
 
-La publicación (`release.yml`) copia el apartado de su versión como texto de la
-release de GitHub, y falla al principio si no existe: no se puede publicar una
-versión sin decir qué trae. La web lo enseña en `/novedades/`.
+Publishing (`release.yml`) copies its version's section as the text of the
+GitHub release, and fails early if it does not exist: a version cannot be
+published without saying what it brings. The website shows it at
+`/novedades/`.
 
-## Medir y revisar
-
-```sh
-./build/grimorio BIBLIOTECA --bench 12       # recorrido automático y fotogramas
-./build/grimorio BIBLIOTECA --visor 24       # cuánto tarda el visor en verse
-./build/grimorio BIBLIOTECA --bench 12 --lote 10000   # editar en lote con la malla en marcha
-./build/grimorio BIBLIOTECA --guion /tmp/x-  # recorre la interfaz y captura cada paso
-./build/grimorio BIBLIOTECA --captura a.png  # un fotograma y salir
-./build/grimorio BIBLIOTECA --filtro "tipo:video" --captura a.png   # con el buscador puesto
-```
-
-El modo guion etiqueta en lote, autocompleta, filtra por una etiqueta, escribe
-una nota, crea una carpeta, abre el visor, tira a la papelera y pregunta antes de
-vaciarla, dejando una captura de cada paso. Al final **se limpia lo suyo con el
-propio deshacer**: si la pila se equivocara de orden, la biblioteca no volvería a
-quedarse como estaba.
-
-Los dos bancos que editan (`--lote` y `grim bench batch`) deshacen lo que hacen
-al terminar, para no cambiar la biblioteca que están midiendo.
-
-## Pruebas
+## Measure and review
 
 ```sh
-ctest --test-dir build --output-on-failure   # geometría, arrastre, colores, qmllint
-cargo test -p grimorio-puente                 # el bus de comandos y la frontera C
+./build/grimorio BIBLIOTECA --bench 12       # automated walkthrough and frames
+./build/grimorio BIBLIOTECA --visor 24       # how long the viewer takes to show
+./build/grimorio BIBLIOTECA --bench 12 --lote 10000   # batch editing with the grid running
+./build/grimorio BIBLIOTECA --guion /tmp/x-  # walks through the interface and captures each step
+./build/grimorio BIBLIOTECA --captura a.png  # one frame and exit
+./build/grimorio BIBLIOTECA --filtro "tipo:video" --captura a.png   # with the search set
 ```
 
-- `filas`: la geometría de la malla, sin Qt Quick y sin modelo. Incluye un
-  presupuesto de tiempo: rehacer la disposición de cien mil elementos tiene que
-  caber en un fotograma.
-- `version`: cuándo sale el aviso de versión nueva. «0.10.0» va por delante
-  de «0.9.0», un archivo roto no avisa de nada y un enlace que no es https no
-  se abre.
-- `sin_colores_a_mano`: ni un color ni una medida escritos a mano en el QML. Si
-  el estilo no sale entero del tema, la promesa de que los visuales se pueden
-  cambiar se rompe en silencio.
-- `arrastre`: mueve el ratón de verdad sobre las filas del árbol de verdad, sin
-  pantalla. Es lo único que caza que la carga del arrastre llegue al otro lado y
-  que las bandas caigan donde apunta el cursor: las dos cosas se ven bien en una
-  captura y no funcionaban.
-- `qml_sin_avisos`: `qmllint` limpio.
-- `qml_tipos_propios`: `qmllint` sobre los dos archivos que usan `Onda` y
-  `Visor3D`. Esos tipos se registran desde C++ al arrancar y qmllint no los ve;
-  metidos con los demás, «Failed to import Grimorio» saltaba la prueba entera y
-  dejaba sin revisar todo lo demás.
+Script mode batch-tags, autocompletes, filters by a tag, writes a note,
+creates a folder, opens the viewer, moves things to the trash and asks before
+emptying it, leaving a screenshot of each step. At the end **it cleans up
+after itself using undo**: if the stack got the order wrong, the library would
+not end up as it was.
 
-## Formatos
+The two benchmarks that edit (`--lote` and `grim bench batch`) undo what they
+do when they finish, so they do not change the library they are measuring.
 
-Imágenes y negativos digitales van en Rust puro: de un RAW se saca el JPEG de
-vista previa que la cámara guarda dentro, sin `libraw`.
-
-En la malla, un sonido se ve como su onda en el tiempo: una celda gris que dice
-«audio» no se distingue de la de al lado, y la forma de un golpe seco, una voz
-o una canción sí. Si trae carátula —`APIC` de ID3v2 o el bloque `PICTURE` de
-FLAC, leídos sin dependencias— va en un cuadrado a la izquierda de la onda: la
-carátula de un disco es la misma para doce pistas, y la onda no. Se analiza a
-22 kHz: a 8 kHz se perdía todo lo que pasa de 4 kHz y la miniatura mentía.
-
-Lo importado antes de que el núcleo supiera dibujar algo se queda con la cara
-vieja hasta que se le pide otra, con la aplicación cerrada:
+## Tests
 
 ```sh
-grim miniaturas --tipo audio     # o modelo, video… sin --tipo, todo
+ctest --test-dir build --output-on-failure   # geometry, drag, colors, qmllint
+cargo test -p grimorio-puente                 # the command bus and the C boundary
 ```
 
-No toca etiquetas, estrellas, notas, carpetas ni nombre.
+- `filas`: the grid geometry, without Qt Quick and without a model. It
+  includes a time budget: laying out a hundred thousand items again has to fit
+  in one frame.
+- `version`: when the new version notice appears. «0.10.0» is ahead of
+  «0.9.0», a broken file announces nothing and a link that is not https is not
+  opened.
+- `sin_colores_a_mano`: not a single color or size written by hand in the QML.
+  If the style does not come entirely from the theme, the promise that the
+  visuals can be changed breaks silently.
+- `arrastre`: moves a real mouse over the real tree rows, without a display.
+  It is the only thing that catches whether the drag payload reaches the other
+  side and whether the bands land where the cursor points: both looked fine in
+  a screenshot and did not work.
+- `qml_sin_avisos`: clean `qmllint`.
+- `qml_tipos_propios`: `qmllint` on the two files that use `Onda` and
+  `Visor3D`. Those types are registered from C++ at startup and qmllint cannot
+  see them; mixed in with the rest, «Failed to import Grimorio» made the whole
+  test bail out and left everything else unchecked.
 
-Los modelos 3D —STL, OBJ, PLY, glTF/GLB y 3MF— se leen en Rust puro y su
-miniatura la dibuja el núcleo sin tarjeta gráfica: un rasterizador con búfer
-de profundidad y supermuestreo, en color arcilla, desde arriba a la derecha.
-Un STL de 815.000 triángulos sale en 0,3 s. Al importar se guardan también los
-triángulos y lo que mide la pieza en milímetros, que es lo primero que se
-pregunta antes de imprimirla. `.blend` y `.fbx` los abre Blender sin ventana
-(`blender -b`), si está: un guion vuelca la geometría ya evaluada —con los
-modificadores aplicados— y el núcleo la dibuja igual que las demás.
+## Formats
 
-Ese guion no pasa por el exportador de glTF de Blender a propósito: con él,
-una escena de 438.000 triángulos tardaba 26 s y una de 124.000, 41. Volcando
-con `foreach_get`, 1,5 y 1,9 s, casi todo arrancar Blender.
+Images and digital negatives are handled in pure Rust: from a RAW, the preview
+JPEG the camera stores inside it is extracted, without `libraw`.
 
-La miniatura que el `.blend` lleva dentro es de reserva y no la primera
-opción: Blender la guarda a 128 px y con la luz de la escena, y en una celda
-de 320 sale borrosa y casi siempre a oscuras.
+In the grid, a sound is shown as its waveform over time: a gray cell that says
+«audio» cannot be told apart from the one next to it, and the shape of a sharp
+hit, a voice or a song can. If it has cover art (ID3v2 `APIC` or the FLAC
+`PICTURE` block, read without dependencies), it goes in a square to the left of
+the waveform: the cover of an album is the same for twelve tracks, and the
+waveform is not. It is analyzed at 22 kHz: at 8 kHz everything above 4 kHz was
+lost and the thumbnail was misleading.
 
-Vídeo y PDF necesitan dos herramientas del sistema, y **no son obligatorias**:
-sin ellas los archivos entran igual en la biblioteca, con sus datos, y se quedan
-sin miniatura hasta que se instalen.
+Whatever was imported before the core knew how to draw something keeps its old
+thumbnail until a new one is requested, with the application closed:
+
+```sh
+grim miniaturas --tipo audio     # or modelo, video… without --tipo, everything
+```
+
+It does not touch tags, ratings, notes, folders or the name.
+
+3D models (STL, OBJ, PLY, glTF/GLB and 3MF) are read in pure Rust and their
+thumbnail is drawn by the core without a graphics card: a rasterizer with a
+depth buffer and supersampling, in clay color, seen from the top right. An STL
+with 815,000 triangles comes out in 0.3 s. On import, the triangle count and
+the size of the part in millimeters are also stored, which is the first thing
+you ask before printing it. `.blend` and `.fbx` are opened by Blender without a
+window (`blender -b`), if it is installed: a script dumps the already evaluated
+geometry (with modifiers applied) and the core draws it like the others.
+
+That script deliberately skips Blender's glTF exporter: with it, a scene with
+438,000 triangles took 26 s and one with 124,000, 41. Dumping with
+`foreach_get`, 1.5 and 1.9 s, almost all of it Blender starting up.
+
+The thumbnail stored inside the `.blend` is a fallback and not the first
+choice: Blender saves it at 128 px and with the scene lighting, and in a 320
+cell it comes out blurry and almost always dark.
+
+Video and PDF need two system tools, and **they are not required**: without
+them the files are still imported into the library, with their data, and stay
+without a thumbnail until the tools are installed.
 
 ```sh
 sudo apt install ffmpeg poppler-utils
 ```
 
-## Reproducir
+## Playback
 
-El visor reproduce vídeo y sonido si está el módulo de multimedia de Qt, que
-tampoco es obligatorio:
+The viewer plays video and audio if the Qt multimedia module is present, which
+is not required either:
 
 ```sh
 sudo apt install qml6-module-qtmultimedia
 ```
 
-Sin él, un vídeo en el visor se queda en su fotograma de portada y se ofrece
-abrirlo con el reproductor del sistema. El `import` vive en `Reproductor.qml`,
-él solo: un import que falla se lleva por delante el archivo que lo escribe, y
-puesto en `Visor.qml` no habría visor tampoco para las fotos.
+Without it, a video in the viewer stays on its cover frame and offers to open
+it with the system player. The `import` lives in `Reproductor.qml`, on its
+own: an import that fails takes down the file that contains it, and if it were
+in `Visor.qml` there would be no viewer for photos either.
 
-El vídeo también se mueve fuera del visor:
+Video also plays outside the viewer:
 
-| Dónde | Cuándo |
+| Where | When |
 |---|---|
-| en la celda de la malla | al pasar el ratón por encima, y solo ese |
-| en el panel de la derecha | siempre que haya un vídeo elegido y el visor esté cerrado |
-| en el visor | al abrirlo |
+| in the grid cell | on hover, and only that one |
+| in the inspector | whenever a video is selected and the viewer is closed |
+| in the viewer | when it opens |
 
-En la malla va en bucle y sin sonido —una malla que suena sola no se puede
-mirar—; en el panel y en el visor, con sonido y con mandos.
+In the grid it loops without sound (a grid that makes noise by itself is
+impossible to look at); in the inspector and in the viewer, with sound and
+controls.
 
-**Uno, no los que se vean.** Hubo un modo que movía todos los visibles con un
-tope de ocho y se quitó midiendo, en la máquina de desarrollo —NVIDIA,
-decodificación por GPU, 61 elementos con 5 vídeos—:
+**One video, rather than all the visible ones.** There was a mode that played
+every visible video with a cap of eight, and it was removed after measuring on
+the development machine (NVIDIA, GPU decoding, 61 items with 5 videos):
 
-| | memoria | CPU |
+| | memory | CPU |
 |---|---|---|
-| cinco vídeos moviéndose solos | 0,88 GB | 33 % de un núcleo |
-| en reposo, sin ratón encima | 0,28 GB | 0 % |
-| con el ratón sobre un vídeo | 0,41 GB | 7 % |
+| five videos playing by themselves | 0.88 GB | 33 % of one core |
+| idle, no mouse over anything | 0.28 GB | 0 % |
+| with the mouse over a video | 0.41 GB | 7 % |
 
-Cada vídeo en marcha es una tubería de decodificación entera y, en una máquina
-con decodificador por GPU, un contexto de la tarjeta. Ocho a la vez no era un
-tope: era una promesa de que el ventilador se iba a oír.
+Each playing video is a whole decoding pipeline and, on a machine with a GPU
+decoder, a graphics card context. Eight at once was less a cap than a promise
+that you would hear the fan.
 
-El botón de arriba tiene dos estados: `vídeo: al pasar` y `vídeo: quieto`.
+The button at the top has two states: `vídeo: al pasar` (video: on hover) and
+`vídeo: quieto` (video: still).
 
-Dos cosas del reproductor no son adorno y conviene no deshacerlas:
+A few things in the player are not decoration and should not be undone:
 
-- **`play()` se pide dos veces, y la segunda se pregunta en vez de recordarse.**
-  Sobre un medio que todavía no ha cargado no hace nada y no deja aviso, y nadie
-  vuelve a intentarlo: el vídeo del panel de detalle se quedaba en su portada
-  con el triángulo puesto, esperando un clic que no hacía falta. Se vuelve a
-  pedir cuando el medio avisa de que ya está.
-  Recordar «tenía uno pendiente» no basta: cambiar de fuente dispara dos cosas
-  —el manejador del que la pone y la recarga del medio— y el orden entre ellas
-  no está dicho, así que el apunte se lo gastaba el medio viejo y el nuevo se
-  quedaba parado para siempre. En la malla no hay botón de pausa, así que ahí se
-  pregunta directamente: si tiene sitio y tiene fuente, tiene que correr. En el
-  visor y en el panel sí lo hay y se respeta lo que se haya pedido a mano.
-- **Se crea una vez y no se destruye.** Montar y desmontar la tubería de
-  multimedia muchas veces seguidas tira el programa —«double free or
-  corruption» dentro de GStreamer, con `--visor 8` sale a la primera—. Un solo
-  reproductor al que se le cambia la fuente no pasa por ahí.
-- **Se crea 120 ms tarde.** Arrancarlo en el mismo fotograma en que se abre el
-  visor cuesta el fotograma entero: abrir un vídeo pasaba de 6 ms a 691 ms, y
-  lo que se ve mientras es nada. Medido con `--visor`.
-- **En la malla van por encima de las celdas, no dentro.** Dentro habría que
-  crear uno al entrar el ratón en una celda y destruirlo al salir, que es
-  exactamente lo que tira el programa. Por encima hay unos pocos a los que se
-  les cambia el sitio y la fuente. Y el reparto se aplaza mientras la malla se
-  mueve: reasignarlos en cada fotograma solo tira tuberías a medio montar.
+- **`play()` is requested twice, and the second time it is checked instead of
+  remembered.** On media that has not loaded yet it does nothing and leaves no
+  warning, and nobody tries again: the video in the inspector stayed on its
+  cover with the play triangle showing, waiting for a click that should not
+  have been needed. It is requested again when the media reports it is ready.
+  Remembering «there was one pending» is not enough: changing the source
+  triggers two things (the handler of whoever sets it and the media reload)
+  and the order between them is not guaranteed, so the old media used up the
+  flag and the new one stayed stopped forever. In the grid there is no pause
+  button, so there it checks directly: if it has a slot and a source, it has
+  to be playing. In the viewer and the inspector there is one, and whatever
+  was requested by hand is respected.
+- **It is created once and never destroyed.** Setting up and tearing down the
+  multimedia pipeline many times in a row crashes the program («double free
+  or corruption» inside GStreamer; with `--visor 8` it shows up on the first
+  try). A single player whose source is changed avoids that.
+- **It is created 120 ms late.** Starting it in the same frame the viewer
+  opens costs the whole frame: opening a video went from 6 ms to 691 ms, and
+  what you see in the meantime is nothing. Measured with `--visor`.
+- **In the grid they sit above the cells, not inside them.** Inside, one would
+  have to be created when the mouse enters a cell and destroyed when it leaves,
+  which is exactly what crashes the program. Above, there are a few whose
+  position and source are changed. And the assignment is deferred while the
+  grid is scrolling: reassigning them every frame only tears down half-built
+  pipelines.
 
-## Lo que no es una foto, en el visor
+## What is not a photo, in the viewer
 
-Cada familia tiene su manera de mirarse, y el visor la elige sola.
+Each family has its own way of being viewed, and the viewer picks it by
+itself.
 
-Lo que hace falta para enseñarla se saca la primera vez que se abre y se
-guarda en `cache/` dentro de la biblioteca: la copia reproducible de un vídeo,
-la onda de un sonido, las páginas de un PDF, la malla de un modelo. Es
-derivado: se puede borrar entero y se rehace. Se pide desde un reparto de
-hilos propio (`Derivados`, `src/derivados.h`) y **no** por el bus del núcleo:
-el bus tiene un hilo y es el de editar, y convertir un vídeo de diez minutos no
-puede dejar esperando a una estrella.
+What is needed to show it is extracted the first time it is opened and stored
+in `cache/` inside the library: the playable copy of a video, the waveform of a
+sound, the pages of a PDF, the mesh of a model. These are derived files: the
+whole folder can be deleted and is rebuilt. They are requested from a thread
+pool of their own (`Derivados`, `src/derivados.h`) and **not** through the core
+bus: the bus has one thread, the editing one, and converting a ten-minute video
+cannot keep a rating change waiting.
 
-### Vídeo que el reproductor no abre
+### Video the player cannot open
 
-ProRes, DNxHD y compañía: ffmpeg los lee, pero el GStreamer que hay debajo de
-Qt solo los decodifica con `gstreamer1.0-libav`, que Ubuntu no instala. Sin
-él, el visor decía «Internal data stream error» y se quedaba en la portada.
+ProRes, DNxHD and friends: ffmpeg reads them, but the GStreamer under Qt only
+decodes them with `gstreamer1.0-libav`, which Ubuntu does not install. Without
+it, the viewer said «Internal data stream error» and stayed on the cover.
 
-Ahora, al fallar, el reproductor pide al núcleo una copia en H.264 de 8 bits
-—lo único que todo decodificador entiende, el de la tarjeta incluido—, avisa
-de que la está preparando y cambia a ella al llegar. La primera vez tarda lo
-que tarde ffmpeg (unos segundos para un clip corto); después está en la caché.
-Vale igual en el visor, en el panel y en la malla.
+Now, when it fails, the player asks the core for an 8-bit H.264 copy (the only
+thing every decoder understands, the graphics card's included), says it is
+preparing it and switches to it when it arrives. The first time it takes as
+long as ffmpeg takes (a few seconds for a short clip); after that it is in the
+cache. It works the same in the viewer, the inspector and the grid.
 
-### Los mandos
+### The controls
 
-Abajo, la barra y una fila de botones: −5 s, un fotograma atrás, parar,
-un fotograma adelante, +5 s, el tiempo con décimas, la velocidad, el tramo
-A–B, el bucle y el volumen. Al pasar el ratón por la barra se ve el momento
-exacto y, en un vídeo, el fotograma de ese punto: sale de una tira de hasta
-cien fotogramas que ffmpeg hace una vez, y enseñar uno es recortar la imagen,
-que no decodifica nada mientras el ratón se mueve.
+At the bottom, the seek bar and a row of buttons: −5 s, one frame back, pause,
+one frame forward, +5 s, the time with tenths, the speed, the A–B range, loop
+and volume. Hovering over the bar shows the exact time and, for a video, the
+frame at that point: it comes from a filmstrip of up to a hundred frames that
+ffmpeg makes once, and showing one means cropping the image, so nothing is
+decoded while the mouse moves.
 
-La velocidad: clic sube un escalón, clic derecho o rueda abajo lo baja, clic
-central vuelve a 1×. A cámara lenta el sonido baja de tono: Qt 6.4 no corrige
-el tono al cambiar de ritmo.
+Speed: click goes up one step, right click or wheel down goes down one, middle
+click goes back to 1×. In slow motion the sound drops in pitch: Qt 6.4 does not
+correct pitch when the rate changes.
 
-El bucle A–B lo vigila un temporizador de 15 ms y no el aviso de posición: la
-posición avisa cuando le parece, y un bucle de medio segundo que se pasa de
-largo cien milisegundos no es un bucle.
+The A–B loop is watched by a 15 ms timer and not by the position notification:
+the position reports whenever it feels like it, and a half-second loop that
+overshoots by a hundred milliseconds is no loop at all.
 
-En el panel de la derecha los mandos son los justos —parar, tiempo y barra—:
-la fila entera no cabe en 300 px.
+In the inspector the controls are the bare minimum (pause, time and bar): the
+whole row does not fit in 300 px.
 
-### Sonido
+### Audio
 
-La onda en el tiempo arriba y el espectro en frecuencia abajo, con el mismo
-tramo y el mismo cabezal. Clic o arrastrar para ir a un momento; la rueda
-acerca alrededor del ratón y con Mayús se mueve; doble clic lo enseña entero.
-Al pasar el ratón se lee el tiempo y, sobre el espectro, la frecuencia.
-Acercado y en marcha, la vista sigue al cabezal.
+The waveform over time at the top and the frequency spectrum at the bottom,
+with the same range and the same playhead. Click or drag to go to a point; the
+wheel zooms around the mouse and with Shift it scrolls; double click shows the
+whole thing. Hovering shows the time and, over the spectrum, the frequency.
+When zoomed in and playing, the view follows the playhead.
 
-El análisis es del núcleo (`grimorio-core/src/senal.rs`): ffmpeg decodifica a
-`f32` mono de 44,1 kHz y se recorre **por trozos** —una hora de audio son
-seiscientos megas en `f32` y no hace falta tenerlos en memoria—. Picos cada
-256 muestras y un espectrograma de hasta 4096 columnas por 256 filas en escala
-logarítmica, de 30 Hz a 22 kHz, con FFT de 2048 propia. Los colores del
-espectro salen del tema: del fondo al color de selección y de ahí al del texto.
+The analysis belongs to the core (`grimorio-core/src/senal.rs`): ffmpeg decodes
+to mono `f32` at 44.1 kHz and it is processed **in chunks** (an hour of audio
+is six hundred megabytes in `f32`, and there is no need to keep it in memory).
+Peaks every 256 samples and a spectrogram of up to 4096 columns by 256 rows on
+a logarithmic scale, from 30 Hz to 22 kHz, with its own 2048-point FFT. The
+spectrum colors come from the theme: from the background to the selection
+color and from there to the text color.
 
-Una trampa que costó encontrar: el `MouseArea` del reproductor que para y
-sigue al hacer clic está declarado después de la onda, así que quedaba encima
-y se quedaba los clics. Elegir un momento paraba la reproducción. Con la onda
-delante, ese `MouseArea` se apaga.
+A trap that took a while to find: the player's `MouseArea` that pauses and
+resumes on click is declared after the waveform, so it ended up on top and
+swallowed the clicks. Picking a point paused playback. With the waveform in
+front, that `MouseArea` is disabled.
 
 ### PDF
 
-El documento entero, página tras página. Antes de dibujar nada se piden las
-medidas de todas (`pdfinfo`), para que tenga su largo de verdad desde el
-principio y la barra de desplazamiento no salte. Cada página la dibuja
-`pdftoppm` al ancho que ocupa en pantalla, redondeado a tramos de 256 px: así
-acercar un poco no la dibuja otra vez, y la caché no se llena de variantes
-casi iguales. Ctrl + rueda o los botones acercan.
+The whole document, page after page. Before drawing anything, the sizes of all
+pages are requested (`pdfinfo`), so it has its real length from the start and
+the scrollbar does not jump. Each page is drawn by `pdftoppm` at the width it
+takes on screen, rounded to steps of 256 px: that way zooming in a little does
+not redraw it, and the cache does not fill up with nearly identical variants.
+Ctrl + wheel or the buttons zoom in.
 
-### Modelos 3D
+### 3D models
 
-Arrastrar gira, botón derecho o central desplaza, la rueda acerca y doble clic
-vuelve a la vista de partida, que es la misma que la de la miniatura: abrir no
-es un salto. Botones para frente, arriba, lado e iso, el alambre y abrir con el
-programa del sistema. Arriba a la izquierda, lo que mide y cuántos triángulos.
+Dragging rotates, right or middle button pans, the wheel zooms and double click
+returns to the starting view, which is the same as the thumbnail's: opening is
+not a jump. Buttons for front, top, side and iso, wireframe, and open with the
+system program. At the top left, the dimensions and the triangle count.
 
-El visor es OpenGL a mano en un `QQuickFramebufferObject` (`src/visor3d.h`) y
-**no Qt Quick 3D**: Qt Quick 3D va con licencia GPL o comercial, y Grimorio
-nació como binario cerrado. Para una malla sin texturas bastan un búfer de
-vértices y dos sombreadores, que están en Qt Gui, que es LGPL. Por eso
-`main.cpp` fija la escena en OpenGL.
+The viewer is hand-written OpenGL in a `QQuickFramebufferObject`
+(`src/visor3d.h`) and **not Qt Quick 3D**: Qt Quick 3D is licensed under GPL or
+commercial terms, and Grimorio started out as a closed-source binary. For a
+mesh without textures, a vertex buffer and two shaders are enough, and those
+are in Qt Gui, which is LGPL. That is why `main.cpp` pins the scene to OpenGL.
 
-La malla llega del núcleo centrada, a escala unidad y sin normales: el
-sombreador las saca de la pendiente de la posición (`dFdx`/`dFdy`), que da
-caras planas —lo que se quiere ver en una pieza de impresión— y deja el archivo
-en la mitad. La proyección es ortográfica: en una pieza las paralelas se
-quieren paralelas. Se encaja por la esfera que la contiene y no por la caja,
-que girada asomaba por las esquinas y cortaba una punta.
+The mesh arrives from the core centered, at unit scale and without normals: the
+shader derives them from the slope of the position (`dFdx`/`dFdy`), which gives
+flat faces (what you want to see in a part for printing) and halves the file
+size. The projection is orthographic: in a part, parallel lines should stay
+parallel. It is framed by its bounding sphere and not by its box, which, when
+rotated, poked out at the corners and cut off a tip.
 
-El alambre va a media luz y no opaco: en una malla de impresión de un millón
-de triángulos, opaco tapaba la pieza entera con un borrón de color.
+The wireframe is drawn at half intensity instead of opaque: on a print mesh of
+a million triangles, opaque covered the whole part with a smear of color.
 
-## Módulos que hacen falta en Ubuntu 24.04
+## Modules needed on Ubuntu 24.04
 
-Debian no los declara como dependencias de `qml6-module-qtquick`, así que sin
-ellos el binario compila pero `import QtQuick` falla al arrancar:
+Debian does not declare them as dependencies of `qml6-module-qtquick`, so
+without them the binary builds but `import QtQuick` fails at startup:
 
 ```sh
 sudo apt install qt6-base-dev qt6-declarative-dev cmake \

@@ -22,7 +22,7 @@ Item {
         let ns = []
         for (let i = 0; i < Math.min(idx.length, 4); i++) ns.push(modelo.nombreDe(idx[i]))
         nombres = ns
-        patron.text = "{nombre}"
+        patron.text = Qt.uiLanguage === "en" ? "{name}" : "{nombre}"
         inicio.text = "1"
         abierto = true
         patron.forceActiveFocus()

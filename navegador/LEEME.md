@@ -1,81 +1,87 @@
-# La extensión de Grimorio para el navegador
+English · [Español](LEEME.es.md)
 
-Guarda imágenes en tu biblioteca sin descargarlas antes:
+# The Grimorio browser extension
 
-- **Clic derecho → «Guardar en Grimorio»**, en cualquier web: en una imagen o
-  un vídeo guarda ese archivo; en un enlace o en la página, la imagen que los
-  representa (`og:image`). En Instagram guarda lo que hay bajo el ratón, con el
-  mismo camino que el botón, aunque la foto esté tapada por capas.
-- **En Instagram:** al pasar por encima de una foto o un vídeo sale un botón
-  «a Grimorio», también en la cuadrícula de un perfil. Se lleva el original
-  **entero**: lo que se ve en pantalla suele ser una miniatura recortada por
-  el propio servidor —cuadrada en la cuadrícula—, así que la foto se pide a la
-  misma API que usa la web de Instagram, con tu sesión. En un carrusel,
-  «todas» se lleva todas, aunque no se hayan cargado. Si la API no contesta,
-  se guarda la versión más grande de esa foto que el navegador ya haya bajado
-  —lo mismo que se buscaría a mano en la pestaña «Img» de las herramientas de
-  desarrollo—, y si no hay ninguna, lo que se ve. El aviso dice qué se guardó
-  y cómo: «guardada · 1080×1350 · original», o «lo ya bajado (la API contestó
-  403)». El origen que queda apuntado es el enlace del post, que no caduca; la
-  dirección de la imagen sí.
-- **En TikTok:** el mismo botón «a Grimorio» encima de cada vídeo, en el feed
-  y en las cuadrículas, y el clic derecho guarda lo que hay bajo el ratón. El
-  vídeo se reproduce desde un `blob:`, que no se puede bajar, así que se pide
-  la página del post, que trae dentro dónde está el vídeo entero: se guarda la
-  versión más grande —a menudo 1080p en H.265—, sin marca de agua. De un
-  carrusel de fotos, la que se ve. Si la página no trae los datos (pide
-  iniciar sesión, está borrado), una foto se guarda como se ve y un vídeo no.
-- **En 4chan:** al pasar por encima de una miniatura sale «a Grimorio», y el
-  clic derecho guarda lo mismo: el archivo entero —imagen, gif o webm—, no la
-  miniatura «…s.jpg» que se ve, con su nombre original (también si va con
-  spoiler) y el enlace al post («/po/thread/123#p456»). En el catálogo solo
-  hay miniatura, y se guarda esa con el asunto del hilo.
-- **Dónde:** el botón de la extensión enseña si Grimorio está abierto y deja
-  elegir la carpeta en la que entra todo.
+Saves images to your library without downloading them first:
+
+- **Right click → «Save to Grimorio»**, on any website: on an image or a
+  video it saves that file; on a link or on the page, the image that
+  represents it (`og:image`). On Instagram it saves whatever is under the
+  mouse, using the same path as the button, even when the photo is covered
+  by layers.
+- **On Instagram:** hovering over a photo or a video shows a «to Grimorio»
+  button, also in a profile's grid. It takes the **full** original: what you
+  see on screen is usually a thumbnail cropped by the server itself (square in
+  the grid), so the photo is requested from the same API the Instagram
+  website uses, with your session. In a carousel, «all» takes all of them,
+  even the ones that have not loaded yet. If the API does not answer, it saves
+  the largest version of that photo the browser has already downloaded (the
+  same thing you would look for by hand in the «Img» tab of the developer
+  tools), and if there is none, what is on screen. The notice says what was
+  saved and how: «saved · 1080×1350 · original», or «already downloaded (the
+  API answered 403)». The source that gets recorded is the link to the post,
+  which does not expire; the image address does.
+- **On TikTok:** the same «to Grimorio» button over each video, in the feed
+  and in the grids, and right click saves whatever is under the mouse. The
+  video plays from a `blob:`, which cannot be downloaded, so the extension
+  requests the post page, which contains the location of the full video: it
+  saves the largest version (often 1080p in H.265), without a watermark. From
+  a photo carousel, the one on screen. If the page does not include the data
+  (it asks you to log in, or the post was deleted), a photo is saved as it
+  looks and a video is not saved.
+- **On 4chan:** hovering over a thumbnail shows «to Grimorio», and right
+  click saves the same thing: the full file (image, gif or webm) instead of
+  the «…s.jpg» thumbnail you see, with its original name (also when it is a
+  spoiler) and the link to the post («/po/thread/123#p456»). The catalog only
+  has thumbnails, so that is what gets saved, with the thread subject.
+- **Where:** the extension button shows whether Grimorio is open and lets you
+  choose the folder everything goes into.
 
 
-## Instalar
+## Install
 
-1. **Conectar Grimorio con el navegador**, una vez: Ajustes → navegador →
-   «conectar los navegadores», o en una terminal `grim navegador instalar`.
-   Registra `grim` como programa nativo en Brave, Chrome, Chromium, Edge,
-   Vivaldi y Firefox, los que estén instalados.
-2. **Cargar la extensión**: en `brave://extensions` (o `chrome://extensions`)
-   activa el modo de desarrollador, «cargar descomprimida» y elige esta
-   carpeta (Ajustes → navegador → «abrir la carpeta de la extensión» la abre).
+1. **Connect Grimorio to the browser**, once: Settings → browser →
+   «connect browsers», or in a terminal `grim navegador instalar`.
+   It registers `grim` as a native program in Brave, Chrome, Chromium, Edge,
+   Vivaldi and Firefox, whichever are installed.
+2. **Load the extension**: in `brave://extensions` (or `chrome://extensions`)
+   turn on developer mode, click «Load unpacked» and pick this folder
+   (Settings → browser → «open the extension folder» opens it).
 
-Su id es siempre `nhmdhkmjpnpclpiopkajinahdcmacfko`: sale de la clave pública
-de `manifest.json`, y es el que `grim` deja hablar con Grimorio.
+Its id is always `nhmdhkmjpnpclpiopkajinahdcmacfko`: it comes from the public
+key in `manifest.json`, and it is the one `grim` allows to talk to Grimorio.
 
-## Cómo funciona
+## How it works
 
 ```
-extensión ──native messaging──▶ grim ──socket local──▶ Grimorio abierto
+extension ──native messaging──▶ grim ──local socket──▶ running Grimorio
 ```
 
-- La extensión no puede hablar con otros programas; el navegador solo la deja
-  hablar con uno registrado para ella, que lanza él mismo. Ese es `grim` (ver
-  `crates/grimorio-cli/src/nativo.rs`).
-- `grim` le pasa cada mensaje a la aplicación por un socket local en
-  `$XDG_RUNTIME_DIR` que solo puede abrir tu usuario (ver
-  `app/src/puerta.h`). No es un puerto: un servidor en `localhost` lo podría
-  llamar cualquier web que visites.
-- La imagen la baja la extensión, con tu sesión, y la manda entera; si pasa
-  de 40 MB manda la dirección y la baja Grimorio.
-- Si Grimorio está cerrado, guardar algo lo abre. Mirar si está o pedir sus
-  carpetas no abre nada.
+- The extension cannot talk to other programs; the browser only lets it talk
+  to one registered for it, which the browser launches itself. That program
+  is `grim` (see `crates/grimorio-cli/src/nativo.rs`).
+- `grim` passes each message to the application through a local socket in
+  `$XDG_RUNTIME_DIR` that only your user can open (see `app/src/puerta.h`).
+  It is deliberately not a port: any website you visit could call a server
+  on `localhost`.
+- The extension downloads the image, with your session, and sends it whole;
+  if it is larger than 40 MB it sends the address and Grimorio downloads it.
+- If Grimorio is closed, saving something opens it. Checking whether it is
+  running or asking for its folders opens nothing.
 
-Nada de esto sale de tu equipo: la foto va del navegador a tu biblioteca.
+None of this leaves your computer: the photo goes from the browser to your
+library.
 
-## Pruebas
+## Tests
 
 ```sh
 cd navegador && npm install && npm test
 ```
 
-Prueban `elegir.js` —qué imagen hay bajo el ratón atravesando las capas, cuál
-es el tamaño mayor, el enlace del post, el nombre— contra un HTML con la forma
-del de Instagram, sin sus clases, igual que el código; y `tiktok-datos.js`
-—de qué post es cada vídeo, qué versión bajar— con la forma de lo que sirve
-TikTok; y `4chan-datos.js` —el original detrás de cada miniatura, su nombre y
-su post— con el HTML de un hilo.
+They test `elegir.js` (which image is under the mouse going through the
+layers, which is the largest size, the post link, the name) against HTML
+shaped like Instagram's, without its classes, just like the code does;
+`tiktok-datos.js` (which post each video belongs to, which version to
+download) with the shape of what TikTok serves; and `4chan-datos.js` (the
+original behind each thumbnail, its name and its post) with the HTML of a
+thread.

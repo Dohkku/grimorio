@@ -304,6 +304,13 @@ pub fn import(
             rutas.quitar(id);
         }
         let sin_volver = atrapados.len();
+        if sin_volver > 0 && crate::idioma::ingles() {
+            return Err(Error::Invalid(format!(
+                "{e}\n  and {sin_volver} file{} could not be put back; \
+                 it's inside the library, in items/",
+                if sin_volver == 1 { "" } else { "s" }
+            )));
+        }
         if sin_volver > 0 {
             return Err(Error::Invalid(format!(
                 "{e}\n  y {sin_volver} archivo{} no se pudo devolver a su sitio; \
@@ -318,7 +325,11 @@ pub fn import(
     // movió copiando entre discos: hasta aquí era la copia de seguridad.
     for m in &movidos {
         if let Err(e) = m.terminar() {
-            let aviso = format!("no pude borrar el original de {}: {e}", m.origen.display());
+            let aviso = if crate::idioma::ingles() {
+                format!("couldn't delete the original of {}: {e}", m.origen.display())
+            } else {
+                format!("no pude borrar el original de {}: {e}", m.origen.display())
+            };
             report.avisos.push(aviso);
         }
     }
@@ -454,7 +465,7 @@ fn prepare_one(
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or("sin nombre")
+        .unwrap_or(crate::idioma::t("sin nombre", "untitled"))
         .to_string();
 
     let id = crate::id::new_id();
@@ -588,7 +599,7 @@ pub fn rehacer_miniaturas(
         let Some(img) = &lienzo.imagen else {
             fallos.push((
                 item.name.clone(),
-                lienzo.sin_imagen.unwrap_or_else(|| "sin imagen".into()),
+                lienzo.sin_imagen.unwrap_or_else(|| crate::idioma::t("sin imagen", "no image").into()),
             ));
             continue;
         };

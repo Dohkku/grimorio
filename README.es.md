@@ -1,0 +1,144 @@
+[English](README.md) · Español
+
+<p align="center">
+  <img src="app/icono/grimorio-256.png" width="128" alt="Grimorio">
+</p>
+
+<h1 align="center">Grimorio</h1>
+
+<p align="center">
+  Tu biblioteca visual, en tu disco.<br>
+  Guarda, ordena y encuentra referencias: imágenes, vídeo, sonido, PDF y modelos 3D.<br>
+  Libre, nativa, para Linux y Windows. Sin nube y sin un navegador dentro.
+</p>
+
+<p align="center">
+  <a href="https://grimorio.frederickandrade.com">Web</a> ·
+  <a href="https://github.com/Dohkku/grimorio/releases/latest">Descargar</a>
+</p>
+
+<p align="center">
+  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-sonido.mp4">
+    <img src="docs/capturas/trailer.gif" width="760" alt="Fragmento del tráiler de Grimorio: las imágenes vuelan a la ventana y se ordenan solas">
+  </a><br>
+  <a href="https://grimorio.frederickandrade.com/media/trailer/trailer-v12-sonido.mp4">Ver el tráiler completo (55 s, con sonido)</a>
+</p>
+
+## Qué hace
+
+- **Todo en un sitio.** Imágenes (también PSD, AI, EPS, Krita, Sketch y RAW),
+  vídeo que se reproduce al pasar el ratón, sonido con su onda y su espectro,
+  PDF con visor y modelos 3D (STL, OBJ, PLY, glTF, 3MF, y `.blend`/`.fbx` con
+  Blender instalado).
+- **Ordenar sin esfuerzo.** Etiquetas con grupos y colores, estrellas, notas,
+  carpetas anidadas con color y **carpetas dinámicas** que se rellenan solas
+  con un filtro.
+- **Encontrar al instante.** Un buscador que entiende `#etiqueta`,
+  `estrellas:>=4`, `tipo:vídeo`, fechas y colores, deja fuera con un menos
+  (`#comida -#picante`) y sugiere mientras escribes. Responde en milisegundos con cien mil elementos.
+- **Mirar de verdad.** Visor con zoom hasta el píxel y cuentagotas, onda de
+  los sonidos, páginas de los PDF y modelos 3D con ejes como en Blender.
+- **Con el teclado.** Estrellas con los números, `Ctrl+K` para etiquetar,
+  `F2` para renombrar (también en lote, con patrón), `Ctrl+Z` para deshacer
+  cualquier cosa.
+- **La misma imagen, en varios pesos.** Las versiones de una imagen se apilan
+  y en la galería se ve una sola. Puedes crear versiones más ligeras y quitar
+  el fondo, sin tocar el original.
+- **Recortar al momento.** Un editor para vídeos y sonidos (E, o clic
+  derecho): entrada, salida y listo. El tramo sale como versión en su pila
+  sin recodificar, así que tarda lo mismo con un vídeo de una hora.
+- **A tu manera.** En español o en inglés, tema noche o papel, tamaño de la interfaz, modo seguro que
+  difumina lo marcado como +18, repetidos, carpetas del disco vinculadas,
+  capturas de pantalla, pegar desde el portapapeles o una URL.
+
+## Tus datos son tuyos
+
+La biblioteca es una carpeta. Cada elemento tiene su original y un
+`item.json` legible al lado:
+
+```json
+{
+  "name": "estudio de iluminación nocturna",
+  "tags": ["nocturno", "referencia"],
+  "stars": 4,
+  "note": "textura del reflejo en el asfalto",
+  "folders": ["01JKF…"]
+}
+```
+
+`index.sqlite` y las miniaturas son derivados: se pueden borrar y
+`grim reindex` los rehace. La carpeta se sincroniza con Syncthing o Dropbox y
+se copia como cualquier otra. El formato está especificado en
+[docs/FORMATO.es.md](docs/FORMATO.es.md).
+
+## Las cuatro decisiones
+
+1. **Tus datos son tuyos y son legibles.** Un JSON por elemento; el índice se
+   reconstruye.
+2. **Nada de webview.** Ni Electron, ni Tauri, ni WebKitGTK. Qt 6 nativo.
+3. **El núcleo no sabe qué es una ventana.** `grimorio-core` compila y se
+   prueba sin escritorio; la interfaz y `grim` son clientes.
+4. **El estilo es dato.** Ni un color ni una medida a mano en la interfaz:
+   todo sale de un tema JSON que se recarga al guardarlo.
+
+## Instalar
+
+- **Windows:** el instalador `Grimorio-x.y.z-windows-x64-instalador.exe` o el `.zip` portable
+  de la [última versión](https://github.com/Dohkku/grimorio/releases/latest).
+- **Linux:** el `.tar.gz` de la misma página (usa el Qt 6 del sistema), o compilar (abajo).
+
+Opcionales, para sacar más de cada archivo: `ffmpeg` (vídeo y sonido),
+`pdftoppm` de Poppler (PDF), Blender (`.blend`, `.fbx`), ImageMagick (PSD,
+AI, EPS). Sin ellos los archivos entran igual, con menos detalle.
+
+## Compilar
+
+Hace falta Rust estable, CMake y Qt 6.4 o más nuevo (Quick, Qml, Multimedia,
+OpenGL, Network; DBus en Linux).
+
+```sh
+cargo build --release                         # núcleo y `grim`
+cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release
+cmake --build app/build -j
+./app/build/grimorio ~/Referencias.grimorio
+```
+
+En Ubuntu 24.04 los paquetes están listados en
+[docs/DEPENDENCIAS.es.md](docs/DEPENDENCIAS.es.md); Windows, en
+[docs/WINDOWS.es.md](docs/WINDOWS.es.md).
+
+### Desde la terminal
+
+```sh
+export GRIMORIO_LIB=~/Referencias.grimorio
+grim init $GRIMORIO_LIB
+grim import ~/Descargas/imagenes --tag inspiración
+grim search "#cartel estrellas:>=4 orientacion:vertical"
+grim stats
+```
+
+## Probar y medir
+
+```sh
+cargo test --release                          # núcleo, CLI y puente
+(cd app/build && ctest)                       # interfaz: lint, malla, arrastre
+grim synth /tmp/cien-mil.grimorio --items 100000
+grim -L /tmp/cien-mil.grimorio bench query    # presupuesto: p95 < 30 ms
+```
+
+Y pruebas de usuario de verdad: la app manejada con ratón y teclado simulados
+en una pantalla virtual, comprobando en disco cada gesto
+([herramientas/recorrido](herramientas/recorrido/recorrido.py)).
+
+## Documentación
+
+- [NOVEDADES.md](NOVEDADES.md): qué trae cada versión (en inglés: [CHANGELOG.md](CHANGELOG.md))
+- [docs/PLAN.es.md](docs/PLAN.es.md): alcance, arquitectura e hitos
+- [docs/FORMATO.es.md](docs/FORMATO.es.md): el formato de biblioteca
+- [docs/DEPENDENCIAS.es.md](docs/DEPENDENCIAS.es.md): qué entra y con qué licencia
+- [app/README.es.md](app/README.es.md): la aplicación y todos sus atajos
+- [CONTRIBUTING.es.md](CONTRIBUTING.es.md): cómo contribuir
+
+## Licencia
+
+[AGPL-3.0](LICENSE.md), software libre. Hecho por [Frederick Andrade](https://frederickandrade.com).

@@ -14,11 +14,11 @@
   async function datosDelPost(enlace) {
     try {
       const r = await fetch(enlace, { credentials: "include" });
-      if (!r.ok) return { motivo: `TikTok contestó ${r.status}` };
+      if (!r.ok) return { motivo: textoGrimorio("motivoTikTokContesto", r.status) };
       const item = itemDelHtml(await r.text());
-      return item ? { item } : { motivo: "la página del post no trae sus datos" };
+      return item ? { item } : { motivo: textoGrimorio("motivoSinDatosDelPost") };
     } catch (e) {
-      return { motivo: `TikTok no contestó (${e.message})` };
+      return { motivo: textoGrimorio("motivoTikTokNoContesto", e.message) };
     }
   }
 
@@ -26,7 +26,7 @@
   async function pedidos(medio) {
     const visto = medio.tagName === "IMG" ? mejorDeImagen(medio) : "";
     const origen = postTikTok(medio, location);
-    let motivo = "no sé de qué post es";
+    let motivo = textoGrimorio("motivoDeQuePost");
     if (origen) {
       const { item, motivo: porque } = await datosDelPost(origen);
       const medios = mediosTikTok(item);
@@ -34,20 +34,20 @@
         const i = elegirTikTok(medios, visto);
         const m = medios[i];
         let nombre = nombreTikTok(item, origen);
-        if (medios.length > 1) nombre = `${nombre} (${i + 1} de ${medios.length})`;
+        if (medios.length > 1) nombre = textoGrimorio("nombreConIndice", nombre, i + 1, medios.length);
         return { lista: [{ url: m.url, alternativas: m.alternativas, origen, nombre }],
-                 como: m.ancho ? `${m.ancho}×${m.alto} · original` : "original" };
+                 como: m.ancho ? textoGrimorio("comoTamanoOriginal", m.ancho, m.alto) : textoGrimorio("comoOriginal") };
       }
-      motivo = porque || "TikTok no dio el archivo";
+      motivo = porque || textoGrimorio("motivoSinArchivo");
     }
     // Sin datos: una foto se guarda como se ve; un vídeo no tiene de dónde.
     if (!visto) return { lista: [], como: motivo };
     const nombre = (medio.getAttribute("alt") || "").replace(/\s+/g, " ").slice(0, 80).trim() || "tiktok";
-    return { lista: [{ url: visto, origen: origen || location.href, nombre }], como: `lo que se ve (${motivo})` };
+    return { lista: [{ url: visto, origen: origen || location.href, nombre }], como: textoGrimorio("comoLoQueSeVe", motivo) };
   }
 
   async function guardar(medio) {
-    avisoGrimorio({ estado: "en curso", titulo: "Buscando el original…" });
+    avisoGrimorio({ estado: "en curso", titulo: textoGrimorio("avisoBuscando") });
     const { lista, como } = await pedidos(medio);
     return guardarYAvisar(lista, como);
   }

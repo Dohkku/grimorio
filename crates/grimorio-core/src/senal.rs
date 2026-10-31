@@ -313,7 +313,7 @@ impl Analisis {
     pub fn leer(r: &mut impl Read) -> std::io::Result<Analisis> {
         let mut b = Vec::new();
         r.read_to_end(&mut b)?;
-        let mal = || std::io::Error::new(std::io::ErrorKind::InvalidData, "no es un .onda");
+        let mal = || std::io::Error::new(std::io::ErrorKind::InvalidData, crate::idioma::t("no es un .onda", "not an .onda file"));
         if b.len() < 52 || &b[..8] != b"GRIMONDA" {
             return Err(mal());
         }

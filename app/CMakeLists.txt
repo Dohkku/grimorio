@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.16 LANGUAGES CXX)
+project(grimorio VERSION 0.1.17 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -190,7 +190,22 @@ qt_add_resources(grimorio "interfaz"
 qt_add_resources(grimorio "novedades"
     PREFIX "/"
     BASE "${RAIZ}"
-    FILES "${RAIZ}/NOVEDADES.md"
+    FILES "${RAIZ}/NOVEDADES.md" "${RAIZ}/CHANGELOG.md"
+)
+
+# La traducción al inglés, ya compilada: así no hacen falta las herramientas
+# de Linguist para construir (traducciones/LEEME.md).
+qt_add_resources(grimorio "traducciones"
+    PREFIX "/"
+    FILES
+        traducciones/grimorio_en.qm
+)
+
+# Ya compilados: el Qt 6.4 de Ubuntu no trae qsb (sombreadores/LEEME.md).
+qt_add_resources(grimorio "sombreadores"
+    PREFIX "/"
+    FILES
+        sombreadores/color.frag.qsb
 )
 
 qt_add_resources(grimorio "temas"

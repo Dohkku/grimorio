@@ -95,6 +95,9 @@ public:
     /// Con qué argumentos volver a abrirse después de actualizar (la
     /// biblioteca de ahora, el tema).
     void setRelanzar(const QStringList &args) { m_relanzar = args; }
+    /// De qué archivo salen los cambios: `NOVEDADES.md` en español,
+    /// `CHANGELOG.md` en inglés. Los dos tienen los mismos apartados.
+    void setArchivoCambios(const QString &ruta) { m_archivoCambios = ruta; }
 
     /// Pregunta ya, haga lo que haga el reloj. El botón de Ajustes.
     Q_INVOKABLE void comprobar();
@@ -151,6 +154,7 @@ private:
     QString m_fase;
     qreal m_progreso = 0;
     QStringList m_relanzar;
+    QString m_archivoCambios = QStringLiteral(":/NOVEDADES.md");
     QString m_error;
     QString m_vistos; // la última versión cuyas novedades se enseñaron
     bool m_mostrarCambios = false;

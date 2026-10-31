@@ -4,40 +4,48 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("no se pudo leer o escribir {path}: {source}")]
+    #[error("{que} {path}: {source}", que = crate::idioma::t("no se pudo leer o escribir", "could not read or write"))]
     Io {
         path: PathBuf,
         #[source]
         source: std::io::Error,
     },
 
-    #[error("error de entrada/salida: {0}")]
+    #[error("{que}: {0}", que = crate::idioma::t("error de entrada/salida", "input/output error"))]
     RawIo(#[from] std::io::Error),
 
-    #[error("el índice devolvió un error: {0}")]
+    #[error("{que}: {0}", que = crate::idioma::t("el índice devolvió un error", "the index returned an error"))]
     Sqlite(#[from] rusqlite::Error),
 
-    #[error("JSON inválido en {path}: {source}")]
+    #[error("{que} {path}: {source}", que = crate::idioma::t("JSON inválido en", "invalid JSON in"))]
     Json {
         path: PathBuf,
         #[source]
         source: serde_json::Error,
     },
 
-    #[error("no se pudo decodificar la imagen: {0}")]
+    #[error("{que}: {0}", que = crate::idioma::t("no se pudo decodificar la imagen", "could not decode the image"))]
     Image(#[from] image::ImageError),
 
-    #[error("{0} no es una biblioteca de Grimorio")]
+    #[error("{0} {que}", que = crate::idioma::t("no es una biblioteca de Grimorio", "is not a Grimorio library"))]
     NotALibrary(PathBuf),
 
-    #[error("{0} ya existe")]
+    #[error("{0} {que}", que = crate::idioma::t("ya existe", "already exists"))]
     AlreadyExists(PathBuf),
 
-    #[error("versión de esquema {found} no soportada (esta build entiende hasta {supported})")]
+    #[error("{que}", que = esquema_nuevo(*found, *supported))]
     SchemaTooNew { found: u32, supported: u32 },
 
     #[error("{0}")]
     Invalid(String),
+}
+
+fn esquema_nuevo(found: u32, supported: u32) -> String {
+    if crate::idioma::ingles() {
+        format!("schema version {found} not supported (this build understands up to {supported})")
+    } else {
+        format!("versión de esquema {found} no soportada (esta build entiende hasta {supported})")
+    }
 }
 
 impl Error {

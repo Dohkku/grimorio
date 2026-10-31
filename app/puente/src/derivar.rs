@@ -55,6 +55,12 @@ pub enum Peticion {
         id: String,
         ruta: PathBuf,
     },
+    /// Con qué matriz y rango se pasan sus colores a pantalla.
+    Color {
+        raiz: PathBuf,
+        id: String,
+        ruta: PathBuf,
+    },
     /// Onda y espectro de un sonido.
     Onda {
         raiz: PathBuf,
@@ -94,10 +100,17 @@ fn mismo_elemento(raiz: &Path, id: &str, ruta: &Path) -> Result<(), String> {
     if carpeta == Some(id) {
         Ok(())
     } else {
-        Err(format!(
-            "el archivo {} no es del elemento {id}: no se guarda un derivado cruzado",
-            ruta.display()
-        ))
+        Err(if grimorio_core::idioma::ingles() {
+            format!(
+                "the file {} doesn't belong to item {id}: a crossed derivative isn't saved",
+                ruta.display()
+            )
+        } else {
+            format!(
+                "el archivo {} no es del elemento {id}: no se guarda un derivado cruzado",
+                ruta.display()
+            )
+        })
     }
 }
 
@@ -106,7 +119,10 @@ fn mismo_elemento(raiz: &Path, id: &str, ruta: &Path) -> Result<(), String> {
 pub fn responder(peticion: &[u8]) -> Value {
     let p: Peticion = match serde_json::from_slice(peticion) {
         Ok(p) => p,
-        Err(e) => return json!({ "ok": false, "error": format!("petición ilegible: {e}") }),
+        Err(e) => return json!({
+                "ok": false,
+                "error": format!("{}: {e}", grimorio_core::idioma::t("petición ilegible", "unreadable request")),
+            }),
     };
     let cruce = match &p {
         Peticion::Proxy { raiz, id, ruta }
@@ -114,6 +130,7 @@ pub fn responder(peticion: &[u8]) -> Value {
         | Peticion::Tramo { raiz, id, ruta, .. }
         | Peticion::Onda { raiz, id, ruta }
         | Peticion::Claves { raiz, id, ruta }
+        | Peticion::Color { raiz, id, ruta }
         | Peticion::Fotograma { raiz, id, ruta, .. }
         | Peticion::PdfPagina { raiz, id, ruta, .. }
         | Peticion::Malla { raiz, id, ruta, .. } => mismo_elemento(raiz, id, ruta),
@@ -166,6 +183,8 @@ pub fn responder(peticion: &[u8]) -> Value {
         Peticion::Claves { ruta, .. } => {
             derivado::claves_video(&ruta).map(|c| json!({ "claves": c }))
         }
+        Peticion::Color { ruta, .. } => derivado::color_video(&ruta)
+            .map(|c| json!({ "matriz": c.matriz, "rango": c.rango })),
         Peticion::PdfMedidas { ruta } => {
             derivado::medidas_pdf(&ruta).map(|m| json!({ "paginas": m }))
         }

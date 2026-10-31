@@ -367,7 +367,49 @@ Item {
         pendiente = String(fuente).length > 0 && enPantalla
         seguirSalida()
         if (pendiente) reproduccion.play()
+        corregirColor = false
+        claveColor = verdeCambiado && idElemento.length > 0 && String(fuente).length > 0
+                     ? derivados.pedir("color", idElemento, fuente) : ""
     }
+
+    // Los colores del vídeo, enderezados donde Qt los tuerce.
+    //
+    // El Qt 6.4 de Ubuntu pasa los vídeos en BT.709 de rango limitado —casi
+    // todos: OBS, YouTube, Instagram, cualquier HD sin etiqueta— con dos
+    // números de la fila del verde cambiados de sitio. El rojo y el azul salen
+    // bien; el verde sube donde hay rojo y baja donde hay azul, así que las
+    // barbas pelirrojas se ven naranja y la piel amarillea. La miniatura la
+    // hace ffmpeg y sale bien, y por eso al dar al play los colores cambiaban.
+    // Medido con una grabación de OBS: el verde, de media 6 niveles de más y
+    // hasta 18 en los tonos medios. Qt lo arregló en 6.5.1; en Windows va 6.8.
+    //
+    // No se puede tocar la matriz de Qt, pero sí deshacerla: todo es lineal,
+    // así que lo pintado con la mala, pasado por buena × mala⁻¹, queda como
+    // si se hubiera pintado con la buena. Eso lo hace un sombreador sobre el
+    // vídeo ya pintado, en una capa de coma flotante para que lo que la
+    // matriz mala saca de 0..1 no se pierda antes de volver.
+    //
+    // Solo para los vídeos que Qt pinta con esa matriz: el núcleo mira sus
+    // etiquetas con ffprobe (`color` en derivados) y dice cuál elegirá.
+    readonly property bool verdeCambiado: {
+        const v = String(versionQt).split(".").map(Number)
+        return v[0] === 6 && (v[1] < 5 || (v[1] === 5 && (v[2] || 0) < 1))
+    }
+    property bool corregirColor: false
+    property string claveColor: ""
+    // Las matrices de Qt 6.4 y 6.5.1 para BT.709 limitado, tal cual las tiene
+    // `qvideotexturehelper.cpp`: de (Y, Cb, Cr, 1) a (R, G, B, 1).
+    readonly property matrix4x4 matrizQt: Qt.matrix4x4(
+        1.1644,  0.0000,  1.7928, -0.9731,
+        1.1644, -0.5329, -0.2132,  0.3015,
+        1.1644,  2.1124,  0.0000, -1.1335,
+        0,       0,       0,       1)
+    readonly property matrix4x4 matrizBuena: Qt.matrix4x4(
+        1.1644,  0.0000,  1.7928, -0.9731,
+        1.1644, -0.2132, -0.5329,  0.3015,
+        1.1644,  2.1124,  0.0000, -1.1335,
+        0,       0,       0,       1)
+    readonly property matrix4x4 correccionColor: matrizBuena.times(matrizQt.inverted())
 
     // La onda se pide cuando están las tres cosas: la fuente, el id y saber
     // que es sonido. Llegan por separado —el visor las da con un `Binding`
@@ -429,6 +471,9 @@ Item {
             } else if (clave === reproductor.claveOnda) {
                 if (r.ok) reproductor.onda = r.ruta
                 else reproductor.errorOnda = r.error
+            } else if (clave === reproductor.claveColor) {
+                reproductor.corregirColor = r.ok === true && r.matriz === "bt709"
+                                            && r.rango === "limitado"
             }
         }
     }
@@ -636,6 +681,15 @@ Item {
         anchors.fill: parent
         anchors.bottomMargin: reproductor.reservarMandos && transporte.visible ? transporte.height : 0
         clip: reproductor.zoom > 1
+        // La capa va aquí y no en el `VideoOutput`: este es del tamaño del
+        // hueco, y el vídeo de dentro ya lleva su zoom. En el vídeo, la capa
+        // sería de su tamaño sin zoom y al acercarse se vería borrosa.
+        layer.enabled: reproductor.corregirColor && !reproductor.soloSonido
+        layer.format: ShaderEffectSource.RGBA16F
+        layer.effect: ShaderEffect {
+            property matrix4x4 correccion: reproductor.correccionColor
+            fragmentShader: "qrc:/sombreadores/color.frag.qsb"
+        }
 
         // Lo que gira: el vídeo con su zoom. Girado un cuarto, con las
         // medidas cambiadas, para que el vídeo ajuste al hueco de pie.

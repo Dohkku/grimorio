@@ -1,5 +1,6 @@
 #include "derivados.h"
 
+#include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDeadlineTimer>
@@ -84,7 +85,7 @@ QVariantMap derivar(const QJsonObject &peticion)
     QVariantMap r = QJsonDocument::fromJson(salida).object().toVariantMap();
     if (r.isEmpty()) {
         r.insert(QStringLiteral("ok"), false);
-        r.insert(QStringLiteral("error"), QStringLiteral("respuesta ilegible del núcleo"));
+        r.insert(QStringLiteral("error"), QCoreApplication::translate("Derivados", "respuesta ilegible del núcleo"));
     }
     return r;
 }

@@ -1,57 +1,60 @@
-# Contribuir a Grimorio
+English · [Español](CONTRIBUTING.es.md)
 
-Gracias por pasarte. Grimorio es un proyecto pequeño y con opiniones fuertes;
-esta página cuenta cuáles son para que tu tiempo no se pierda.
+# Contributing to Grimorio
 
-## Antes de escribir código
+Thanks for stopping by. Grimorio is a small project with strong opinions;
+this page explains what they are so your time is not wasted.
 
-- **Abre un issue primero** para cualquier cosa que no sea un arreglo
-  pequeño. Una función nueva puede chocar con alguna de las cuatro decisiones
-  del [README](README.md) (datos legibles, nada de webview, núcleo sin
-  ventana, estilo como dato), y es mejor saberlo antes.
-- Los fallos, con pasos para reproducirlos, la versión (`Ctrl+,` → acerca de)
-  y el sistema. Si es con un archivo concreto, `grim mirar ARCHIVO` dice qué
-  ve el núcleo en él.
+## Before writing code
 
-## Cómo está organizado
+- **Open an issue first** for anything that is not a small fix. A new feature
+  may clash with one of the four decisions in the [README](README.md)
+  (readable data, no webview, a core without windows, style as data), and it
+  is better to know that early.
+- Bug reports: include steps to reproduce, the version (`Ctrl+,` → About)
+  and your system. If it happens with a specific file, `grim mirar ARCHIVO`
+  tells you what the core sees in it.
 
-| Carpeta | Qué hay |
+## How it is organized
+
+| Folder | Contents |
 |---|---|
-| `crates/grimorio-core` | el núcleo en Rust: biblioteca, índice, importación, miniaturas, consultas |
-| `crates/grimorio-cli` | `grim`, la línea de órdenes |
-| `app/` | la aplicación Qt 6 / QML y el puente con el núcleo (`app/puente`) |
-| `temas/` | los temas en JSON; se recargan al guardarlos |
-| `docs/` | formato de datos, plan, dependencias, Windows |
-| `herramientas/` | biblioteca de demostración y recorrido de pruebas de usuario |
+| `crates/grimorio-core` | the Rust core: library, index, import, thumbnails, queries |
+| `crates/grimorio-cli` | `grim`, the command line |
+| `app/` | the Qt 6 / QML application and the bridge to the core (`app/puente`) |
+| `temas/` | the JSON themes; they reload when saved |
+| `docs/` | data format, plan, dependencies, Windows |
+| `herramientas/` | demo library and the user test walkthrough |
 
-## Compilar y probar
+## Build and test
 
 ```sh
-cargo test --release                              # núcleo, CLI y puente
+cargo test --release                              # core, CLI and bridge
 cmake -S app -B app/build -DCMAKE_BUILD_TYPE=Release
 cmake --build app/build -j && (cd app/build && ctest)
 ```
 
-Las pruebas de interfaz manejan la app con ratón y teclado simulados en una
-pantalla virtual (hace falta `Xvfb` y `ffmpeg`):
+The interface tests drive the app with simulated mouse and keyboard on a
+virtual display (you need `Xvfb` and `ffmpeg`):
 
 ```sh
 python3 herramientas/demo/generar.py /tmp/Demo.grimorio --grim target/release/grim
 python3 herramientas/recorrido/recorrido.py /tmp/Demo.grimorio --app app/build/grimorio
 ```
 
-## Estilo
+## Style
 
-- Código, comentarios, documentación y mensajes de commit **en español**. Los
-  comentarios cuentan el porqué, no el qué; mira los que hay alrededor.
-- En el QML no se escribe ni un color ni una medida a mano: todo sale de
-  `tema` (lo vigila la prueba `sin_colores_a_mano`).
-- Rendimiento con presupuesto: `grim bench query` tiene que seguir por debajo
-  de 30 ms de p95 con 100.000 elementos.
+- Code, comments, documentation and commit messages are **in Spanish**.
+  Comments explain the why, not the what; look at the ones around you.
+- No color or size is ever hardcoded in the QML: everything comes from
+  `tema` (the `sin_colores_a_mano` test checks this).
+- Performance has a budget: `grim bench query` has to stay under 30 ms at
+  p95 with 100,000 items.
 
-## Licencia de las contribuciones
+## Licensing of contributions
 
-Grimorio se publica bajo la licencia que indica [`LICENSE.md`](LICENSE.md).
-Para poder ofrecer en el futuro un servicio en línea sin quedar atado a otra
-licencia, cada contribución necesita un acuerdo de cesión de derechos (CLA)
-sencillo. El primer pull request te lo pedirá; basta con aceptarlo una vez.
+Grimorio is released under the license stated in [`LICENSE.md`](LICENSE.md).
+To be able to offer an online service in the future without being tied to
+another license, each contribution needs a simple contributor license
+agreement (CLA). Your first pull request will ask you for it; accepting it
+once is enough.

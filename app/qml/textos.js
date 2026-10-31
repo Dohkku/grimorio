@@ -3,8 +3,19 @@
 // `qsTr("%n elemento(s)")` solo elige forma si hay una traducción cargada. Sin
 // ella, Qt deja el literal tal cual y la interfaz enseña "100000 elemento(s)",
 // que es exactamente el detalle que hace que un programa parezca sin terminar.
-// Hasta que haya traducciones de verdad, los plurales se escriben aquí.
+// Hasta que haya traducciones de verdad, los plurales se escriben aquí, en los
+// dos idiomas que habla la interfaz.
 .pragma library
+
+/// Si la interfaz va en inglés. Lo decide `main.cpp` al arrancar.
+function en() {
+    return Qt.uiLanguage === "en"
+}
+
+/// Un decimal con la coma o el punto de cada idioma: "0,5" y "0.5".
+function decimal(x) {
+    return en() ? String(x) : String(x).replace(".", ",")
+}
 
 /// Número con separador de millares del sistema: 100.000, no 100000.
 function numero(n) {
@@ -12,25 +23,28 @@ function numero(n) {
 }
 
 function elementos(n) {
+    if (en()) return n === 1 ? "1 item" : numero(n) + " items"
     return n === 1 ? "1 elemento" : numero(n) + " elementos"
 }
 
 function elegidos(n) {
+    if (en()) return numero(n) + " selected"
     return n === 1 ? "1 elegido" : numero(n) + " elegidos"
 }
 
 function importando(hechos, total) {
+    if (en()) return "importing " + numero(hechos) + " of " + numero(total) + "…"
     return "importando " + numero(hechos) + " de " + numero(total) + "…"
 }
 
 /// Lo que está en marcha, con su nombre: "etiquetar como «rótulo» · 3.000 de 10.000".
 function enMarcha(que, hechos, total) {
-    var cuenta = numero(hechos) + " de " + numero(total) + "…"
+    var cuenta = numero(hechos) + (en() ? " of " : " de ") + numero(total) + "…"
     return que && que.length > 0 ? que + " · " + cuenta : cuenta
 }
 
 function posicion(i, n) {
-    return numero(i) + " de " + numero(n)
+    return numero(i) + (en() ? " of " : " de ") + numero(n)
 }
 
 function peso(bytes) {
@@ -60,10 +74,11 @@ function fecha(iso) {
 }
 
 function tirados(n) {
-    return n === 1 ? "1 en la papelera" : numero(n) + " en la papelera"
+    return numero(n) + (en() ? " in the trash" : " en la papelera")
 }
 
 function etiquetados(n) {
+    if (en()) return numero(n) + " tagged"
     return n === 1 ? "1 etiquetado" : numero(n) + " etiquetados"
 }
 
@@ -89,7 +104,7 @@ function insignia(familia, ext, segundos) {
     switch (familia) {
     case VIDEO:
     case AUDIO:
-        return duracion(segundos) || (familia === VIDEO ? "vídeo" : "audio")
+        return duracion(segundos) || (familia === VIDEO ? (en() ? "video" : "vídeo") : "audio")
     case DOCUMENTO:
     case TIPOGRAFIA:
     case RAW:
@@ -101,6 +116,17 @@ function insignia(familia, ext, segundos) {
 }
 
 function nombreFamilia(f) {
+    if (en()) {
+        switch (f) {
+        case VIDEO: return "video"
+        case AUDIO: return "audio"
+        case DOCUMENTO: return "document"
+        case TIPOGRAFIA: return "font"
+        case RAW: return "raw photo"
+        case MODELO: return "3D model"
+        default: return "image"
+        }
+    }
     switch (f) {
     case VIDEO: return "vídeo"
     case AUDIO: return "audio"
@@ -137,7 +163,7 @@ function medidasMm(m) {
     if (!m || m.length < 3 || m[0] < 0) return ""
     var f = function (x) {
         var t = x >= 100 ? Math.round(x) : Math.round(x * 10) / 10
-        return String(t).replace(".", ",")
+        return decimal(t)
     }
     return f(m[0]) + " × " + f(m[1]) + " × " + f(m[2]) + " mm"
 }
@@ -146,5 +172,5 @@ function medidasMm(m) {
 function hercios(f) {
     if (!(f > 0)) return ""
     if (f < 1000) return Math.round(f) + " Hz"
-    return String(Math.round(f / 100) / 10).replace(".", ",") + " kHz"
+    return decimal(Math.round(f / 100) / 10) + " kHz"
 }

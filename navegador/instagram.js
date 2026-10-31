@@ -25,7 +25,7 @@
       button:hover { background: rgba(20, 20, 22, .95); border-color: rgba(255,255,255,.6); }
       button[disabled] { opacity: .6; cursor: default; }
     </style>
-    <div class="barra"><button class="una">a Grimorio</button><button class="todas"></button></div>`;
+    <div class="barra"><button class="una"></button><button class="todas"></button></div>`;
   document.documentElement.appendChild(anfitrion);
 
   const barra = sombra.querySelector(".barra");
@@ -55,13 +55,13 @@
 
   function mostrarPara(medio) {
     actual = medio;
-    una.textContent = "a Grimorio";
+    una.textContent = textoGrimorio("botonGuardar");
     una.disabled = false;
     carrusel = medio.tagName === "IMG" ? imagenesDelCarrusel(medio) : [];
     // «todas» y no un número: la API trae las del carrusel aunque no se hayan
     // cargado, así que las que se ven no son todas las que hay.
     todas.style.display = carrusel.length > 1 ? "" : "none";
-    todas.textContent = "todas";
+    todas.textContent = textoGrimorio("botonTodas");
     colocar();
   }
 
@@ -104,18 +104,18 @@
   /// Lo que la API dice del post, o por qué no lo dijo.
   async function mediosDeLaApi(enlace) {
     const id = idDeCodigo(codigoDelEnlace(enlace));
-    if (!id) return { motivo: "no sé qué post es" };
+    if (!id) return { motivo: textoGrimorio("motivoQuePost") };
     try {
       const r = await fetch(`/api/v1/media/${id}/info/`, {
         credentials: "include",
         headers: cabecerasApi(document.cookie),
       });
-      if (!r.ok) return { motivo: `la API contestó ${r.status}` };
+      if (!r.ok) return { motivo: textoGrimorio("motivoApiContesto", r.status) };
       const j = await r.json();
       const medios = mediosDelPost(j && j.items && j.items[0]);
-      return medios.length ? { medios } : { motivo: "la API no trajo fotos" };
+      return medios.length ? { medios } : { motivo: textoGrimorio("motivoApiSinFotos") };
     } catch (e) {
-      return { motivo: `la API no contestó (${e.message})` };
+      return { motivo: textoGrimorio("motivoApiNoContesto", e.message) };
     }
   }
 
@@ -127,7 +127,7 @@
   }
 
   function conIndice(nombre, i, n) {
-    return n > 1 ? `${nombre} (${i + 1} de ${n})` : nombre;
+    return n > 1 ? textoGrimorio("nombreConIndice", nombre, i + 1, n) : nombre;
   }
 
   /// Sin la API: la mayor versión de esta foto entre lo que se ve (`srcset`)
@@ -149,7 +149,7 @@
     if (medios) {
       if (todos) {
         return { lista: medios.map((m, i) => ({ url: m.url, origen, nombre: conIndice(nombre, i, medios.length) })),
-                 como: "originales" };
+                 como: textoGrimorio("comoOriginales") };
       }
       let i = elegirDelPost(medios, srcVisto(medio), indiceDeLaPagina(location));
       // Un vídeo sin portada reconocible: el primer vídeo del post.
@@ -157,30 +157,30 @@
       if (i !== null && i >= 0) {
         const m = medios[i];
         return { lista: [{ url: m.url, origen, nombre: conIndice(nombre, i, medios.length) }],
-                 como: `${m.ancho}×${m.alto} · original` };
+                 como: textoGrimorio("comoTamanoOriginal", m.ancho, m.alto) };
       }
-      api.motivo = "no reconozco cuál del carrusel es";
+      api.motivo = textoGrimorio("motivoCualDelCarrusel");
     }
     if (medio.tagName !== "IMG") return { lista: [], como: api.motivo };
     const entradas = await cargadas();
     if (todos) {
       return { lista: carrusel.map((img) => sinApi(img, origen, nombreDelMedio(img, location), entradas)),
-               como: `lo ya bajado (${api.motivo})` };
+               como: textoGrimorio("comoYaBajado", api.motivo) };
     }
     const p = sinApi(medio, origen, nombre, entradas);
     const grande = p.url !== mejorDeImagen(medio);
-    return { lista: [p], como: `${grande ? "lo ya bajado" : "lo que se ve"} (${api.motivo})` };
+    return { lista: [p], como: textoGrimorio(grande ? "comoYaBajado" : "comoLoQueSeVe", api.motivo) };
   }
 
   async function guardar(medio, todos) {
-    avisar("Buscando el original…");
+    avisar(textoGrimorio("avisoBuscando"));
     const { lista: encontrados, como } = await pedidos(medio, todos);
     const lista = encontrados.filter((p) => p.url);
     if (lista.length === 0) {
-      avisar("No encuentro qué guardar", "error", como || "");
+      avisar(textoGrimorio("avisoNadaQueGuardar"), "error", como || "");
       return { ok: false, error: "nada que guardar" };
     }
-    avisar(lista.length === 1 ? "Guardando en Grimorio…" : `Guardando ${lista.length} en Grimorio…`);
+    avisar(lista.length === 1 ? textoGrimorio("avisoGuardando") : textoGrimorio("avisoGuardandoVarias", lista.length));
     const r = await chrome.runtime.sendMessage({ tipo: "guardar", lista });
     // Lo que pasó de verdad, y debajo cómo se consiguió (original, lo ya
     // bajado…), que es lo que dice si la calidad es la buena.
@@ -200,7 +200,7 @@
   chrome.runtime.onMessage.addListener((m, _de, responder) => {
     if (m.tipo !== "guardarClicDerecho") return false;
     if (!bajoElClicDerecho) {
-      avisar("No había ninguna foto ni vídeo bajo el ratón", "error");
+      avisar(textoGrimorio("avisoNadaBajoRatonFoto"), "error");
       responder({ ok: false, error: "nada bajo el ratón" });
       return false;
     }

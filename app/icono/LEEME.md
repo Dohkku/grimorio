@@ -1,16 +1,18 @@
-# El icono
+English · [Español](LEEME.es.md)
 
-Un libro abierto cuyas páginas son un mosaico de imágenes, con una chispa
-encima: un grimorio de referencias. Los colores son los de la aplicación —el
-fondo cálido del tema «noche» y el turquesa de la selección— más tres de los
-que salen en las carpetas.
+# The icon
 
-| Archivo | Para qué |
+An open book whose pages are a mosaic of images, with a spark above it: a
+grimoire of references. The colors are the application's own (the warm
+background of the «noche» theme and the turquoise of the selection) plus
+three of the ones used for folders.
+
+| File | Purpose |
 |---|---|
-| `grimorio.svg` | el original, desde 48 px |
-| `grimorio-pequeno.svg` | 16–32 px: sin canto de hojas y dos teselas por página, porque a ese tamaño el detalle se vuelve ruido |
-| `grimorio-N.png` | cada tamaño ya hecho, para Linux (hicolor), la ventana y la web |
-| `grimorio.ico` | Windows: 16 a 256 px en un solo archivo |
+| `grimorio.svg` | the original, from 48 px up |
+| `grimorio-pequeno.svg` | 16–32 px: no page edges and two tiles per page, because at that size the detail turns into noise |
+| `grimorio-N.png` | each size pre-rendered, for Linux (hicolor), the window and the website |
+| `grimorio.ico` | Windows: 16 to 256 px in a single file |
 
-Los PNG y el `.ico` se sacan de los SVG; no se editan a mano. Hasta 32 px se
-usa la variante pequeña.
+The PNGs and the `.ico` are generated from the SVGs; they are not edited by
+hand. Up to 32 px the small variant is used.

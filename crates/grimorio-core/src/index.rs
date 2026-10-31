@@ -1154,7 +1154,7 @@ impl Index {
                         if !vistos.insert(item.id.clone()) {
                             informe
                                 .rotos
-                                .push((ruta.clone(), format!("id repetido: {}", item.id)));
+                                .push((ruta.clone(), format!("{}: {}", crate::idioma::t("id repetido", "repeated id"), item.id)));
                             continue;
                         }
                         let t = thumb_map.get(&item.id).copied();

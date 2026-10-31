@@ -43,7 +43,7 @@ QString Captura::rutaNueva() const
     const QString dir = m_nucleo->raiz() + QStringLiteral("/cache/entrada/")
                         + QString::number(QDateTime::currentMSecsSinceEpoch());
     QDir().mkpath(dir);
-    return dir + QStringLiteral("/captura %1.png")
+    return dir + QLatin1Char('/') + tr("captura %1.png")
                      .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss")));
 }
 

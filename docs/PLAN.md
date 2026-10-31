@@ -1,147 +1,151 @@
-# Plan de Grimorio
+English · [Español](PLAN.es.md)
 
-## Qué es
+# Grimorio plan
 
-Una biblioteca visual para Linux al nivel de Eagle: capturar, organizar,
-encontrar y previsualizar referencias sin que el programa se interponga. Eagle
-solo existe en Windows y macOS, corre sobre Chromium 107 y no da su código.
+## What it is
 
-En Linux hay cosas parecidas —digiKam es de fotógrafo y su interfaz es de otra
-época, TagStudio tiene la filosofía correcta pero no el rendimiento, Hydrus es
-de archivista— pero ninguna cubre el hueco: **biblioteca visual multiformato,
-con visor instantáneo, cuidada, extensible y rápida con cientos de miles de
-elementos**.
+A visual library for Linux on par with Eagle: capture, organize, find and
+preview references without the program getting in the way. Eagle only exists on
+Windows and macOS, runs on Chromium 107 and does not share its code.
 
-## Decisiones tomadas
+On Linux there are similar things (digiKam is for photographers and its
+interface belongs to another era, TagStudio has the right philosophy but lacks
+the performance, Hydrus is for archivists), but none of them fills the gap: **a
+multi-format visual library, with an instant viewer, polished, extensible and
+fast with hundreds of thousands of items**.
 
-| Tema | Decisión |
+## Decisions made
+
+| Topic | Decision |
 |---|---|
-| Interfaz | Núcleo en Rust + capa QML (Qt 6) + pegamento fino en C++. Confirmado con números en M0 (ver docs/M0.md) |
-| Archivos | Copiar dentro de la biblioteca por defecto, como Eagle. `mover` y `referenciar` existen en el núcleo y se exponen como ajuste en M3 |
-| Licencia | Software libre bajo AGPL-3.0 desde la primera versión pública. Formato de biblioteca documentado en público |
+| Interface | Rust core + QML layer (Qt 6) + thin C++ glue. Confirmed with numbers in M0 (see docs/M0.md) |
+| Files | Copy into the library by default, like Eagle. `mover` and `referenciar` exist in the core and are exposed as a setting in M3 |
+| License | Free software under AGPL-3.0 from the first public version. Library format documented in public |
 
-## Alcance
+## Scope
 
-**MVP (0.1):** biblioteca portable, importación (arrastrar, carpeta, URL),
-carpetas jerárquicas con pertenencia múltiple, etiquetas, malla virtualizada,
-visor instantáneo, inspector, búsqueda con filtros, valoración y notas.
+**MVP (0.1):** portable library, import (drag, folder, URL), hierarchical
+folders with multiple membership, tags, virtualized grid, instant viewer,
+inspector, search with filters, rating and notes.
 
-**v1:** carpetas inteligentes, búsqueda por color, vigilancia de carpetas,
-vídeo/audio/PDF/tipografías/RAW, duplicados, plugins.
+**v1:** smart folders, color search, watched folders,
+video/audio/PDF/fonts/RAW, duplicates, plugins.
 
-**Después:** comparación y presentación, formatos de diseño (PSD, AI,
-Sketch), sincronización. La extensión de navegador ya está (cola, 16).
+**Later:** comparison and presentation, design formats (PSD, AI, Sketch),
+sync. The browser extension is already done (queue, 16).
 
-## Arquitectura
+## Architecture
 
-Tres capas y una costura estable:
+Three layers and one stable seam:
 
 ```
-Capa 3 · Shell de UI      malla, visor, inspector, atajos, temas, plugins
-   ▲ comandos · consultas · suscripciones ▼
-Capa 2 · Bus de comandos  validación, permisos, deshacer, eventos
-   ▲ API interna de Rust ▼
-Capa 1 · Núcleo           almacén, índice, búsqueda, importación, miniaturas
+Layer 3 · UI shell        grid, viewer, inspector, shortcuts, themes, plugins
+   ▲ commands · queries · subscriptions ▼
+Layer 2 · Command bus     validation, permissions, undo, events
+   ▲ internal Rust API ▼
+Layer 1 · Core            storage, index, search, import, thumbnails
 ```
 
-- El deshacer se implementa una vez, en el bus, y cubre toda operación.
-- Los plugins reciben el mismo bus con permisos recortados: no hay puerta
-  trasera distinta a la de la propia aplicación.
-- El CLI (`grim`) es el primer cliente del bus. Existe desde el día uno y sirve
-  para pruebas y mediciones sin abrir una ventana.
-- Si el toolkit resulta un error, se tira la capa 3 y no las otras dos.
+- Undo is implemented once, in the bus, and covers every operation.
+- Plugins get the same bus with reduced permissions: there is no back door
+  different from the one the application itself uses.
+- The CLI (`grim`) is the first client of the bus. It exists from day one and
+  is used for tests and measurements without opening a window.
+- If the toolkit turns out to be a mistake, layer 3 is thrown away and the
+  other two are kept.
 
-Estado: las tres capas en pie. El bus explícito y el deshacer llegaron en M2:
-toda edición pasa por `Library::editar`, que devuelve el camino de vuelta.
+Status: all three layers are standing. The explicit bus and undo arrived in M2:
+every edit goes through `Library::editar`, which returns the way back.
 
-## Presupuestos de rendimiento
+## Performance budgets
 
-Con 100.000 elementos, en portátil de gama media. Se miden en cada hito; una
-regresión es un fallo bloqueante.
+With 100,000 items, on a mid-range laptop. They are measured at every
+milestone; a regression is a blocking bug.
 
-| Métrica | Objetivo | Medido en M0 |
+| Metric | Target | Measured in M0 |
 |---|---|---|
-| Arranque a malla usable | < 400 ms | 324 ms |
-| Fotogramas perdidos al hacer scroll | 0 | 0,09 % sobre 16,6 ms |
-| Búsqueda de texto (p95) | < 30 ms | 11-18 ms |
-| Etiquetar 10.000 | sin congelar | 344 ms, 2 fotogramas |
-| Abrir el visor | < 120 ms | 6,2 ms (p95) |
-| Memoria en reposo | < 400 MB | 124 MB |
-| Importación (JPEG de 12 MP) | > 20/s | 63,7/s a 6,75 MP |
+| Startup to usable grid | < 400 ms | 324 ms |
+| Dropped frames while scrolling | 0 | 0.09 % above 16.6 ms |
+| Text search (p95) | < 30 ms | 11-18 ms |
+| Tag 10,000 | no freezing | 344 ms, 2 frames |
+| Open the viewer | < 120 ms | 6.2 ms (p95) |
+| Memory at rest | < 400 MB | 124 MB |
+| Import (12 MP JPEG) | > 20/s | 63.7/s at 6.75 MP |
 
-## Hitos
+## Milestones
 
-- **M0 · Spike y esqueleto** — núcleo por CLI, biblioteca sintética de 100.000,
-  banco de pruebas de la malla. *Puerta: decisión de toolkit con números.*
-  Estado: **cerrado**. Qt Quick gana; wgpu queda como listón y plan B.
-- **M1 · Ver** — ventana, malla, visor a pantalla completa, árbol de carpetas,
-  arrastrar y soltar, tokens de tema con recarga en caliente.
-  *Puerta: scroll sin saltos con 100.000 y visor por debajo de 120 ms.*
-  Estado: **cerrado**. 131 fps en cuadrícula y 94 en justificado con 100.000
-  elementos; visor con p95 de 7 ms. Ver docs/M1.md.
-- **M2 · Organizar** — etiquetas con autocompletado, estrellas, notas, edición
-  en lote, inspector completo, buscador con filtros, deshacer global, papelera.
-  *Puerta: etiquetar 10.000 elementos sin congelar la interfaz.*
-  Estado: **cerrado**. 344 ms de extremo a extremo con la malla a 133 fps y dos
-  fotogramas perdidos. Ver docs/M2.md.
-- **M3 · Tragar de todo** — vídeo, audio, PDF, tipografías, RAW en procesos
-  aislados; vigilancia de carpetas; modo referencia; carpetas inteligentes;
-  búsqueda por color; duplicados; integración de escritorio.
-  *Puerta: importar 50 GB heterogéneos sin perder un elemento.*
-  Estado: **en marcha**. Familias de archivo; RAW y carátulas de audio sin
-  dependencias; vídeo y PDF en procesos aislados con tope de tiempo; duplicados
-  exactos y perceptuales (100.000 en medio segundo); reproducción de vídeo y
-  sonido en el visor, con QtMultimedia opcional; modelos 3D (STL, OBJ, PLY,
-  glTF/GLB, 3MF, y `.blend`/`.fbx` vía Blender) con miniatura y visor propio;
-  onda y espectrograma del sonido; PDF página a página; copia reproducible de
-  los vídeos que Qt no abre. Quedan las tipografías, las carpetas
-  inteligentes, la vigilancia de carpetas y la integración de escritorio.
-- **M4 · MVP 0.1** — `.deb`, AppImage, Flatpak; atajos; español e inglés;
-  importador desde bibliotecas de Eagle; copia de seguridad.
-  *Puerta: dos semanas de uso diario propio sin pérdida de datos.*
+- **M0 · Spike and skeleton**: core from the CLI, synthetic library of
+  100,000, grid benchmark. *Gate: toolkit decision with numbers.*
+  Status: **closed**. Qt Quick wins; wgpu stays as the bar and plan B.
+- **M1 · Seeing**: window, grid, full screen viewer, folder tree, drag and
+  drop, theme tokens with hot reload.
+  *Gate: stutter-free scrolling with 100,000 and a viewer under 120 ms.*
+  Status: **closed**. 131 fps in square grid and 94 in justified with 100,000
+  items; viewer with a p95 of 7 ms. See docs/M1.md.
+- **M2 · Organizing**: tags with autocompletion, rating, notes, batch editing,
+  full inspector, search bar with filters, global undo, trash.
+  *Gate: tag 10,000 items without freezing the interface.*
+  Status: **closed**. 344 ms end to end with the grid at 133 fps and two
+  dropped frames. See docs/M2.md.
+- **M3 · Swallow everything**: video, audio, PDF, fonts, RAW in isolated
+  processes; watched folders; reference mode; smart folders; color search;
+  duplicates; desktop integration.
+  *Gate: import 50 GB of mixed files without losing a single item.*
+  Status: **in progress**. File families; RAW and audio cover art with no
+  dependencies; video and PDF in isolated processes with a time limit; exact
+  and perceptual duplicates (100,000 in half a second); video and sound
+  playback in the viewer, with optional QtMultimedia; 3D models (STL, OBJ, PLY,
+  glTF/GLB, 3MF, and `.blend`/`.fbx` through Blender) with thumbnail and their
+  own viewer; waveform and spectrogram for sound; PDF page by page; a playable
+  copy of the videos Qt cannot open. Still to do: fonts, smart folders, watched
+  folders and desktop integration.
+- **M4 · MVP 0.1**: `.deb`, AppImage, Flatpak; shortcuts; Spanish and English;
+  importer for Eagle libraries; backups.
+  *Gate: two weeks of my own daily use without data loss.*
 
-Estimación a MVP: 12 a 17 semanas de trabajo enfocado.
+Estimate to MVP: 12 to 17 weeks of focused work.
 
-## Cola de trabajo
+## Work queue
 
-Lo que hay pedido y sin hacer, en el orden en que se está haciendo. Se vacía
-por arriba; lo cerrado sale de aquí y entra en el hito que le toque.
+What has been asked for and is not done yet, in the order it is being done. It
+empties from the top; closed items leave here and go into the milestone they
+belong to.
 
-| | Qué | Estado |
+| | What | Status |
 |---|---|---|
-| 1 | Estrellas del panel al día con la malla | hecho |
-| 2 | Paneles laterales de ancho ajustable | hecho |
-| 3 | Carpeta nueva junto al árbol, y arrastrar carpetas para cambiar la jerarquía | hecho |
-| 4 | Arrastrar elementos de una carpeta a otra: mover, no solo añadir | hecho |
-| 5 | Vídeo que se reproduce al pasar por encima en la malla, en bucle | hecho |
-| 6 | Vídeo reproducible en el panel de la derecha | hecho |
-| 7 | Interruptor: reproducir a la vez todo el vídeo que se ve | hecho |
-| 8 | Marcar como +18, con modo seguro que difumina y se levanta al entrar | hecho |
-| 9 | Que un vídeo ProRes no diga «Internal data stream error» | hecho: copia en H.264 |
-| 10 | Ver el contenido de un PDF, no solo su portada | hecho |
-| 11 | Modelos 3D: STL para imprimir, `.blend`, y los de intercambio | hecho |
-| 12 | Sonido: onda en el tiempo y en frecuencia, ir a un momento con el ratón, cámara lenta | hecho |
-| 13 | Mandos de vídeo más ricos | hecho: fotograma a fotograma, velocidad, A–B, volumen, vista previa en la barra |
-| 14 | La misma imagen en varios pesos, como una sola | hecho: pilas de versiones, versiones ligeras con el peso a la vista, sugerir apilar al importar |
-| 15 | Quitar el fondo | hecho: `grim-recorte` con ISNet, local, con el modelo dentro |
-| 16 | Extensión de navegador, sobre todo para Instagram | hecho para fotos y carruseles en Brave/Chrome; los vídeos de Instagram y Firefox, después |
+| 1 | Inspector ratings kept in sync with the grid | done |
+| 2 | Side panels with adjustable width | done |
+| 3 | New folder next to the tree, and dragging folders to change the hierarchy | done |
+| 4 | Dragging items from one folder to another: move instead of only adding | done |
+| 5 | Video that plays on hover in the grid, looping | done |
+| 6 | Video playable in the right-hand panel | done |
+| 7 | Switch: play all visible videos at once | done |
+| 8 | Mark as 18+, with a safe mode that blurs and lifts when opened | done |
+| 9 | A ProRes video should not say «Internal data stream error» | done: H.264 copy |
+| 10 | See the content of a PDF, beyond its cover | done |
+| 11 | 3D models: STL for printing, `.blend`, and the exchange formats | done |
+| 12 | Sound: waveform in time and frequency, jump to a moment with the mouse, slow motion | done |
+| 13 | Richer video controls | done: frame by frame, speed, A–B, volume, preview on the scrub bar |
+| 14 | The same image at several file sizes, as a single one | done: version stacks, lighter versions with the size shown, suggest stacking on import |
+| 15 | Remove background | done: `grim-recorte` with ISNet, local, with the model bundled |
+| 16 | Browser extension, mainly for Instagram | done for photos and carousels in Brave/Chrome; Instagram videos and Firefox, later |
 
-Sobre el 8, lo pedido con detalle: el modo seguro difumina lo marcado; abrir un
-elemento marcado lo enseña **solo mientras está abierto** y al volver a la malla
-sigue difuminado; apagar el modo seguro es lo único que lo levanta del todo.
+About 8, what was asked in detail: safe mode blurs what is marked; opening a
+marked item shows it **only while it is open**, and back in the grid it is
+still blurred; turning safe mode off is the only thing that lifts it entirely.
 
-Sobre el 7 hay un límite físico que conviene tener escrito: cada vídeo en
-marcha es una tubería de decodificación. Se reproducen los que se ven, con tope,
-y los reproductores se reciclan en vez de crearse y destruirse — montar y
-desmontar la tubería muchas veces seguidas tira el programa (ver app/README.md).
+About 7 there is a physical limit worth writing down: each playing video is a
+decoding pipeline. The visible ones play, with a cap, and the players are
+recycled instead of created and destroyed. Building and tearing down the
+pipeline many times in a row crashes the program (see app/README.md).
 
-## Riesgos
+## Risks
 
-| Riesgo | Mitigación |
+| Risk | Mitigation |
 |---|---|
-| El toolkit no aguanta la malla | Spike medido antes de escribir interfaz; capa 3 desechable por diseño |
-| Dos cadenas de construcción (Cargo + CMake) | Integración e CI desde el primer commit |
-| Escritura masiva de JSON en operaciones en lote | Índice inmediato, volcado diferido, registro de operaciones |
-| Arrastrar y soltar en Wayland | Probar pronto en GNOME y KDE, usar portals |
-| Alcance que se estira solo | La tabla de alcance es contrato: añadir implica quitar |
-| Proyecto de una sola persona | Núcleo con pruebas de verdad y CLI completo: sobrevive a un parón |
+| The toolkit cannot handle the grid | Spike measured before writing any interface; layer 3 disposable by design |
+| Two build chains (Cargo + CMake) | Integration and CI from the first commit |
+| Massive JSON writes in batch operations | Immediate index, deferred flush, operation log |
+| Drag and drop on Wayland | Test early on GNOME and KDE, use portals |
+| Scope that stretches by itself | The scope table is a contract: adding means removing |
+| One-person project | Core with real tests and a complete CLI: it survives a pause |

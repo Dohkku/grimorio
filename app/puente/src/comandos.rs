@@ -9,6 +9,7 @@
 use crate::eventos;
 use crate::vista::Vista;
 use crate::Aviso;
+use grimorio_core::idioma::{self, t};
 use grimorio_core::import::{self, ImportOptions};
 use grimorio_core::{filtro, Error, Item, Library, Operacion, Parche, Query, Result, SortBy};
 use serde::Deserialize;
@@ -457,7 +458,12 @@ pub fn ejecutar(
             let nuevo = lib.create_folder(nombre, padre.as_deref())?;
             eventos::carpetas(aviso, lib);
             eventos::registro(aviso, lib);
-            eventos::hecho_con_id(aviso, id_cmd, format!("carpeta «{}» creada", nombre.trim()), nuevo);
+            let msg = if idioma::ingles() {
+                format!("folder «{}» created", nombre.trim())
+            } else {
+                format!("carpeta «{}» creada", nombre.trim())
+            };
+            eventos::hecho_con_id(aviso, id_cmd, msg, nuevo);
         }
 
         Comando::GuardarBusqueda { nombre, consulta } => {
@@ -466,7 +472,11 @@ pub fn ejecutar(
             eventos::hecho_con_id(
                 aviso,
                 id_cmd,
-                format!("«{}» guardada como carpeta inteligente", nombre.trim()),
+                if idioma::ingles() {
+                    format!("«{}» saved as a smart folder", nombre.trim())
+                } else {
+                    format!("«{}» guardada como carpeta inteligente", nombre.trim())
+                },
                 id,
             );
         }
@@ -492,7 +502,12 @@ pub fn ejecutar(
         Comando::RenombrarBiblioteca { nombre } => {
             lib.rename(nombre)?;
             eventos::nombre(aviso, lib);
-            eventos::hecho(aviso, id_cmd, format!("la biblioteca se llama «{}»", lib.meta().name));
+            let msg = if idioma::ingles() {
+                format!("the library is now called «{}»", lib.meta().name)
+            } else {
+                format!("la biblioteca se llama «{}»", lib.meta().name)
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::RenombrarCarpeta { id, nombre } => {
@@ -531,7 +546,11 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                format!("{sueltos} elemento{} sin carpeta", plural(sueltos)),
+                if idioma::ingles() {
+                    format!("{} without folder", n_en(sueltos, "item", "items"))
+                } else {
+                    format!("{sueltos} elemento{} sin carpeta", plural(sueltos))
+                },
             );
         }
 
@@ -551,9 +570,9 @@ pub fn ejecutar(
             // Las dos cosas a la vez son un movimiento, y así se llama: es lo
             // que va a leerse en «deshacer …» un segundo después.
             let titulo = match (ponen.is_empty(), quitar.is_empty()) {
-                (false, false) => "mover de carpeta",
-                (false, true) => "meter en la carpeta",
-                _ => "sacar de la carpeta",
+                (false, false) => t("mover de carpeta", "move to another folder"),
+                (false, true) => t("meter en la carpeta", "add to the folder"),
+                _ => t("sacar de la carpeta", "remove from the folder"),
             };
             let (tocados, _) = en_lote(
                 lib,
@@ -578,18 +597,24 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                format!(
-                    "{tocados} elemento{} movido{}",
-                    plural(tocados),
-                    plural(tocados)
-                ),
+                if idioma::ingles() {
+                    format!("{} moved", n_en(tocados, "item", "items"))
+                } else {
+                    format!(
+                        "{tocados} elemento{} movido{}",
+                        plural(tocados),
+                        plural(tocados)
+                    )
+                },
             );
         }
 
         Comando::Estrellas { ids, valor } => {
             let v = (*valor).min(5);
             let titulo = if v == 0 {
-                "quitar las estrellas".to_string()
+                t("quitar las estrellas", "remove the stars").to_string()
+            } else if idioma::ingles() {
+                format!("set {}", n_en(v as usize, "star", "stars"))
             } else {
                 format!("poner {v} estrella{}", plural(v as usize))
             };
@@ -611,10 +636,13 @@ pub fn ejecutar(
             anadir,
             quitar,
         } => {
+            let en = idioma::ingles();
             let titulo = match (anadir.first(), quitar.first()) {
+                (Some(t), _) if en => format!("tag as «{t}»"),
                 (Some(t), _) => format!("etiquetar como «{t}»"),
+                (None, Some(t)) if en => format!("remove «{t}»"),
                 (None, Some(t)) => format!("quitar «{t}»"),
-                _ => "etiquetar".to_string(),
+                _ => t("etiquetar", "tag").to_string(),
             };
             let (tocados, _) = en_lote(
                 lib,
@@ -645,19 +673,23 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                format!(
-                    "{tocados} elemento{} etiquetado{}",
-                    plural(tocados),
-                    plural(tocados)
-                ),
+                if idioma::ingles() {
+                    format!("{} tagged", n_en(tocados, "item", "items"))
+                } else {
+                    format!(
+                        "{tocados} elemento{} etiquetado{}",
+                        plural(tocados),
+                        plural(tocados)
+                    )
+                },
             );
         }
 
         Comando::Nota { id, texto } => {
             let titulo = if texto.trim().is_empty() {
-                "borrar la nota"
+                t("borrar la nota", "delete the note")
             } else {
-                "escribir una nota"
+                t("escribir una nota", "write a note")
             };
             en_lote(
                 lib,
@@ -675,7 +707,11 @@ pub fn ejecutar(
         Comando::Renombrar { id, nombre } => {
             if nombre.trim().is_empty() {
                 return Err(Error::Invalid(
-                    "un elemento sin nombre no se encuentra".into(),
+                    t(
+                        "un elemento sin nombre no se encuentra",
+                        "an item without a name can't be found",
+                    )
+                    .into(),
                 ));
             }
             en_lote(
@@ -684,7 +720,7 @@ pub fn ejecutar(
                 id_cmd,
                 aviso,
                 vista,
-                "renombrar",
+                t("renombrar", "rename"),
                 Toca::nombre(),
                 |_| Parche::nombre(nombre),
             )?;
@@ -694,18 +730,31 @@ pub fn ejecutar(
         Comando::VigilarCarpeta { ruta, carpeta } => {
             if let Some(c) = carpeta {
                 if !lib.folders().existe(c) {
-                    return Err(Error::Invalid(format!("no existe la carpeta {c}")));
+                    return Err(Error::Invalid(no_existe_carpeta(c)));
                 }
             }
             let id = grimorio_core::vigiladas::anadir(lib.root(), ruta, carpeta.as_deref())?;
             eventos::vigiladas(aviso, lib);
-            eventos::hecho_con_id(aviso, id_cmd, format!("vinculada {ruta}"), id);
+            let msg = if idioma::ingles() {
+                format!("linked {ruta}")
+            } else {
+                format!("vinculada {ruta}")
+            };
+            eventos::hecho_con_id(aviso, id_cmd, msg, id);
         }
 
         Comando::DejarDeVigilar { id } => {
             grimorio_core::vigiladas::quitar(lib.root(), id)?;
             eventos::vigiladas(aviso, lib);
-            eventos::hecho(aviso, id_cmd, "carpeta desvinculada; lo que ya entró se queda".to_string());
+            eventos::hecho(
+                aviso,
+                id_cmd,
+                t(
+                    "carpeta desvinculada; lo que ya entró se queda",
+                    "folder unlinked; what was already imported stays",
+                )
+                .to_string(),
+            );
         }
 
         Comando::ImportarVigilada { id, rutas, hasta } => {
@@ -756,7 +805,11 @@ pub fn ejecutar(
             }
             if rutas.is_empty() {
                 return Err(Error::Invalid(
-                    "no encuentro eso en la otra biblioteca".to_string(),
+                    t(
+                        "no encuentro eso en la otra biblioteca",
+                        "can't find that in the other library",
+                    )
+                    .to_string(),
                 ));
             }
             // Lo que ya estaba aquí no se toca: se salta como cualquier
@@ -825,7 +878,7 @@ pub fn ejecutar(
                 id_cmd,
                 aviso,
                 vista,
-                "cambiar el orden",
+                t("cambiar el orden", "change the order"),
                 Toca::orden(),
                 |it| {
                     let mut mapa = it.orden.clone();
@@ -846,10 +899,14 @@ pub fn ejecutar(
         Comando::RenombrarEtiqueta { vieja, nueva } => {
             let nueva = nueva.trim();
             if nueva.is_empty() || nueva == vieja {
-                return Err(Error::Invalid("hace falta un nombre nuevo".into()));
+                return Err(Error::Invalid(t("hace falta un nombre nuevo", "a new name is needed").into()));
             }
             let ids = ids_con_etiqueta(lib, vieja)?;
-            let titulo = format!("renombrar «{vieja}» a «{nueva}»");
+            let titulo = if idioma::ingles() {
+                format!("rename «{vieja}» to «{nueva}»")
+            } else {
+                format!("renombrar «{vieja}» a «{nueva}»")
+            };
             let (tocados, _) = en_lote(lib, &ids, id_cmd, aviso, vista, &titulo, Toca::etiquetas(), |it| {
                 let mut v: Vec<String> = Vec::with_capacity(it.tags.len());
                 for t in &it.tags {
@@ -864,12 +921,21 @@ pub fn ejecutar(
             eventos::grupos(aviso, lib);
             eventos::etiquetas(aviso, id_cmd, lib.index().tags_con_prefijo("", tope_etiquetas())?);
             eventos::todas_etiquetas(aviso, lib);
-            eventos::hecho(aviso, id_cmd, format!("«{vieja}» → «{nueva}» en {tocados}"));
+            let msg = if idioma::ingles() {
+                format!("«{vieja}» → «{nueva}» on {tocados}")
+            } else {
+                format!("«{vieja}» → «{nueva}» en {tocados}")
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::BorrarEtiqueta { nombre } => {
             let ids = ids_con_etiqueta(lib, nombre)?;
-            let titulo = format!("quitar «{nombre}» de todo");
+            let titulo = if idioma::ingles() {
+                format!("remove «{nombre}» from everything")
+            } else {
+                format!("quitar «{nombre}» de todo")
+            };
             let (tocados, _) = en_lote(lib, &ids, id_cmd, aviso, vista, &titulo, Toca::etiquetas(), |it| {
                 Parche::etiquetas(it.tags.iter().filter(|t| *t != nombre).cloned().collect())
             })?;
@@ -877,13 +943,23 @@ pub fn ejecutar(
             eventos::grupos(aviso, lib);
             eventos::etiquetas(aviso, id_cmd, lib.index().tags_con_prefijo("", tope_etiquetas())?);
             eventos::todas_etiquetas(aviso, lib);
-            eventos::hecho(aviso, id_cmd, format!("«{nombre}» quitada de {tocados}"));
+            let msg = if idioma::ingles() {
+                format!("«{nombre}» removed from {tocados}")
+            } else {
+                format!("«{nombre}» quitada de {tocados}")
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::CrearGrupo { nombre, color } => {
             let id = grimorio_core::grupos::crear(lib.root(), nombre, color)?;
             eventos::grupos(aviso, lib);
-            eventos::hecho_con_id(aviso, id_cmd, format!("grupo «{}» creado", nombre.trim()), id);
+            let msg = if idioma::ingles() {
+                format!("group «{}» created", nombre.trim())
+            } else {
+                format!("grupo «{}» creado", nombre.trim())
+            };
+            eventos::hecho_con_id(aviso, id_cmd, msg, id);
         }
         Comando::RenombrarGrupo { id, nombre } => {
             grimorio_core::grupos::renombrar(lib.root(), id, nombre)?;
@@ -912,7 +988,11 @@ pub fn ejecutar(
                 .enumerate()
                 .map(|(i, id)| (id.as_str(), *inicio + i as u64))
                 .collect();
-            let titulo = format!("renombrar {} elemento{}", ids.len(), plural(ids.len()));
+            let titulo = if idioma::ingles() {
+                format!("rename {}", n_en(ids.len(), "item", "items"))
+            } else {
+                format!("renombrar {} elemento{}", ids.len(), plural(ids.len()))
+            };
             let (tocados, _) = en_lote(
                 lib,
                 ids,
@@ -934,7 +1014,11 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                format!("{tocados} renombrado{}", plural(tocados)),
+                if idioma::ingles() {
+                    format!("{tocados} renamed")
+                } else {
+                    format!("{tocados} renombrado{}", plural(tocados))
+                },
             );
         }
 
@@ -955,10 +1039,14 @@ pub fn ejecutar(
                 sobran.extend(con_fecha.iter().skip(1).map(|(_, id)| (*id).clone()));
             }
             if sobran.is_empty() {
-                eventos::hecho(aviso, id_cmd, "no hay copias exactas".to_string());
+                eventos::hecho(aviso, id_cmd, t("no hay copias exactas", "no exact copies").to_string());
                 return Ok(());
             }
-            let titulo = format!("quitar {} copia{} exacta{}", sobran.len(), plural(sobran.len()), plural(sobran.len()));
+            let titulo = if idioma::ingles() {
+                format!("remove {}", n_en(sobran.len(), "exact copy", "exact copies"))
+            } else {
+                format!("quitar {} copia{} exacta{}", sobran.len(), plural(sobran.len()), plural(sobran.len()))
+            };
             let (tocados, _) = en_lote(
                 lib,
                 &sobran,
@@ -973,7 +1061,11 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                format!("{tocados} copia{} a la papelera (se puede deshacer)", plural(tocados)),
+                if idioma::ingles() {
+                    format!("{} to the trash (can be undone)", n_en(tocados, "copy", "copies"))
+                } else {
+                    format!("{tocados} copia{} a la papelera (se puede deshacer)", plural(tocados))
+                },
             );
         }
 
@@ -983,9 +1075,9 @@ pub fn ejecutar(
             con_versiones,
         } => {
             let titulo = if *dentro {
-                "mandar a la papelera"
+                t("mandar a la papelera", "move to the trash")
             } else {
-                "sacar de la papelera"
+                t("sacar de la papelera", "restore from the trash")
             };
             // Tirar algo lo saca de lo que se está mirando, así que la vista se
             // rehace aunque sea un solo elemento: dejarlo en la malla sería
@@ -1005,10 +1097,11 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                if *dentro {
-                    format!("{tocados} a la papelera")
-                } else {
-                    format!("{tocados} recuperado{}", plural(tocados))
+                match (*dentro, idioma::ingles()) {
+                    (true, true) => format!("{tocados} to the trash"),
+                    (true, false) => format!("{tocados} a la papelera"),
+                    (false, true) => format!("{tocados} restored"),
+                    (false, false) => format!("{tocados} recuperado{}", plural(tocados)),
                 },
             );
         }
@@ -1016,24 +1109,30 @@ pub fn ejecutar(
         Comando::Apilar { principal, ids } => {
             let n = lib.apilar(principal, ids)?;
             pila_cambiada(lib, principal, id_cmd, aviso, vista)?;
-            eventos::hecho(
-                aviso,
-                id_cmd,
-                format!("{n} versi{} en la pila", if n == 1 { "ón" } else { "ones" }),
-            );
+            let msg = if idioma::ingles() {
+                format!("{} in the stack", n_en(n, "version", "versions"))
+            } else {
+                format!("{n} versi{} en la pila", if n == 1 { "ón" } else { "ones" })
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::Desapilar { ids } => {
             let n = lib.desapilar(ids)?;
             let foco = ids.first().cloned().unwrap_or_default();
             pila_cambiada(lib, &foco, id_cmd, aviso, vista)?;
-            eventos::hecho(aviso, id_cmd, format!("{n} fuera de la pila"));
+            let msg = if idioma::ingles() {
+                format!("{n} out of the stack")
+            } else {
+                format!("{n} fuera de la pila")
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::HacerPrincipal { id } => {
             lib.hacer_principal(id)?;
             pila_cambiada(lib, id, id_cmd, aviso, vista)?;
-            eventos::hecho(aviso, id_cmd, "ahora es la principal".to_string());
+            eventos::hecho(aviso, id_cmd, t("ahora es la principal", "now it's the main one").to_string());
         }
 
         Comando::CrearVersion { id, receta } => {
@@ -1044,7 +1143,17 @@ pub fn ejecutar(
             // Pasa con lo que ya venía muy comprimido: reducirlo con más
             // calidad de la que tenía puede pesar más. Se dice, no se esconde:
             // la versión se queda, por si es lo que se quería.
-            let mensaje = if v.size >= fuente.size {
+            let mensaje = if idioma::ingles() {
+                if v.size >= fuente.size {
+                    format!(
+                        "version created: {}, heavier than the original ({}); try lower quality or a smaller side",
+                        humano(v.size),
+                        humano(fuente.size)
+                    )
+                } else {
+                    format!("version created: {} (the original, {})", humano(v.size), humano(fuente.size))
+                }
+            } else if v.size >= fuente.size {
                 format!(
                     "versión creada: {}, pesa más que el original ({}); prueba con menos calidad o menos lado",
                     humano(v.size),
@@ -1092,9 +1201,9 @@ pub fn ejecutar(
                 eventos::carpetas(aviso, lib);
                 eventos::registro(aviso, lib);
                 let que = if fotograma.is_some() {
-                    "fotograma guardado"
+                    t("fotograma guardado", "frame saved")
                 } else {
-                    "recortado aparte"
+                    t("recortado aparte", "trimmed as a new item")
                 };
                 eventos::hecho_con_id(aviso, id_cmd, format!("{que}: {}", humano(v.size)), nuevo);
                 return Ok(());
@@ -1103,11 +1212,11 @@ pub fn ejecutar(
             let v = lib.load_item(&nuevo)?;
             pila_cambiada(lib, id, id_cmd, aviso, vista)?;
             let que = if recorte.is_some() {
-                "fondo quitado"
+                t("fondo quitado", "background removed")
             } else if tramo.is_some() {
-                "recortado"
+                t("recortado", "trimmed")
             } else {
-                "versión añadida"
+                t("versión añadida", "version added")
             };
             eventos::hecho_con_id(aviso, id_cmd, format!("{que}: {}", humano(v.size)), nuevo);
         }
@@ -1120,11 +1229,12 @@ pub fn ejecutar(
             let n = lib.apilar_grupos(&grupos)?;
             let foco = grupos.first().map(|g| g.0.clone()).unwrap_or_default();
             pila_cambiada(lib, &foco, id_cmd, aviso, vista)?;
-            eventos::hecho(
-                aviso,
-                id_cmd,
-                format!("{n} versi{} en su pila", if n == 1 { "ón" } else { "ones" }),
-            );
+            let msg = if idioma::ingles() {
+                format!("{} in their stack", n_en(n, "version", "versions"))
+            } else {
+                format!("{n} versi{} en su pila", if n == 1 { "ón" } else { "ones" })
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::Girar { ids, grados } => {
@@ -1134,22 +1244,24 @@ pub fn ejecutar(
                 id_cmd,
                 aviso,
                 vista,
-                "girar",
+                t("girar", "rotate"),
                 Toca::giro(),
                 |_| Parche::giro(*grados),
             )?;
-            eventos::hecho(
-                aviso,
-                id_cmd,
-                if tocados == 1 { "girada".to_string() } else { format!("{tocados} giradas") },
-            );
+            let msg = match (tocados == 1, idioma::ingles()) {
+                (true, true) => "rotated".to_string(),
+                (true, false) => "girada".to_string(),
+                (false, true) => format!("{tocados} rotated"),
+                (false, false) => format!("{tocados} giradas"),
+            };
+            eventos::hecho(aviso, id_cmd, msg);
         }
 
         Comando::Adulto { ids, si } => {
             let titulo = if *si {
-                "marcar como +18"
+                t("marcar como +18", "mark as 18+")
             } else {
-                "quitar la marca de +18"
+                t("quitar la marca de +18", "remove the 18+ mark")
             };
             let (tocados, _) = en_lote(
                 lib,
@@ -1168,10 +1280,11 @@ pub fn ejecutar(
             eventos::hecho(
                 aviso,
                 id_cmd,
-                if *si {
-                    format!("{tocados} marcado{}", plural(tocados))
-                } else {
-                    format!("{tocados} sin marcar")
+                match (*si, idioma::ingles()) {
+                    (true, true) => format!("{tocados} marked"),
+                    (true, false) => format!("{tocados} marcado{}", plural(tocados)),
+                    (false, true) => format!("{tocados} unmarked"),
+                    (false, false) => format!("{tocados} sin marcar"),
                 },
             );
         }
@@ -1180,22 +1293,14 @@ pub fn ejecutar(
             let a = Mutex::new(*aviso);
             let n = lib.vaciar_papelera(&|hechos, total| {
                 if let Ok(av) = a.lock() {
-                    eventos::progreso(&av, id_cmd, "vaciar la papelera", hechos, total);
+                    eventos::progreso(&av, id_cmd, t("vaciar la papelera", "empty the trash"), hechos, total);
                 }
             })?;
             let q = consulta_actual(vista);
             republicar(lib, q, id_cmd, aviso, vista)?;
             eventos::carpetas(aviso, lib);
             eventos::registro(aviso, lib);
-            eventos::hecho(
-                aviso,
-                id_cmd,
-                format!(
-                    "{n} elemento{} borrado{} para siempre",
-                    plural(n),
-                    plural(n)
-                ),
-            );
+            eventos::hecho(aviso, id_cmd, borrados_para_siempre(n));
         }
 
         Comando::BorrarParaSiempre { ids } => {
@@ -1205,20 +1310,25 @@ pub fn ejecutar(
             eventos::carpetas(aviso, lib);
             eventos::registro(aviso, lib);
             if let Some((_, motivo)) = v.fallos.first() {
-                eventos::error(aviso, id_cmd, &format!("no se pudo borrar: {motivo}"));
+                let msg = if idioma::ingles() {
+                    format!("could not delete: {motivo}")
+                } else {
+                    format!("no se pudo borrar: {motivo}")
+                };
+                eventos::error(aviso, id_cmd, &msg);
             }
-            let n = v.borrados;
-            eventos::hecho(
-                aviso,
-                id_cmd,
-                format!("{n} elemento{} borrado{} para siempre", plural(n), plural(n)),
-            );
+            eventos::hecho(aviso, id_cmd, borrados_para_siempre(v.borrados));
         }
 
         Comando::Deshacer | Comando::Rehacer => {
             let atras = matches!(cmd, Comando::Deshacer);
             let a = Mutex::new(*aviso);
-            let que = if atras { "deshacer" } else { "rehacer" };
+            let que = match (atras, idioma::ingles()) {
+                (true, true) => "undo",
+                (true, false) => "deshacer",
+                (false, true) => "redo",
+                (false, false) => "rehacer",
+            };
             let progreso = |hechos: usize, total: usize| {
                 if let Ok(av) = a.lock() {
                     eventos::progreso(&av, id_cmd, que, hechos, total);
@@ -1263,12 +1373,19 @@ pub fn ejecutar(
                         id_cmd,
                         format!(
                             "{}: {}",
-                            if atras { "deshecho" } else { "rehecho" },
+                            if atras { t("deshecho", "undone") } else { t("rehecho", "redone") },
                             op.titulo
                         ),
                     );
                 }
-                None => eventos::hecho(aviso, id_cmd, format!("no hay nada que {que}")),
+                None => {
+                    let msg = if idioma::ingles() {
+                        format!("nothing to {que}")
+                    } else {
+                        format!("no hay nada que {que}")
+                    };
+                    eventos::hecho(aviso, id_cmd, msg)
+                }
             }
             eventos::registro(aviso, lib);
         }
@@ -1293,9 +1410,9 @@ pub fn ejecutar(
             if let Some(c) = carpeta {
                 if !lib.folders().existe(c) {
                     if let Some(e) = etiqueta {
-                        eventos::importado_mal(aviso, e, &format!("no existe la carpeta {c}"));
+                        eventos::importado_mal(aviso, e, &no_existe_carpeta(c));
                     }
-                    return Err(Error::Invalid(format!("no existe la carpeta {c}")));
+                    return Err(Error::Invalid(no_existe_carpeta(c)));
                 }
             }
             let fuentes: Vec<PathBuf> = rutas.iter().map(PathBuf::from).collect();
@@ -1321,7 +1438,7 @@ pub fn ejecutar(
             let a = Mutex::new(*aviso);
             let informe = import::import(lib, &fuentes, &opts, &move |hechos, total| {
                 if let Ok(av) = a.lock() {
-                    eventos::progreso(&av, id_cmd, "importar", hechos, total);
+                    eventos::progreso(&av, id_cmd, t("importar", "import"), hechos, total);
                 }
             });
             let informe = match informe {
@@ -1339,11 +1456,12 @@ pub fn ejecutar(
             // Lo contrario de importar es mandar lo importado a la papelera, no
             // borrarlo: deshacer nunca debería poder perder un archivo.
             if !informe.ids.is_empty() {
-                let mut op = Operacion::nueva(format!(
-                    "importar {} elemento{}",
-                    informe.ids.len(),
-                    plural(informe.ids.len())
-                ));
+                let n = informe.ids.len();
+                let mut op = Operacion::nueva(if idioma::ingles() {
+                    format!("import {}", n_en(n, "item", "items"))
+                } else {
+                    format!("importar {} elemento{}", n, plural(n))
+                });
                 for id in &informe.ids {
                     op.antes.push((id.clone(), Parche::papelera(true)));
                     op.despues.push((id.clone(), Parche::papelera(false)));
@@ -1385,13 +1503,18 @@ pub fn ejecutar(
             let item = lib.load_item(id)?;
             let ruta = lib.original_path(&item);
             if !ruta.exists() {
-                return Err(Error::Invalid(format!(
-                    "el archivo original no está en {}",
-                    ruta.display()
-                )));
+                return Err(Error::Invalid(if idioma::ingles() {
+                    format!("the original file is not at {}", ruta.display())
+                } else {
+                    format!("el archivo original no está en {}", ruta.display())
+                }));
             }
             grimorio_core::externo::abrir_fuera(&ruta).map_err(|e| {
-                Error::Invalid(format!("no pude abrirlo con el programa del sistema: {e}"))
+                Error::Invalid(if idioma::ingles() {
+                    format!("couldn't open it with the system app: {e}")
+                } else {
+                    format!("no pude abrirlo con el programa del sistema: {e}")
+                })
             })?;
             eventos::hecho(aviso, id_cmd, String::new());
         }
@@ -1606,7 +1729,11 @@ fn avisar(
         eventos::error(
             aviso,
             id_cmd,
-            &format!("{ilegibles} elemento{} no se pudo leer", plural(ilegibles)),
+            &if idioma::ingles() {
+                format!("{} could not be read", n_en(ilegibles, "item", "items"))
+            } else {
+                format!("{ilegibles} elemento{} no se pudo leer", plural(ilegibles))
+            },
         );
     }
     Ok(())
@@ -1635,9 +1762,19 @@ fn pila_cambiada(
 
 /// «1,4 MB», «380 KB»: para decir lo que pesa una versión recién hecha.
 fn humano(bytes: u64) -> String {
+    humano_en(bytes, idioma::ingles())
+}
+
+/// [`humano`] con el idioma dicho: en inglés el decimal va con punto.
+fn humano_en(bytes: u64, ingles: bool) -> String {
     let b = bytes as f64;
     if b >= 1024.0 * 1024.0 {
-        format!("{:.1} MB", b / (1024.0 * 1024.0)).replace('.', ",")
+        let s = format!("{:.1} MB", b / (1024.0 * 1024.0));
+        if ingles {
+            s
+        } else {
+            s.replace('.', ",")
+        }
     } else if b >= 1024.0 {
         format!("{:.0} KB", b / 1024.0)
     } else {
@@ -1683,19 +1820,62 @@ fn plural(n: usize) -> &'static str {
     }
 }
 
+/// «1 item», «3 items»: en inglés el plural no siempre es una s más, así que
+/// se dan las dos formas.
+fn n_en(n: usize, uno: &str, varios: &str) -> String {
+    format!("{n} {}", if n == 1 { uno } else { varios })
+}
+
+fn no_existe_carpeta(c: &str) -> String {
+    if idioma::ingles() {
+        format!("folder {c} doesn't exist")
+    } else {
+        format!("no existe la carpeta {c}")
+    }
+}
+
+fn borrados_para_siempre(n: usize) -> String {
+    if idioma::ingles() {
+        format!("{} deleted forever", n_en(n, "item", "items"))
+    } else {
+        format!("{n} elemento{} borrado{} para siempre", plural(n), plural(n))
+    }
+}
+
 fn resumen_import(r: &import::ImportReport) -> String {
-    let mut partes = vec![format!("{} importado{}", r.imported, plural(r.imported))];
-    if r.duplicates > 0 {
-        partes.push(format!("{} repetido{}", r.duplicates, plural(r.duplicates)));
-    }
-    if r.unsupported > 0 {
-        partes.push(format!("{} sin soporte", r.unsupported));
-    }
-    if r.sin_miniatura > 0 {
-        partes.push(format!("{} sin miniatura", r.sin_miniatura));
-    }
-    if !r.failed.is_empty() {
-        partes.push(format!("{} con error", r.failed.len()));
+    resumen_import_en(r, idioma::ingles())
+}
+
+fn resumen_import_en(r: &import::ImportReport, ingles: bool) -> String {
+    let mut partes = Vec::new();
+    if ingles {
+        partes.push(format!("{} imported", r.imported));
+        if r.duplicates > 0 {
+            partes.push(n_en(r.duplicates, "duplicate", "duplicates"));
+        }
+        if r.unsupported > 0 {
+            partes.push(format!("{} unsupported", r.unsupported));
+        }
+        if r.sin_miniatura > 0 {
+            partes.push(format!("{} without thumbnail", r.sin_miniatura));
+        }
+        if !r.failed.is_empty() {
+            partes.push(n_en(r.failed.len(), "error", "errors"));
+        }
+    } else {
+        partes.push(format!("{} importado{}", r.imported, plural(r.imported)));
+        if r.duplicates > 0 {
+            partes.push(format!("{} repetido{}", r.duplicates, plural(r.duplicates)));
+        }
+        if r.unsupported > 0 {
+            partes.push(format!("{} sin soporte", r.unsupported));
+        }
+        if r.sin_miniatura > 0 {
+            partes.push(format!("{} sin miniatura", r.sin_miniatura));
+        }
+        if !r.failed.is_empty() {
+            partes.push(format!("{} con error", r.failed.len()));
+        }
     }
     let mut linea = partes.join(", ");
     // El primer aviso va en el mismo mensaje: si faltan las herramientas para
@@ -1790,5 +1970,22 @@ mod tests {
         r.imported = 3;
         r.duplicates = 1;
         assert_eq!(resumen_import(&r), "3 importados, 1 repetido");
+    }
+
+    // Con el idioma de parámetro y no con el interruptor global: las pruebas
+    // corren a la vez y las demás esperan el español.
+    #[test]
+    fn en_ingles_el_resumen_y_los_pesos_cambian_de_forma() {
+        let mut r = import::ImportReport {
+            imported: 3,
+            duplicates: 1,
+            ..Default::default()
+        };
+        assert_eq!(resumen_import_en(&r, true), "3 imported, 1 duplicate");
+        r.duplicates = 2;
+        assert_eq!(resumen_import_en(&r, true), "3 imported, 2 duplicates");
+        assert_eq!(humano_en(1_572_864, true), "1.5 MB");
+        assert_eq!(humano_en(1_572_864, false), "1,5 MB");
+        assert_eq!(n_en(1, "copy", "copies"), "1 copy");
     }
 }

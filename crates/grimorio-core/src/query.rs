@@ -39,8 +39,8 @@ pub enum SortBy {
 impl SortBy {
     pub fn parse(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().as_str() {
-            "recientes" | "imported-desc" | "nuevo" => Some(SortBy::ImportedDesc),
-            "antiguos" | "imported-asc" => Some(SortBy::ImportedAsc),
+            "recientes" | "imported-desc" | "nuevo" | "newest" => Some(SortBy::ImportedDesc),
+            "antiguos" | "imported-asc" | "oldest" => Some(SortBy::ImportedAsc),
             "nombre" | "name" | "name-asc" => Some(SortBy::NameAsc),
             "nombre-desc" | "name-desc" => Some(SortBy::NameDesc),
             "peso" | "size" | "size-desc" => Some(SortBy::SizeDesc),
@@ -256,5 +256,18 @@ impl QueryHit {
         } else {
             self.width as f32 / self.height as f32
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn el_orden_se_entiende_en_ingles_y_en_espanol() {
+        assert_eq!(SortBy::parse("newest"), Some(SortBy::ImportedDesc));
+        assert_eq!(SortBy::parse("Oldest"), Some(SortBy::ImportedAsc));
+        assert_eq!(SortBy::parse("recientes"), Some(SortBy::ImportedDesc));
+        assert_eq!(SortBy::parse("antiguos"), Some(SortBy::ImportedAsc));
     }
 }

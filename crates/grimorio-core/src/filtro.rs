@@ -225,24 +225,34 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
         if fuera {
             match campo_l.as_str() {
                 "etiqueta" | "etiquetas" | "tag" | "tags" => etiqueta(&mut q, v, true),
-                "ext" | "tipo" | "formato" | "familia" => match Familia::parse(v) {
+                "ext" | "tipo" | "formato" | "familia" | "type" | "kind" | "format" => match Familia::parse(v) {
                     Some(f) => q.sin_familias.push(f),
                     None => q.sin_exts.push(v.trim_start_matches('.').to_string()),
                 },
                 // Lo demás ya se dice al revés con su comparador
                 // (`estrellas:<3`, `adulto:no`); un `-` ahí no tiene sentido.
-                _ => avisos.push(format!("«-{campo}:» no se puede dejar fuera; prueba al revés")),
+                _ => avisos.push(if crate::idioma::ingles() {
+                    format!("«-{campo}:» can't be excluded; try the opposite")
+                } else {
+                    format!("«-{campo}:» no se puede dejar fuera; prueba al revés")
+                }),
             }
             continue;
         }
-        let mut mal = || avisos.push(format!("no entiendo «{campo}:{valor}»"));
+        let mut mal = || {
+            avisos.push(if crate::idioma::ingles() {
+                format!("don't understand «{campo}:{valor}»")
+            } else {
+                format!("no entiendo «{campo}:{valor}»")
+            })
+        };
         match campo_l.as_str() {
             "etiqueta" | "etiquetas" | "tag" | "tags" => etiqueta(&mut q, v, false),
             // `tipo:` sirve para las dos cosas y elige sola: `tipo:video` es una
             // familia y `tipo:png` una extensión. Obligar a acordarse de cuál
             // es cada campo sería hacerle recordar a la persona una distinción
             // que solo existe por dentro.
-            "ext" | "tipo" | "formato" | "familia" => match Familia::parse(v) {
+            "ext" | "tipo" | "formato" | "familia" | "type" | "kind" | "format" => match Familia::parse(v) {
                 Some(f) => q.familias.push(f),
                 None => q.exts.push(v.trim_start_matches('.').to_string()),
             },
@@ -281,7 +291,7 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
                 Some(Rango::Exacto(n)) => q.min_size = Some(n),
                 None => mal(),
             },
-            "orientacion" | "orientación" | "orient" => match Orientation::parse(v) {
+            "orientacion" | "orientación" | "orient" | "orientation" | "shape" => match Orientation::parse(v) {
                 Some(o) => q.orientation = Some(o),
                 None => mal(),
             },
@@ -293,7 +303,7 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
                 Some(s) => q.sort = s,
                 None => mal(),
             },
-            "fecha" | "date" | "importado" | "cuando" => {
+            "fecha" | "date" | "importado" | "imported" | "cuando" | "when" => {
                 let ahora = crate::time::now_ms();
                 match fecha(v, ahora, crate::time::desfase_local_s(ahora)) {
                     Some((desde, hasta)) => {
@@ -303,7 +313,7 @@ pub fn parsear(entrada: &str, base: Query) -> (Query, Vec<String>) {
                     None => mal(),
                 }
             }
-            "repetidos" | "repetido" | "duplicados" | "dupes" => match si_o_no(v) {
+            "repetidos" | "repetido" | "duplicados" | "dupes" | "duplicates" => match si_o_no(v) {
                 Some(b) => q.repetidos = b,
                 None => mal(),
             },
@@ -506,6 +516,35 @@ mod tests {
         assert_eq!(fecha("7d", ahora, desfase), Some((Some(ahora - 7 * 86_400_000), None)));
         assert_eq!(fecha("semana", ahora, desfase), fecha("7d", ahora, desfase));
         assert_eq!(fecha("12h", ahora, desfase), Some((Some(ahora - 12 * 3_600_000), None)));
+    }
+
+    #[test]
+    fn cada_fecha_en_espanol_tiene_su_par_en_ingles() {
+        use crate::time::inicio_dia_local_ms;
+        let desfase = 2 * 3600;
+        let ahora = inicio_dia_local_ms(2026, 10, 5, desfase) + (18 * 60 + 30) * 60_000;
+        for (es, en) in [
+            ("hoy", "today"),
+            ("ayer", "yesterday"),
+            ("semana", "week"),
+            ("mes", "month"),
+            ("año", "year"),
+            ("2s", "2w"),
+            ("1a", "1y"),
+        ] {
+            assert!(fecha(es, ahora, desfase).is_some(), "{es}");
+            assert_eq!(fecha(es, ahora, desfase), fecha(en, ahora, desfase), "{es} / {en}");
+        }
+        assert_eq!(p("imported:today").desde_ms, p("fecha:hoy").desde_ms);
+        assert_eq!(p("when:week").desde_ms.is_some(), true);
+    }
+
+    #[test]
+    fn el_orden_y_los_si_o_no_tambien_en_ingles() {
+        assert_eq!(p("sort:newest").sort, SortBy::ImportedDesc);
+        assert_eq!(p("orden:oldest").sort, SortBy::ImportedAsc);
+        assert_eq!(p("trash:yes").papelera, true);
+        assert_eq!(p("tagged:no").etiquetado, Some(false));
     }
 
     #[test]

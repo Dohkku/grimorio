@@ -36,10 +36,11 @@ pub enum Fallo {
 
 impl std::fmt::Display for Fallo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::idioma::t;
         match self {
-            Fallo::NoEsta => write!(f, "no está instalada"),
-            Fallo::Tardo => write!(f, "tardó demasiado y se le paró"),
-            Fallo::Salio(e) => write!(f, "terminó con error: {e}"),
+            Fallo::NoEsta => write!(f, "{}", t("no está instalada", "is not installed")),
+            Fallo::Tardo => write!(f, "{}", t("tardó demasiado y se le paró", "took too long and was stopped")),
+            Fallo::Salio(e) => write!(f, "{}: {e}", t("terminó con error", "ended with an error")),
         }
     }
 }
@@ -131,10 +132,11 @@ fn abrir_fuera_windows(ruta: &Path) -> std::io::Result<()> {
     if r as usize > 32 {
         Ok(())
     } else {
-        Err(std::io::Error::other(format!(
-            "Windows no supo abrirlo (código {})",
-            r as usize
-        )))
+        Err(std::io::Error::other(if crate::idioma::ingles() {
+            format!("Windows couldn't open it (code {})", r as usize)
+        } else {
+            format!("Windows no supo abrirlo (código {})", r as usize)
+        }))
     }
 }
 
@@ -291,7 +293,10 @@ impl Temporal {
                 Err(e) => return Err(e),
             }
         }
-        Err(std::io::Error::other("no pude crear un archivo temporal"))
+        Err(std::io::Error::other(crate::idioma::t(
+            "no pude crear un archivo temporal",
+            "couldn't create a temporary file",
+        )))
     }
 
     /// La misma ruta pero con otra extensión, para las herramientas que la
@@ -342,7 +347,7 @@ pub fn correr_y_leer(
     correr(programa, args, tope)?;
     match std::fs::read(esperado) {
         Ok(b) if !b.is_empty() => Ok(b),
-        Ok(_) => Err(Fallo::Salio("no escribió nada".into())),
+        Ok(_) => Err(Fallo::Salio(crate::idioma::t("no escribió nada", "wrote nothing").into())),
         Err(e) => Err(Fallo::Salio(e.to_string())),
     }
 }

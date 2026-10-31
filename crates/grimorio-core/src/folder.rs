@@ -74,12 +74,24 @@ impl Folders {
         }
         let bytes = std::fs::read(&p).map_err(|e| Error::io(&p, e))?;
         serde_json::from_slice(&bytes)
-            .map_err(|e| Error::Invalid(format!("{} no se puede leer: {e}", p.display())))
+            .map_err(|e| {
+                Error::Invalid(if crate::idioma::ingles() {
+                    format!("{} can't be read: {e}", p.display())
+                } else {
+                    format!("{} no se puede leer: {e}", p.display())
+                })
+            })
     }
 
     pub fn guardar(&self, root: &Path) -> Result<()> {
         let bytes = serde_json::to_vec_pretty(self)
-            .map_err(|e| Error::Invalid(format!("no pude serializar las carpetas: {e}")))?;
+            .map_err(|e| {
+            Error::Invalid(if crate::idioma::ingles() {
+                format!("could not serialize the folders: {e}")
+            } else {
+                format!("no pude serializar las carpetas: {e}")
+            })
+        })?;
         write_atomic(&root.join(FOLDERS_FILE), &bytes)
     }
 
@@ -162,11 +174,11 @@ impl Folders {
     pub fn crear(&mut self, name: &str, parent: Option<&str>) -> Result<String> {
         let name = name.trim();
         if name.is_empty() {
-            return Err(Error::Invalid("una carpeta necesita nombre".into()));
+            return Err(Error::Invalid(crate::idioma::t("una carpeta necesita nombre", "a folder needs a name").into()));
         }
         if let Some(p) = parent {
             if !self.existe(p) {
-                return Err(Error::Invalid(format!("no existe la carpeta padre {p}")));
+                return Err(Error::Invalid(if crate::idioma::ingles() { format!("parent folder {p} doesn't exist") } else { format!("no existe la carpeta padre {p}") }));
             }
         }
         let mut f = Folder::nueva(name, parent);
@@ -179,14 +191,14 @@ impl Folders {
     pub fn renombrar(&mut self, id: &str, name: &str) -> Result<()> {
         let name = name.trim().to_string();
         if name.is_empty() {
-            return Err(Error::Invalid("una carpeta necesita nombre".into()));
+            return Err(Error::Invalid(crate::idioma::t("una carpeta necesita nombre", "a folder needs a name").into()));
         }
         match self.folders.iter_mut().find(|f| f.id == id) {
             Some(f) => {
                 f.name = name;
                 Ok(())
             }
-            None => Err(Error::Invalid(format!("no existe la carpeta {id}"))),
+            None => Err(Error::Invalid(if crate::idioma::ingles() { format!("folder {id} doesn't exist") } else { format!("no existe la carpeta {id}") })),
         }
     }
 
@@ -200,14 +212,14 @@ impl Folders {
             None => None,
             Some(c) if c.len() == 7 && c.starts_with('#')
                 && c[1..].chars().all(|x| x.is_ascii_hexdigit()) => Some(c.to_ascii_lowercase()),
-            Some(c) => return Err(Error::Invalid(format!("«{c}» no es un color #rrggbb"))),
+            Some(c) => return Err(Error::Invalid(if crate::idioma::ingles() { format!("«{c}» is not a #rrggbb color") } else { format!("«{c}» no es un color #rrggbb") })),
         };
         match self.folders.iter_mut().find(|f| f.id == id) {
             Some(f) => {
                 f.color = color;
                 Ok(())
             }
-            None => Err(Error::Invalid(format!("no existe la carpeta {id}"))),
+            None => Err(Error::Invalid(if crate::idioma::ingles() { format!("folder {id} doesn't exist") } else { format!("no existe la carpeta {id}") })),
         }
     }
 
@@ -231,16 +243,16 @@ impl Folders {
         antes_de: Option<&str>,
     ) -> Result<()> {
         if !self.existe(id) {
-            return Err(Error::Invalid(format!("no existe la carpeta {id}")));
+            return Err(Error::Invalid(if crate::idioma::ingles() { format!("folder {id} doesn't exist") } else { format!("no existe la carpeta {id}") }));
         }
         if let Some(p) = nuevo_padre {
             if !self.existe(p) {
-                return Err(Error::Invalid(format!("no existe la carpeta padre {p}")));
+                return Err(Error::Invalid(if crate::idioma::ingles() { format!("parent folder {p} doesn't exist") } else { format!("no existe la carpeta padre {p}") }));
             }
         }
         if self.seria_ciclo(id, nuevo_padre) {
             return Err(Error::Invalid(
-                "una carpeta no puede meterse dentro de sí misma".into(),
+                crate::idioma::t("una carpeta no puede meterse dentro de sí misma", "a folder can't go inside itself").into(),
             ));
         }
         // Soltar una carpeta justo delante de sí misma no es un error, es no
@@ -284,7 +296,7 @@ impl Folders {
     /// para que quien llame desvincule los elementos.
     pub fn borrar(&mut self, id: &str) -> Result<Vec<String>> {
         if !self.existe(id) {
-            return Err(Error::Invalid(format!("no existe la carpeta {id}")));
+            return Err(Error::Invalid(if crate::idioma::ingles() { format!("folder {id} doesn't exist") } else { format!("no existe la carpeta {id}") }));
         }
         let fuera = self.con_descendientes(id);
         self.folders.retain(|f| !fuera.contains(&f.id));

@@ -5,6 +5,7 @@
 //   * el camino rápido, por índice y sin copias, para lo que pinta la malla.
 #pragma once
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -100,6 +101,9 @@ int32_t grim_es_biblioteca(const uint8_t *ruta, uint32_t len);
 /// respuesta JSON en `salida` y devuelve su tamaño; si es mayor que `cap` no
 /// escribe nada y hay que volver a pedir con un búfer de ese tamaño.
 uint32_t grim_derivar(const uint8_t *peticion, uint32_t len, uint8_t *salida, uint32_t cap);
+
+/// El idioma de los avisos del núcleo: true, inglés. Antes de abrir nada.
+void grim_idioma(bool ingles);
 
 #ifdef __cplusplus
 }

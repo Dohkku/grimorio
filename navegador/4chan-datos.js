@@ -41,7 +41,7 @@ function archivo4chan(el, loc) {
     const nombre = [tablon ? "/" + tablon + "/" : null, String(asunto || "").replace(/\s+/g, " ").slice(0, 80).trim() || null]
       .filter(Boolean).join(" · ");
     return { url: new URL(src, loc.href).href, origen: hilo ? new URL(hilo.getAttribute("href"), loc.href).href : loc.href,
-             nombre, como: "miniatura del catálogo" };
+             nombre, como: chrome.i18n.getMessage("comoMiniaturaCatalogo") };
   }
   const enlace = caja.querySelector("a.fileThumb[href]") || caja.querySelector(".fileText a[href]");
   if (!enlace) return null;
@@ -64,7 +64,7 @@ function archivo4chan(el, loc) {
   const origen = tablon && hilo ? `${loc.origin}/${tablon}/thread/${hilo}${id ? "#p" + id : ""}` : loc.href;
 
   const nombre = [tablon ? "/" + tablon + "/" : null, sinExtension(original) || null].filter(Boolean).join(" · ");
-  return { url, origen, nombre, como: "original" };
+  return { url, origen, nombre, como: chrome.i18n.getMessage("comoOriginal") };
 }
 
 // Para las pruebas en Node; en el navegador esto no existe y no hace nada.

@@ -41,7 +41,7 @@ Item {
     readonly property string busca: {
         let p = sinMenos
         if (p.charAt(0) === "#") p = p.substring(1)
-        if (p.toLowerCase().indexOf("etiqueta:") === 0) p = p.substring(9)
+        if (Consulta.esCampo(p, "etiqueta")) p = Consulta.valorDe(p)
         return p.toLowerCase()
     }
     property int elegida: -1
@@ -120,7 +120,7 @@ Item {
             if (fs.length > 0) {
                 out.push({ tipo: "seccion", texto: qsTr("filtros") })
                 for (let i = 0; i < fs.length; i++)
-                    out.push({ tipo: "filtro", texto: fs[i].texto, token: fs[i].token, icono: fs[i].icono })
+                    out.push({ tipo: "filtro", texto: Consulta.textoDe(fs[i]), token: Consulta.tokenDe(fs[i]), icono: fs[i].icono })
             }
         }
         return out

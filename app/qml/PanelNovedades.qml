@@ -165,7 +165,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (panel.todas) Qt.openUrlExternally("https://grimorio.frederickandrade.com/novedades/")
+                        if (panel.todas) Qt.openUrlExternally(Qt.uiLanguage === "en" ? "https://grimorio.frederickandrade.com/en/news/" : "https://grimorio.frederickandrade.com/novedades/")
                         else panel.abrir(true)
                     }
                 }

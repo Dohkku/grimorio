@@ -1,5 +1,7 @@
 #include "paquete.h"
 
+#include <QCoreApplication>
+
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
@@ -80,7 +82,7 @@ bool completar(const QString &raiz, const QDir &dir, QString *error, QStringList
         if (!QDir().mkpath(QFileInfo(destino).absolutePath()) || !copiar(origen, nuevo)
             || !QFile::rename(nuevo, destino)) {
             QFile::remove(nuevo);
-            if (error) *error = QStringLiteral("no he podido poner %1").arg(rel);
+            if (error) *error = QCoreApplication::translate("Paquete", "no he podido poner %1").arg(rel);
             return false;
         }
         if (puestos) *puestos << rel;
@@ -104,7 +106,7 @@ bool instalar(const QString &raiz, const QDir &dir, bool soloLoQueFalta, QString
                                     : copiar(e.absoluteFilePath(), nuevo);
         if (!bien) {
             for (const QFileInfo &x : entradas) borrar(dir.filePath(x.fileName() + QStringLiteral(".nuevo")));
-            if (error) *error = QStringLiteral("no he podido copiar %1 en %2").arg(e.fileName(), dir.path());
+            if (error) *error = QCoreApplication::translate("Paquete", "no he podido copiar %1 en %2").arg(e.fileName(), dir.path());
             return false;
         }
     }
@@ -127,7 +129,7 @@ bool instalar(const QString &raiz, const QDir &dir, bool soloLoQueFalta, QString
             if (habia && !QFileInfo::exists(puesto)) QFile::rename(anterior, puesto);
             deshacer();
             for (const QFileInfo &x : entradas) borrar(dir.filePath(x.fileName() + QStringLiteral(".nuevo")));
-            if (error) *error = QStringLiteral("no he podido cambiar %1 en %2").arg(e.fileName(), dir.path());
+            if (error) *error = QCoreApplication::translate("Paquete", "no he podido cambiar %1 en %2").arg(e.fileName(), dir.path());
             return false;
         }
         hechos << e.fileName();

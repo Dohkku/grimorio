@@ -28,17 +28,94 @@ function trozos(texto) {
     return out
 }
 
-function esCampo(trozo, campo) {
-    return trozo.toLowerCase().indexOf(campo + ":") === 0
+/// Los campos que escriben los botones, con todos los nombres con que el
+/// núcleo los entiende (`filtro.rs`). El primero es el de dentro, con el que
+/// los piden los botones; el segundo, el que se escribe con la interfaz en
+/// inglés. Así quien la tiene en inglés ve `type:image` en el buscador, y una
+/// carpeta dinámica guardada en un idioma se sigue leyendo en el otro.
+var CAMPOS = {
+    tipo: ["tipo", "type", "kind", "familia"],
+    orden: ["orden", "sort"],
+    fecha: ["fecha", "date", "importado", "cuando"],
+    estrellas: ["estrellas", "stars"],
+    orientacion: ["orientacion", "orientation", "orientación", "shape", "orient"],
+    repetidos: ["repetidos", "duplicates", "repetido", "duplicados", "dupes"],
+    papelera: ["papelera", "trash"],
+    etiquetado: ["etiquetado", "tagged", "etiquetada"],
+    etiqueta: ["etiqueta", "tag", "etiquetas", "tags"],
+    adulto: ["adulto", "adult", "+18"]
 }
 
-/// El valor de un campo, o "" si no está.
+/// Los valores que cambian de un idioma a otro, de dentro → en inglés. Los que
+/// no están aquí (números, colores, `7d`) se escriben igual en los dos.
+var VALORES = {
+    tipo: { imagen: "image", video: "video", audio: "audio", modelo: "model",
+            documento: "document", tipografia: "font", raw: "raw" },
+    orden: { recientes: "newest", antiguos: "oldest", nombre: "name", peso: "size",
+             estrellas: "stars", azar: "random", manual: "manual" },
+    fecha: { hoy: "today", ayer: "yesterday", "año": "year" },
+    orientacion: { apaisada: "landscape", vertical: "portrait", cuadrada: "square" },
+    repetidos: { si: "yes", no: "no" },
+    papelera: { si: "yes", no: "no" },
+    etiquetado: { si: "yes", no: "no" },
+    adulto: { si: "yes", no: "no" }
+}
+
+function enIngles() {
+    return Qt.uiLanguage === "en"
+}
+
+/// Cómo se escribe un campo en el buscador, en el idioma de la interfaz.
+function nombreCampo(campo) {
+    var c = CAMPOS[campo]
+    return c && enIngles() ? c[1] : campo
+}
+
+/// Un valor de dentro, como se escribe en el buscador.
+function valorEscrito(campo, valor) {
+    var v = VALORES[campo]
+    return v && enIngles() && v[valor] !== undefined ? v[valor] : valor
+}
+
+/// Un valor escrito en cualquiera de los dos idiomas, como se piensa dentro.
+function valorDeDentro(campo, valor) {
+    var v = VALORES[campo]
+    if (!v) return valor
+    var l = valor.toLowerCase()
+    if (l === "sí") return "si"
+    for (var k in v)
+        if (v[k] === l || k === l) return k
+    return valor
+}
+
+/// Si el trozo es ese campo, con cualquiera de sus nombres.
+function esCampo(trozo, campo) {
+    var l = trozo.toLowerCase()
+    var nombres = CAMPOS[campo] || [campo]
+    for (var i = 0; i < nombres.length; ++i)
+        if (l.indexOf(nombres[i] + ":") === 0) return true
+    return false
+}
+
+/// Lo que va detrás de los dos puntos.
+function valorDe(trozo) {
+    return trozo.substring(trozo.indexOf(":") + 1)
+}
+
+/// El valor de un campo, o "" si no está. Como se piensa dentro: `si`, y no
+/// `yes`, aunque esté escrito en inglés.
 function leer(texto, campo) {
     var t = trozos(texto)
     for (var i = 0; i < t.length; ++i) {
-        if (esCampo(t[i], campo)) return t[i].substring(campo.length + 1)
+        if (esCampo(t[i], campo)) return valorDeDentro(campo, valorDe(t[i]))
     }
     return ""
+}
+
+/// Un filtro entero como se escribe en el buscador: `tipo:video`, o
+/// `type:video` con la interfaz en inglés.
+function filtro(campo, valor) {
+    return nombreCampo(campo) + ":" + valorEscrito(campo, valor)
 }
 
 /// Pone un campo, lo cambia o lo quita si el valor va vacío.
@@ -49,7 +126,9 @@ function poner(texto, campo, valor) {
     var t = trozos(texto)
     var salida = []
     var puesto = false
-    var nuevo = valor.length === 0 ? "" : campo + ":" + (valor.indexOf(" ") >= 0 ? '"' + valor + '"' : valor)
+    var escrito = valorEscrito(campo, valor)
+    var nuevo = valor.length === 0 ? "" : nombreCampo(campo) + ":"
+                + (escrito.indexOf(" ") >= 0 ? '"' + escrito + '"' : escrito)
     for (var i = 0; i < t.length; ++i) {
         if (esCampo(t[i], campo)) {
             if (nuevo.length > 0 && !puesto) { salida.push(nuevo); puesto = true }
@@ -67,12 +146,12 @@ function alternar(texto, campo, valor) {
     var salida = []
     var estaba = false
     for (var i = 0; i < t.length; ++i) {
-        var esta = esCampo(t[i], campo) && t[i].substring(campo.length + 1) === valor
+        var esta = esCampo(t[i], campo) && valorDe(t[i]) === valor
         if (esta) { estaba = true; continue }
         salida.push(t[i].indexOf(" ") >= 0 ? '"' + t[i] + '"' : t[i])
     }
     if (!estaba) {
-        salida.push(campo + ":" + (valor.indexOf(" ") >= 0 ? '"' + valor + '"' : valor))
+        salida.push(nombreCampo(campo) + ":" + (valor.indexOf(" ") >= 0 ? '"' + valor + '"' : valor))
     }
     return salida.join(" ")
 }
@@ -124,8 +203,13 @@ function cambiarUltima(texto, nuevo) {
 /// Un nombre para una carpeta dinámica hecho con sus filtros: «comida · sin
 /// picante · vídeos». Se pone de partida; quien quiera otro, la renombra.
 function nombreDe(texto) {
-    var FAMILIAS = { imagen: "imágenes", video: "vídeos", audio: "audio", modelo: "3D",
-                     documento: "documentos", tipografia: "fuentes", raw: "RAW" }
+    var en = Qt.uiLanguage === "en"
+    var FAMILIAS = en
+        ? { imagen: "images", video: "videos", audio: "audio", modelo: "3D",
+            documento: "documents", tipografia: "fonts", raw: "RAW" }
+        : { imagen: "imágenes", video: "vídeos", audio: "audio", modelo: "3D",
+            documento: "documentos", tipografia: "fuentes", raw: "RAW" }
+    var o = en ? " or " : " o "
     var partes = []
     var t = trozos(texto)
     for (var i = 0; i < t.length; ++i) {
@@ -135,28 +219,28 @@ function nombreDe(texto) {
         var dicho = ""
         var sug = null
         for (var k = 0; k < SUGERENCIAS.length; ++k)
-            if (SUGERENCIAS[k].token === trozo) sug = SUGERENCIAS[k]
+            if (esSugerencia(trozo, SUGERENCIAS[k])) sug = SUGERENCIAS[k]
         if (sug) {
-            dicho = sug.texto.replace(/^tipo: /, "").replace(/^forma: /, "")
+            dicho = textoDe(sug).replace(/^(tipo|type|forma|shape): /, "")
         } else if (trozo.charAt(0) === "#") {
-            dicho = trozo.substring(1).split("|").join(" o ")
+            dicho = trozo.substring(1).split("|").join(o)
         } else if (esCampo(trozo, "etiqueta")) {
-            dicho = trozo.substring(9).split("|").join(" o ")
+            dicho = valorDe(trozo).split("|").join(o)
         } else if (esCampo(trozo, "tipo") || esCampo(trozo, "ext")) {
-            var v = trozo.substring(trozo.indexOf(":") + 1).toLowerCase()
+            var v = valorDeDentro("tipo", valorDe(trozo).toLowerCase())
             dicho = FAMILIAS[v] || v
         } else if (esCampo(trozo, "estrellas")) {
-            dicho = trozo.substring(10).replace(">=", "≥").replace("<=", "≤") + " ★"
+            dicho = valorDe(trozo).replace(">=", "≥").replace("<=", "≤") + " ★"
         } else if (esCampo(trozo, "orden")) {
             continue
         } else {
             dicho = trozo.replace(":", " ")
         }
-        if (dicho.length > 0) partes.push((fuera ? "sin " : "") + dicho)
+        if (dicho.length > 0) partes.push((fuera ? (en ? "without " : "sin ") : "") + dicho)
     }
     var n = partes.join(" · ")
     if (n.length > 60) n = n.substring(0, 59) + "…"
-    return n.length > 0 ? n : "carpeta dinámica"
+    return n.length > 0 ? n : (en ? "smart folder" : "carpeta dinámica")
 }
 
 /// `#etiqueta` como se escribe en el buscador: entre comillas si lleva
@@ -167,21 +251,42 @@ function comoEtiqueta(nombre) {
 
 /// Filtros que se sugieren al escribir: lo que se teclea, y lo que se pone.
 var SUGERENCIAS = [
-    { claves: ["imagen", "imágenes", "foto", "fotos"], texto: "tipo: imágenes", token: "tipo:imagen", icono: "cuadricula" },
-    { claves: ["video", "vídeo", "vídeos", "videos", "clip"], texto: "tipo: vídeos", token: "tipo:video", icono: "video" },
-    { claves: ["audio", "sonido", "música", "musica"], texto: "tipo: audio", token: "tipo:audio", icono: "orden" },
-    { claves: ["3d", "modelo", "stl", "malla"], texto: "tipo: 3D", token: "tipo:modelo", icono: "forma" },
-    { claves: ["pdf", "documento"], texto: "tipo: documentos", token: "tipo:documento", icono: "pegar" },
-    { claves: ["fuente", "tipografía", "tipografia", "letra"], texto: "tipo: fuentes", token: "tipo:tipografia", icono: "etiqueta" },
-    { claves: ["hoy"], texto: "importado hoy", token: "fecha:hoy", icono: "fecha" },
-    { claves: ["ayer"], texto: "importado ayer", token: "fecha:ayer", icono: "fecha" },
-    { claves: ["semana", "reciente", "recientes"], texto: "importado esta semana", token: "fecha:7d", icono: "fecha" },
-    { claves: ["mes"], texto: "importado este mes", token: "fecha:30d", icono: "fecha" },
-    { claves: ["repetidos", "duplicados", "copias"], texto: "solo repetidos", token: "repetidos:si", icono: "repetidos" },
-    { claves: ["estrellas", "favoritos", "mejores"], texto: "4 estrellas o más", token: "estrellas:>=4", icono: "estrella" },
-    { claves: ["apaisada", "horizontal"], texto: "forma: apaisada", token: "orientacion:apaisada", icono: "forma" },
-    { claves: ["vertical", "retrato"], texto: "forma: vertical", token: "orientacion:vertical", icono: "forma" },
-    { claves: ["cuadrada"], texto: "forma: cuadrada", token: "orientacion:cuadrada", icono: "forma" },
-    { claves: ["papelera", "tirado"], texto: "la papelera", token: "papelera:si", icono: "papelera" },
-    { claves: ["+18", "adulto"], texto: "marcado +18", token: "adulto:si", icono: "escudo" }
+    { claves: ["imagen", "imágenes", "foto", "fotos", "image", "images", "photo", "photos", "picture"], texto: "tipo: imágenes", en: "type: images", token: "tipo:imagen", icono: "cuadricula" },
+    { claves: ["video", "vídeo", "vídeos", "videos", "clip"], texto: "tipo: vídeos", en: "type: videos", token: "tipo:video", icono: "video" },
+    { claves: ["audio", "sonido", "música", "musica", "sound", "music"], texto: "tipo: audio", en: "type: audio", token: "tipo:audio", icono: "orden" },
+    { claves: ["3d", "modelo", "stl", "malla", "model", "mesh"], texto: "tipo: 3D", en: "type: 3D", token: "tipo:modelo", icono: "forma" },
+    { claves: ["pdf", "documento", "document"], texto: "tipo: documentos", en: "type: documents", token: "tipo:documento", icono: "pegar" },
+    { claves: ["fuente", "tipografía", "tipografia", "letra", "font", "typeface"], texto: "tipo: fuentes", en: "type: fonts", token: "tipo:tipografia", icono: "etiqueta" },
+    { claves: ["hoy", "today"], texto: "importado hoy", en: "imported today", token: "fecha:hoy", icono: "fecha" },
+    { claves: ["ayer", "yesterday"], texto: "importado ayer", en: "imported yesterday", token: "fecha:ayer", icono: "fecha" },
+    { claves: ["semana", "reciente", "recientes", "week", "recent"], texto: "importado esta semana", en: "imported this week", token: "fecha:7d", icono: "fecha" },
+    { claves: ["mes", "month"], texto: "importado este mes", en: "imported this month", token: "fecha:30d", icono: "fecha" },
+    { claves: ["repetidos", "duplicados", "copias", "duplicates", "dupes"], texto: "solo repetidos", en: "duplicates only", token: "repetidos:si", icono: "repetidos" },
+    { claves: ["estrellas", "favoritos", "mejores", "stars", "rating", "favorites", "best"], texto: "4 estrellas o más", en: "4 stars or more", token: "estrellas:>=4", icono: "estrella" },
+    { claves: ["apaisada", "horizontal", "landscape"], texto: "forma: apaisada", en: "shape: landscape", token: "orientacion:apaisada", icono: "forma" },
+    { claves: ["vertical", "retrato", "portrait"], texto: "forma: vertical", en: "shape: portrait", token: "orientacion:vertical", icono: "forma" },
+    { claves: ["cuadrada", "square"], texto: "forma: cuadrada", en: "shape: square", token: "orientacion:cuadrada", icono: "forma" },
+    { claves: ["papelera", "tirado", "trash", "deleted"], texto: "la papelera", en: "the trash", token: "papelera:si", icono: "papelera" },
+    { claves: ["+18", "adulto", "adult", "nsfw"], texto: "marcado +18", en: "marked 18+", token: "adulto:si", icono: "escudo" }
 ]
+
+/// Lo que escribe una sugerencia en el buscador, en el idioma de la interfaz.
+function tokenDe(sug) {
+    var i = sug.token.indexOf(":")
+    return filtro(sug.token.substring(0, i), sug.token.substring(i + 1))
+}
+
+/// Si un trozo del buscador es esa sugerencia, escrita en cualquier idioma.
+function esSugerencia(trozo, sug) {
+    var i = sug.token.indexOf(":")
+    var campo = sug.token.substring(0, i)
+    return esCampo(trozo, campo)
+           && valorDeDentro(campo, valorDe(trozo)) === sug.token.substring(i + 1)
+}
+
+/// Lo que se enseña de una sugerencia, en el idioma de la interfaz. El token
+/// que se escribe en el buscador es el mismo en los dos: el núcleo los
+/// entiende todos (ver `filtro.rs`).
+function textoDe(sug) {
+    return Qt.uiLanguage === "en" ? sug.en : sug.texto
+}

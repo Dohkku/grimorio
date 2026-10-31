@@ -242,7 +242,13 @@ void Novedades::ignorar()
 
 void Novedades::abrir()
 {
-    QDesktopServices::openUrl(m_enlace);
+    // La web tiene su versión en inglés en /en/: si el enlace es la portada,
+    // se abre la del idioma de la interfaz.
+    QUrl u = m_enlace;
+    if (m_archivoCambios.endsWith(QLatin1String("CHANGELOG.md"))
+        && (u.path().isEmpty() || u.path() == QLatin1String("/")))
+        u.setPath(QStringLiteral("/en/"));
+    QDesktopServices::openUrl(u);
 }
 
 bool Novedades::instalable() const
@@ -455,7 +461,7 @@ bool Novedades::cambiosPendientes() const
 
 QVariantList Novedades::cambios(bool todos) const
 {
-    QFile f(QStringLiteral(":/NOVEDADES.md"));
+    QFile f(m_archivoCambios);
     if (!f.open(QIODevice::ReadOnly)) return {};
     const QString md = QString::fromUtf8(f.readAll());
 

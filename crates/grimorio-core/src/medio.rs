@@ -16,6 +16,7 @@
 
 use crate::error::Result;
 use crate::externo::{self, Temporal};
+use crate::idioma::{self, t};
 use crate::image_ops;
 use image::DynamicImage;
 use serde::{Deserialize, Serialize};
@@ -250,7 +251,11 @@ pub fn abrir(ruta: &Path, ext: &str, bytes: &[u8]) -> Result<Lienzo> {
             if !image_ops::is_supported(ext) {
                 // Un formato de la familia que este núcleo todavía no decodifica
                 // —SVG, AVIF— entra igual.
-                return Ok(Lienzo::a_ciegas(format!("todavía no sé dibujar .{ext}")));
+                return Ok(Lienzo::a_ciegas(if idioma::ingles() {
+                    format!("can't draw .{ext} yet")
+                } else {
+                    format!("todavía no sé dibujar .{ext}")
+                }));
             }
             Ok(Lienzo::de_imagen(image_ops::decode(bytes)?))
         }
@@ -264,10 +269,14 @@ pub fn abrir(ruta: &Path, ext: &str, bytes: &[u8]) -> Result<Lienzo> {
             // inventado sería peor que decir el que se puede comprobar.
             Some(jpeg) => Ok(Lienzo::de_imagen(image_ops::decode(jpeg)?)),
             None => Ok(Lienzo::a_ciegas(
-                "el negativo no lleva vista previa dentro".to_string(),
+                t("el negativo no lleva vista previa dentro", "the raw file has no preview inside").to_string(),
             )),
         },
-        None => Ok(Lienzo::a_ciegas(format!("extensión desconocida: .{ext}"))),
+        None => Ok(Lienzo::a_ciegas(if idioma::ingles() {
+            format!("unknown extension: .{ext}")
+        } else {
+            format!("extensión desconocida: .{ext}")
+        })),
     }
 }
 
@@ -325,7 +334,7 @@ fn de_video(ruta: &Path) -> Lienzo {
             ancho,
             alto,
             duracion_ms,
-            sin_imagen: Some("hace falta ffmpeg para ver los vídeos".into()),
+            sin_imagen: Some(t("hace falta ffmpeg para ver los vídeos", "ffmpeg is needed to see videos").into()),
             ..Default::default()
         };
     }
@@ -381,7 +390,7 @@ fn de_video(ruta: &Path) -> Lienzo {
             ancho,
             alto,
             duracion_ms,
-            sin_imagen: Some("no pude sacar un fotograma".into()),
+            sin_imagen: Some(t("no pude sacar un fotograma", "couldn't get a frame").into()),
             ..Default::default()
         },
     }
@@ -417,7 +426,7 @@ fn de_audio(ruta: &Path, bytes: &[u8]) -> Lienzo {
         }
         None => Lienzo {
             duracion_ms,
-            sin_imagen: Some("el archivo no lleva carátula dentro y no pude leer su sonido".into()),
+            sin_imagen: Some(t("el archivo no lleva carátula dentro y no pude leer su sonido", "the file has no cover art inside and its sound couldn't be read").into()),
             ..Default::default()
         },
     }
@@ -513,7 +522,7 @@ fn de_pdf(ruta: &Path) -> Lienzo {
     if !externo::hay("pdftoppm") {
         return Lienzo {
             paginas,
-            sin_imagen: Some("hace falta poppler-utils para ver los PDF".into()),
+            sin_imagen: Some(t("hace falta poppler-utils para ver los PDF", "poppler-utils is needed to see PDFs").into()),
             ..Default::default()
         };
     }
@@ -556,7 +565,7 @@ fn de_pdf(ruta: &Path) -> Lienzo {
         }
         None => Lienzo {
             paginas,
-            sin_imagen: Some("no pude dibujar la primera página".into()),
+            sin_imagen: Some(t("no pude dibujar la primera página", "couldn't draw the first page").into()),
             ..Default::default()
         },
     }

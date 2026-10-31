@@ -58,6 +58,7 @@ using Aplicacion = QGuiApplication;
 #include <QTextStream>
 #include <QThreadPool>
 #include <QTimer>
+#include <QTranslator>
 
 namespace {
 
@@ -211,14 +212,14 @@ QString bibliotecaPorDefecto(QString *error, const QString &menos = QString())
     }
     const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (docs.isEmpty()) {
-        *error = QStringLiteral("falta la ruta de la biblioteca (o la variable GRIMORIO_LIB)");
+        *error = QCoreApplication::translate("Arranque", "falta la ruta de la biblioteca (o la variable GRIMORIO_LIB)");
         return {};
     }
     const QString nueva = QDir(docs).filePath(QStringLiteral("Grimorio.grimorio"));
     const QByteArray b = nueva.toUtf8();
     const auto *p = reinterpret_cast<const uint8_t *>(b.constData());
     if (!esBiblioteca(nueva) && !grim_crear_biblioteca(p, uint32_t(b.size()))) {
-        *error = QStringLiteral("no pude crear una biblioteca en «%1»").arg(nueva);
+        *error = QCoreApplication::translate("Arranque", "no pude crear una biblioteca en «%1»").arg(nueva);
         return {};
     }
     return nueva;
@@ -296,6 +297,17 @@ int main(int argc, char **argv)
         app.setWindowIcon(icono);
     }
 
+    // Los textos se escriben en español y el inglés va traducido aparte
+    // (app/traducciones/LEEME.md). Lo primero, antes de nada que hable: los
+    // avisos de una biblioteca que no está salen antes de crear los ajustes.
+    const bool ingles = Ajustes::idiomaEfectivo(
+        QSettings().value(QStringLiteral("interfaz/idioma")).toString()) == QLatin1String("en");
+    QTranslator traductor;
+    if (ingles && traductor.load(QStringLiteral(":/traducciones/grimorio_en.qm")))
+        app.installTranslator(&traductor);
+    // Y lo que dice el núcleo (avisos, lo que se deshace), en el mismo.
+    grim_idioma(ingles);
+
     Args args;
     QString error;
     if (!parsear(app.arguments(), &args, &error)) {
@@ -317,14 +329,14 @@ int main(int argc, char **argv)
             // automáticas sí fallan, porque medir otra biblioteca sin
             // avisar daría números que no son.
             const QString motivo = QFileInfo::exists(pedida)
-                                       ? QStringLiteral("«%1» no es una biblioteca de Grimorio").arg(pedida)
-                                       : QStringLiteral("no encuentro la biblioteca «%1»").arg(pedida);
+                                       ? QCoreApplication::translate("Arranque", "«%1» no es una biblioteca de Grimorio").arg(pedida)
+                                       : QCoreApplication::translate("Arranque", "no encuentro la biblioteca «%1»").arg(pedida);
             if (automatica) {
                 avisarDeError(motivo);
                 return 1;
             }
             QTextStream(stderr) << "aviso: " << motivo << "; abro otra\n";
-            avisoInicial = motivo + QStringLiteral("; se ha abierto otra");
+            avisoInicial = QCoreApplication::translate("Arranque", "%1; se ha abierto otra").arg(motivo);
             args.lib = bibliotecaPorDefecto(&error, QDir(pedida).absolutePath());
         }
     } else {
@@ -398,15 +410,14 @@ int main(int argc, char **argv)
         qint64 pid = 0;
         QString maquina, programa;
         cerrojo.getLockInfo(&pid, &maquina, &programa);
-        avisarDeError(QStringLiteral("«%1» ya está abierta%2")
-                          .arg(args.lib,
-                               pid > 0 ? QStringLiteral(" (proceso %1)").arg(pid) : QString()));
+        avisarDeError(pid > 0 ? QCoreApplication::translate("Arranque", "«%1» ya está abierta (proceso %2)").arg(args.lib).arg(pid)
+                              : QCoreApplication::translate("Arranque", "«%1» ya está abierta").arg(args.lib));
         return 1;
     }
 
     Nucleo nucleo;
     if (!nucleo.abrir(args.lib)) {
-        avisarDeError(QStringLiteral("«%1» no es una biblioteca de Grimorio").arg(args.lib));
+        avisarDeError(QCoreApplication::translate("Arranque", "«%1» no es una biblioteca de Grimorio").arg(args.lib));
         return 1;
     }
 
@@ -450,6 +461,9 @@ int main(int argc, char **argv)
     // como el recorrido de pruebas.
     Novedades novedades(&ajustes, QStringLiteral(GRIMORIO_VERSION),
                         !automatica && qEnvironmentVariableIsEmpty("GRIMORIO_SIN_RED"));
+    novedades.setArchivoCambios(ajustes.idiomaEnUso() == QLatin1String("en")
+                                    ? QStringLiteral(":/CHANGELOG.md")
+                                    : QStringLiteral(":/NOVEDADES.md"));
     novedades.setRelanzar(heredados + QStringList{ QStringLiteral("--lib"), args.lib });
     novedades.prepararCambios(yaSeUsaba, !automatica);
     // Una instalación que se completa sola (ver novedades.h) trae `grim-recorte`
@@ -468,6 +482,9 @@ int main(int argc, char **argv)
     qmlRegisterType<Visor3D>("Grimorio", 1, 0, "Visor3D");
 
     QQmlApplicationEngine motor;
+    // `Qt.uiLanguage`: lo que se arma en JavaScript (plurales, nombres de los
+    // filtros) lo mira para hablar en el mismo idioma que los `qsTr`.
+    motor.setUiLanguage(ajustes.idiomaEnUso());
     motor.addImageProvider(QStringLiteral("grim"), proveedor); // el motor lo adopta
     auto *ctx = motor.rootContext();
     ctx->setContextProperty(QStringLiteral("nucleo"), &nucleo);

@@ -775,7 +775,7 @@ Rectangle {
                             width: (rejillaAcciones.width - rejillaAcciones.columnSpacing) / 2
                             altura: Math.round(tema.fuente * 1.9)
                             icono: modelData.icono
-                            texto: modelData.texto
+                            texto: modelData.corto || modelData.texto
                             // El atajo, que en el botón no cabe; el texto
                             // también, porque recortado puede no leerse entero.
                             pista: modelData.atajo ? modelData.texto + " (" + modelData.atajo + ")"

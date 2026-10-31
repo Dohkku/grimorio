@@ -82,6 +82,13 @@ impl PackWriter {
             libre = cerrojo.try_lock().is_ok();
         }
         if !libre {
+            if crate::idioma::ingles() {
+                return Err(Error::Invalid(format!(
+                    "another process is writing to {}\n  \
+                     close the other Grimorio window and try again",
+                    path.display()
+                )));
+            }
             return Err(Error::Invalid(format!(
                 "otro proceso está escribiendo en {}\n  \
                  cierra la otra instancia de Grimorio e inténtalo de nuevo",
@@ -101,10 +108,11 @@ impl PackWriter {
             file.read_exact(&mut magic)
                 .map_err(|e| Error::io(path, e))?;
             if &magic != MAGIC {
-                return Err(Error::Invalid(format!(
-                    "{} no es un pack de miniaturas de Grimorio",
-                    path.display()
-                )));
+                return Err(Error::Invalid(if crate::idioma::ingles() {
+                    format!("{} is not a Grimorio thumbnail pack", path.display())
+                } else {
+                    format!("{} no es un pack de miniaturas de Grimorio", path.display())
+                }));
             }
             // Si el proceso anterior murió a mitad de un registro, el final
             // del archivo es medio registro. Añadir detrás lo dejaba ahí en
@@ -131,7 +139,7 @@ impl PackWriter {
     pub fn append(&mut self, id: &str, data: &[u8]) -> Result<ThumbRef> {
         let idb = id.as_bytes();
         if idb.len() > u16::MAX as usize {
-            return Err(Error::Invalid("id demasiado largo".into()));
+            return Err(Error::Invalid(crate::idioma::t("id demasiado largo", "id too long").into()));
         }
         let mut head = [0u8; REC_HEADER_LEN];
         head[0] = REC_MAGIC;

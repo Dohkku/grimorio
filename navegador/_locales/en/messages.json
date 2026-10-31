@@ -1,0 +1,332 @@
+{
+  "idioma": {
+    "message": "en",
+    "description": "Código del idioma de estos textos"
+  },
+  "extName": {
+    "message": "Grimorio",
+    "description": "Nombre de la extensión"
+  },
+  "extDescription": {
+    "message": "Save images to your Grimorio library: with right click on any website and with a button on Instagram, TikTok and 4chan.",
+    "description": "Descripción de la extensión"
+  },
+  "menuGuardar": {
+    "message": "Save to Grimorio",
+    "description": "Entrada del clic derecho"
+  },
+  "errorSinConectar": {
+    "message": "Grimorio is not connected to the browser yet: run «grim navegador instalar»",
+    "description": "Error sin el programa nativo"
+  },
+  "errorSinDireccion": {
+    "message": "that image has no address to download from"
+  },
+  "errorSinRespuesta": {
+    "message": "Grimorio did not answer"
+  },
+  "avisoGuardando": {
+    "message": "Saving to Grimorio…"
+  },
+  "avisoGuardandoVarias": {
+    "message": "Saving $n1$ to Grimorio…",
+    "description": "$1: cuántas",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "avisoBuscando": {
+    "message": "Looking for the original…"
+  },
+  "avisoVer": {
+    "message": "view in Grimorio",
+    "description": "Botón del aviso"
+  },
+  "avisoCerrar": {
+    "message": "close",
+    "description": "Título del botón de cerrar el aviso"
+  },
+  "avisoNoGuardado": {
+    "message": "Not saved"
+  },
+  "avisoSigueBajando": {
+    "message": "Grimorio is still downloading it"
+  },
+  "avisoEsGrande": {
+    "message": "It is large; it will arrive in a moment."
+  },
+  "avisoYaLaTenias": {
+    "message": "Already in Grimorio"
+  },
+  "avisoGuardada": {
+    "message": "Saved to Grimorio"
+  },
+  "avisoDeTantos": {
+    "message": "$n1$ of $n2$ in Grimorio",
+    "description": "$1 de $2 guardadas",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      },
+      "n2": {
+        "content": "$2"
+      }
+    }
+  },
+  "cuentaNueva": {
+    "message": "$n1$ new",
+    "description": "Una",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "cuentaNuevas": {
+    "message": "$n1$ new",
+    "description": "Varias",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "cuentaYaLaTenias": {
+    "message": "$n1$ already there",
+    "description": "Una",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "cuentaYaLasTenias": {
+    "message": "$n1$ already there",
+    "description": "Varias",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "cuentaEnCamino": {
+    "message": "$n1$ on the way",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "cuentaConError": {
+    "message": "$n1$ failed",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "avisoNadaQueGuardar": {
+    "message": "Nothing found to save"
+  },
+  "avisoNadaBajoRatonFoto": {
+    "message": "There was no photo or video under the mouse",
+    "description": "Instagram"
+  },
+  "avisoNadaBajoRatonVideo": {
+    "message": "There was no video or photo under the mouse",
+    "description": "TikTok y 4chan"
+  },
+  "botonGuardar": {
+    "message": "to Grimorio",
+    "description": "Botón encima de la foto"
+  },
+  "botonTodas": {
+    "message": "all",
+    "description": "Botón de guardar todo el carrusel"
+  },
+  "nombreConIndice": {
+    "message": "$n1$ ($n2$ of $n3$)",
+    "description": "Nombre de una del carrusel",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      },
+      "n2": {
+        "content": "$2"
+      },
+      "n3": {
+        "content": "$3"
+      }
+    }
+  },
+  "comoOriginal": {
+    "message": "original"
+  },
+  "comoOriginales": {
+    "message": "originals"
+  },
+  "comoTamanoOriginal": {
+    "message": "$n1$×$n2$ · original",
+    "description": "Ancho y alto",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      },
+      "n2": {
+        "content": "$2"
+      }
+    }
+  },
+  "comoYaBajado": {
+    "message": "already downloaded ($n1$)",
+    "description": "$1: el motivo",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "comoLoQueSeVe": {
+    "message": "what is on screen ($n1$)",
+    "description": "$1: el motivo",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "comoMiniaturaCatalogo": {
+    "message": "catalog thumbnail",
+    "description": "4chan"
+  },
+  "motivoQuePost": {
+    "message": "can't tell which post it is",
+    "description": "Instagram"
+  },
+  "motivoDeQuePost": {
+    "message": "can't tell which post it belongs to",
+    "description": "TikTok y 4chan"
+  },
+  "motivoApiContesto": {
+    "message": "the API answered $n1$",
+    "description": "$1: código HTTP",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "motivoApiSinFotos": {
+    "message": "the API returned no photos"
+  },
+  "motivoApiNoContesto": {
+    "message": "the API did not answer ($n1$)",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "motivoCualDelCarrusel": {
+    "message": "can't tell which one of the carousel it is"
+  },
+  "motivoTikTokContesto": {
+    "message": "TikTok answered $n1$",
+    "description": "$1: código HTTP",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "motivoTikTokNoContesto": {
+    "message": "TikTok did not answer ($n1$)",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "motivoSinDatosDelPost": {
+    "message": "the post page does not include its data"
+  },
+  "motivoSinArchivo": {
+    "message": "TikTok did not give the file"
+  },
+  "ventanaMirando": {
+    "message": "checking…"
+  },
+  "ventanaGuardarEn": {
+    "message": "save to",
+    "description": "Elegir carpeta"
+  },
+  "ventanaUltimas": {
+    "message": "Recently saved"
+  },
+  "ventanaPista": {
+    "message": "Right click on an image → «Save to Grimorio». On Instagram, the button shows up when you hover over a photo."
+  },
+  "ventanaSinConectar": {
+    "message": "Grimorio is not connected to the browser yet. In a terminal:",
+    "description": "Le sigue el comando"
+  },
+  "ventanaCerrada": {
+    "message": "Grimorio is not open. Saving something opens it."
+  },
+  "ventanaSinRespuesta": {
+    "message": "no answer from Grimorio"
+  },
+  "ventanaConectado": {
+    "message": "Connected to «$n1$».",
+    "description": "$1: la biblioteca",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "ventanaSinCarpeta": {
+    "message": "no folder (All)"
+  },
+  "haceAhora": {
+    "message": "now"
+  },
+  "haceMinutos": {
+    "message": "$n1$ min",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "haceHoras": {
+    "message": "$n1$ h",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "haceDias": {
+    "message": "$n1$ d",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "ultimaGuardada": {
+    "message": "saved"
+  },
+  "ultimaRepetida": {
+    "message": "already there"
+  },
+  "ultimaError": {
+    "message": "not saved"
+  },
+  "ultimaEnCamino": {
+    "message": "on the way"
+  }
+}

@@ -42,8 +42,8 @@ Window {
     // Las vistas fijas de la barra lateral son búsquedas como cualquier otra.
     // Escritas aquí una vez, para que la fila que las pone y la que dice cuál
     // está puesta no puedan discrepar.
-    readonly property string consultaSinEtiquetar: "etiquetado:no"
-    readonly property string consultaRecientes: "fecha:7d"
+    readonly property string consultaSinEtiquetar: Consulta.filtro("etiquetado", "no")
+    readonly property string consultaRecientes: Consulta.filtro("fecha", "7d")
 
     /// La carpeta dinámica abierta, o "". Con una abierta, lo que se toque en
     /// el buscador (escribir, quitar un #, un filtro de la fila) cambia sus
@@ -353,8 +353,10 @@ Window {
     /// derecho y para los botones del panel, así no dicen cosas distintas.
     function accionesElemento() {
         const varios = modelo.elegidos > 1
+        // `corto`, si lo hay, es para los botones del panel de detalle, que
+        // son estrechos; el menú enseña `texto`.
         let a = [
-            { texto: qsTr("ver"), valor: "ver", icono: "ojo", atajo: "Intro" },
+            { texto: qsTr("ver"), valor: "ver", icono: "ojo", atajo: qsTr("Intro") },
             { texto: qsTr("abrir fuera"), valor: "fuera", icono: "externo" },
             { texto: qsTr("copiar"), valor: "copiar", icono: "copiar", atajo: "Ctrl+C" },
             { texto: qsTr("exportar…"), valor: "exportar", icono: "exportar", atajo: "Ctrl+E" },
@@ -369,7 +371,7 @@ Window {
         if (!enPapelera) {
             const foco = modelo.actual
             if (varios)
-                a.push({ texto: qsTr("apilar como versiones"), valor: "apilar", icono: "pila" })
+                a.push({ texto: qsTr("apilar como versiones"), corto: qsTr("apilar"), valor: "apilar", icono: "pila" })
             if (foco >= 0 && modelo.versionesDe(foco) > 0)
                 a.push({ texto: qsTr("deshacer la pila"), valor: "desapilar", icono: "pila" })
         }
@@ -386,9 +388,9 @@ Window {
             if (!varios && f === Textos.IMAGEN)
                 ed.push({ texto: qsTr("crear versión…"), valor: "version", icono: "pila" })
             if (recorte.hayPrograma && f === Textos.IMAGEN)
-                ed.push({ texto: qsTr("quitar el fondo"), valor: "fondo", icono: "recorte" })
+                ed.push({ texto: qsTr("quitar el fondo"), corto: qsTr("sin fondo"), valor: "fondo", icono: "recorte" })
             if (!varios && editor.sabe(modelo.actual))
-                ed.push({ texto: qsTr("abrir en el editor (recortar)"), valor: "editor", icono: "lapiz", atajo: "E" })
+                ed.push({ texto: qsTr("abrir en el editor (recortar)"), corto: qsTr("editor"), valor: "editor", icono: "lapiz", atajo: "E" })
             if (ed.length > 0) a = a.concat([{ separador: true }], ed)
         }
         a.push({ texto: modelo.adultoFoco ? qsTr("quitar +18") : qsTr("marcar +18"),
@@ -396,9 +398,9 @@ Window {
         a.push({ separador: true })
         if (enPapelera) {
             a.push({ texto: qsTr("recuperar"), valor: "recuperar", icono: "papelera" })
-            a.push({ texto: qsTr("borrar para siempre…"), valor: "papelera", icono: "papelera", atajo: "Supr" })
+            a.push({ texto: qsTr("borrar para siempre…"), valor: "papelera", icono: "papelera", atajo: qsTr("Supr") })
         } else {
-            a.push({ texto: qsTr("a la papelera"), valor: "papelera", icono: "papelera", atajo: "Supr" })
+            a.push({ texto: qsTr("a la papelera"), valor: "papelera", icono: "papelera", atajo: qsTr("Supr") })
         }
         return a
     }

@@ -8,6 +8,7 @@
 //! escuchar no hay que inventar un segundo idioma.
 
 use crate::Aviso;
+use grimorio_core::idioma::t;
 use grimorio_core::Library;
 use serde::Serialize;
 
@@ -397,7 +398,7 @@ fn versiones(lib: &Library, it: &grimorio_core::Item) -> Vec<VersionJson> {
             principal: v.id == principal,
             receta: v.receta.as_ref().map(|r| {
                 if r.recorte.is_some() {
-                    return "sin fondo".to_string();
+                    return t("sin fondo", "no background").to_string();
                 }
                 let mut s = r.formato.clone();
                 if r.lado > 0 {
@@ -433,7 +434,13 @@ pub fn importado(aviso: &Aviso, lib: &Library, etiqueta: &str, r: &grimorio_core
                 .failed
                 .iter()
                 .map(|(_, e)| e.clone())
-                .chain((r.unsupported > 0).then(|| "no es un tipo de archivo que Grimorio sepa abrir".to_string()))
+                .chain((r.unsupported > 0).then(|| {
+                    t(
+                        "no es un tipo de archivo que Grimorio sepa abrir",
+                        "Grimorio can't open this file type",
+                    )
+                    .to_string()
+                }))
                 .collect(),
         },
     );

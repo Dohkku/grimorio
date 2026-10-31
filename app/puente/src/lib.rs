@@ -102,7 +102,12 @@ impl Nucleo {
         let hilo = std::thread::Builder::new()
             .name("grimorio-nucleo".into())
             .spawn(move || trabajar(lib, rx, vista_hilo, aviso_hilo))
-            .map_err(|e| Error::Invalid(format!("no pude arrancar el hilo del núcleo: {e}")))?;
+            .map_err(|e| {
+                Error::Invalid(format!(
+                    "{}: {e}",
+                    grimorio_core::idioma::t("no pude arrancar el hilo del núcleo", "could not start the core thread")
+                ))
+            })?;
 
         Ok(Nucleo {
             tx,
@@ -261,12 +266,13 @@ fn protegido(aviso: &Aviso, id: u64, f: impl FnOnce() -> Result<()>) {
                 .downcast_ref::<&str>()
                 .map(|s| s.to_string())
                 .or_else(|| panico.downcast_ref::<String>().cloned())
-                .unwrap_or_else(|| "sin detalle".into());
-            eventos::error(
-                aviso,
-                id,
-                &format!("el núcleo falló con este comando ({motivo}); lo demás sigue en pie"),
-            );
+                .unwrap_or_else(|| grimorio_core::idioma::t("sin detalle", "no details").into());
+            let msg = if grimorio_core::idioma::ingles() {
+                format!("the core failed on this command ({motivo}); everything else keeps running")
+            } else {
+                format!("el núcleo falló con este comando ({motivo}); lo demás sigue en pie")
+            };
+            eventos::error(aviso, id, &msg);
         }
     }
 }
@@ -330,7 +336,7 @@ pub unsafe extern "C" fn grim_mandar(n: *mut Nucleo, json: *const u8, len: u32) 
             // El error del comando mal formado se avisa igual: si no, un fallo
             // de escritura en la interfaz se convierte en un botón que no hace
             // nada y nadie sabe por qué.
-            eventos::error(&nucleo.aviso, 0, &format!("comando ilegible: {e}"));
+            eventos::error(&nucleo.aviso, 0, &format!("{}: {e}", grimorio_core::idioma::t("comando ilegible", "unreadable command")));
             return 0;
         }
     };
@@ -759,7 +765,7 @@ pub unsafe extern "C" fn grim_crear_biblioteca(ruta: *const u8, len: u32) -> i32
         .file_name()
         .and_then(|n| n.to_str())
         .map(|n| n.trim_end_matches(".grimorio").to_string())
-        .unwrap_or_else(|| "biblioteca".to_string());
+        .unwrap_or_else(|| grimorio_core::idioma::t("biblioteca", "library").to_string());
     i32::from(Library::open_or_create(ruta, &nombre).is_ok())
 }
 
@@ -2002,6 +2008,13 @@ mod tests {
     }
 }
 
+/// El idioma de lo que el núcleo dice: `true` para inglés. Se llama una vez,
+/// antes de abrir la biblioteca. Ver `grimorio_core::idioma`.
+#[no_mangle]
+pub extern "C" fn grim_idioma(ingles: bool) {
+    grimorio_core::idioma::poner_ingles(ingles);
+}
+
 /// Pide un derivado —proxy de vídeo, onda, página de PDF, malla 3D— y espera
 /// a que esté. Bloquea, y puede tardar minutos: se llama desde un hilo propio,
 /// nunca desde el de la interfaz ni el del bus.
@@ -2026,7 +2039,10 @@ pub unsafe extern "C" fn grim_derivar(
     let bytes = std::slice::from_raw_parts(peticion, len as usize);
     // Un pánico no puede cruzar la frontera C: se vuelve una respuesta más.
     let r = std::panic::catch_unwind(|| derivar::responder(bytes)).unwrap_or_else(
-        |_| serde_json::json!({ "ok": false, "error": "el núcleo falló preparando esto" }),
+        |_| {
+            let e = grimorio_core::idioma::t("el núcleo falló preparando esto", "the core failed preparing this");
+            serde_json::json!({ "ok": false, "error": e })
+        },
     );
     let texto = r.to_string();
     let b = texto.as_bytes();

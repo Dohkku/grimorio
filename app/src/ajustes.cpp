@@ -1,5 +1,7 @@
 #include "ajustes.h"
 
+#include <QLocale>
+
 Ajustes::Ajustes(QObject *padre) : QObject(padre)
 {
     m_anchoLateral = m_disco.value(QStringLiteral("paneles/lateral"), 0.0).toReal();
@@ -15,6 +17,31 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_buscarVersiones = m_disco.value(QStringLiteral("novedades/buscar"), true).toBool();
     m_borrarPila = m_disco.value(QStringLiteral("pilas/borrar"), QString()).toString();
     m_pasoIman = qBound(0.05, m_disco.value(QStringLiteral("editor/pasoIman"), 0.5).toReal(), 60.0);
+    m_idioma = m_disco.value(QStringLiteral("interfaz/idioma"), QString()).toString();
+    m_idiomaEnUso = idiomaEfectivo(m_idioma);
+}
+
+QString Ajustes::idiomaEfectivo(const QString &elegido)
+{
+    if (elegido == QLatin1String("es") || elegido == QLatin1String("en"))
+        return elegido;
+    // El primero de los que prefiere el sistema que sepamos hablar. Con
+    // `LANGUAGE=gl:es` (gallego, y si no, español) sale español; con un
+    // sistema en alemán, inglés, que se entiende en más sitios.
+    for (const QString &l : QLocale::system().uiLanguages()) {
+        if (l.startsWith(QLatin1String("es")))
+            return QStringLiteral("es");
+        if (l.startsWith(QLatin1String("en")))
+            return QStringLiteral("en");
+    }
+    return QStringLiteral("en");
+}
+
+void Ajustes::setIdioma(const QString &v)
+{
+    if (m_idioma == v) return;
+    m_idioma = v;
+    guardar("interfaz/idioma", v);
 }
 
 void Ajustes::guardar(const char *clave, const QVariant &valor)

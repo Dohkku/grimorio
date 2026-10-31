@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import "./idioma.mjs";
 import { JSDOM } from "jsdom";
 
 const require = createRequire(import.meta.url);

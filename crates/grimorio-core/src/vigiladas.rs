@@ -63,20 +63,20 @@ fn guardar(raiz: &Path, v: &[Vigilada]) -> Result<()> {
 pub fn anadir(raiz: &Path, ruta: &str, carpeta: Option<&str>) -> Result<String> {
     let p = Path::new(ruta);
     if !p.is_dir() {
-        return Err(Error::Invalid(format!("«{ruta}» no es una carpeta")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("«{ruta}» is not a folder") } else { format!("«{ruta}» no es una carpeta") }));
     }
     // Vigilar la propia biblioteca metería cada importación de vuelta en sí
     // misma, para siempre.
     if let (Ok(a), Ok(b)) = (p.canonicalize(), raiz.canonicalize()) {
         if a.starts_with(&b) || b.starts_with(&a) {
             return Err(Error::Invalid(
-                "no se puede vigilar la biblioteca ni una carpeta que la contenga".into(),
+                crate::idioma::t("no se puede vigilar la biblioteca ni una carpeta que la contenga", "can't watch the library or a folder that contains it").into(),
             ));
         }
     }
     let mut todas = cargar(raiz)?;
     if todas.iter().any(|v| v.ruta == ruta && v.carpeta.as_deref() == carpeta) {
-        return Err(Error::Invalid(format!("«{ruta}» ya está vinculada")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("«{ruta}» is already linked") } else { format!("«{ruta}» ya está vinculada") }));
     }
     let id = crate::id::new_id();
     todas.push(Vigilada {
@@ -94,7 +94,7 @@ pub fn quitar(raiz: &Path, id: &str) -> Result<()> {
     let antes = todas.len();
     todas.retain(|v| v.id != id);
     if todas.len() == antes {
-        return Err(Error::Invalid(format!("no hay ninguna carpeta vinculada con id {id}")));
+        return Err(Error::Invalid(if crate::idioma::ingles() { format!("no linked folder with id {id}") } else { format!("no hay ninguna carpeta vinculada con id {id}") }));
     }
     guardar(raiz, &todas)
 }

@@ -262,7 +262,7 @@ bool Traer::guardarDatos(const QByteArray &datos, const QString &tipo, const QSt
 {
     if (datos.isEmpty()) return false;
     QString n = nombre.trimmed().isEmpty()
-                    ? QStringLiteral("del navegador %1")
+                    ? tr("del navegador %1")
                           .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss")))
                     : limpiarNombre(nombre);
     const QString ext = extensionDe(tipo.toLower());
@@ -289,7 +289,7 @@ void Traer::guardarImagen(const QImage &img, const QString &carpeta, const QStri
         mal(etiqueta, tr("la imagen del portapapeles está vacía"));
         return;
     }
-    const QString nombre = QStringLiteral("pegado %1.png")
+    const QString nombre = tr("pegado %1.png")
                                .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH.mm.ss")));
     const QString ruta = dirTemporal() + QLatin1Char('/') + nombre;
     if (!img.save(ruta, "PNG")) {

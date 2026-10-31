@@ -15,6 +15,7 @@
 //! Sin la herramienta, el elemento entra igual, a ciegas, como antes.
 
 use crate::externo::{correr, correr_leyendo, Fallo, Temporal};
+use crate::idioma::{ingles, t};
 use image::DynamicImage;
 use std::path::Path;
 use std::time::Duration;
@@ -32,12 +33,13 @@ pub fn es_diseno(ext: &str) -> bool {
 }
 
 fn leer_png(ruta: &Path) -> Result<DynamicImage, String> {
-    let bytes = std::fs::read(ruta).map_err(|e| format!("no salió imagen: {e}"))?;
+    let bytes = std::fs::read(ruta).map_err(|e| format!("{}: {e}", t("no salió imagen", "no image came out")))?;
     crate::image_ops::decode(&bytes).map_err(|e| e.to_string())
 }
 
 fn fallo(quien: &str, f: Fallo) -> String {
     match f {
+        Fallo::NoEsta if ingles() => format!("{quien} is needed to draw it"),
         Fallo::NoEsta => format!("falta {quien} para dibujarlo"),
         otro => format!("{quien}: {otro}"),
     }
@@ -57,7 +59,7 @@ fn de_zip(ruta: &Path, dentro: &[&str]) -> Result<DynamicImage, String> {
             }
         }
     }
-    Err("el archivo no trae vista previa dentro".into())
+    Err(t("el archivo no trae vista previa dentro", "the file has no preview inside").into())
 }
 
 /// Lee una entrada de un zip sin cargar el zip entero: un `.kra` puede pesar
@@ -68,7 +70,7 @@ fn de_zip(ruta: &Path, dentro: &[&str]) -> Result<DynamicImage, String> {
 /// `Ok(None)` es que el zip está bien pero no la trae; `Err`, que no es un zip.
 fn entrada_zip(ruta: &Path, buscada: &str) -> Result<Option<Vec<u8>>, String> {
     use std::io::{Read, Seek, SeekFrom};
-    let no_zip = || "el archivo no es un zip".to_string();
+    let no_zip = || t("el archivo no es un zip", "the file is not a zip").to_string();
     let u16_le = |b: &[u8], o: usize| u16::from_le_bytes([b[o], b[o + 1]]) as usize;
     let u32_le =
         |b: &[u8], o: usize| u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]) as usize;
@@ -98,7 +100,7 @@ fn entrada_zip(ruta: &Path, buscada: &str) -> Result<Option<Vec<u8>>, String> {
     let mut o = 0;
     for _ in 0..n {
         if o + 46 > indice.len() || u32_le(&indice, o) != 0x0201_4b50 {
-            return Err("el índice del zip está roto".into());
+            return Err(t("el índice del zip está roto", "the zip index is broken").into());
         }
         let metodo = u16_le(&indice, o + 10);
         let comprimido = u32_le(&indice, o + 20);
@@ -111,7 +113,7 @@ fn entrada_zip(ruta: &Path, buscada: &str) -> Result<Option<Vec<u8>>, String> {
             continue;
         }
         if local + 30 + comprimido as u64 > largo {
-            return Err("el zip está cortado".into());
+            return Err(t("el zip está cortado", "the zip is truncated").into());
         }
         let mut cab = [0u8; 30];
         f.seek(SeekFrom::Start(local)).map_err(|e| e.to_string())?;
@@ -121,12 +123,19 @@ fn entrada_zip(ruta: &Path, buscada: &str) -> Result<Option<Vec<u8>>, String> {
             .map_err(|e| e.to_string())?;
         let mut datos = vec![0u8; comprimido];
         f.read_exact(&mut datos)
-            .map_err(|_| "el zip está cortado".to_string())?;
+            .map_err(|_| t("el zip está cortado", "the zip is truncated").to_string())?;
         return match metodo {
             0 => Ok(Some(datos)),
             8 => miniz_oxide::inflate::decompress_to_vec(&datos)
                 .map(Some)
-                .map_err(|_| format!("no pude inflar {buscada}")),
+                .map_err(|_| {
+                    if ingles() {
+                        format!("could not inflate {buscada}")
+                    } else {
+                        format!("no pude inflar {buscada}")
+                    }
+                }),
+            m if ingles() => Err(format!("zip with unknown compression {m}")),
             m => Err(format!("zip con compresión {m}, que no conozco")),
         };
     }
@@ -149,11 +158,11 @@ fn imagemagick() -> &'static str {
 
 /// Una imagen de un archivo de diseño.
 pub fn previa(ruta: &Path, ext: &str) -> Result<DynamicImage, String> {
-    let ruta_s = ruta.to_str().ok_or("ruta no es UTF-8")?;
+    let ruta_s = ruta.to_str().ok_or(t("ruta no es UTF-8", "path is not UTF-8"))?;
     let ext = ext.to_ascii_lowercase();
     let salida = Temporal::nuevo("diseno").map_err(|e| e.to_string())?;
     let png = salida.con_extension("png");
-    let png_s = png.to_str().ok_or("ruta temporal no es UTF-8")?;
+    let png_s = png.to_str().ok_or(t("ruta temporal no es UTF-8", "temporary path is not UTF-8"))?;
     let tam = format!("{LADO}x{LADO}>");
     match ext.as_str() {
         "psd" | "psb" => {
@@ -173,7 +182,7 @@ pub fn previa(ruta: &Path, ext: &str) -> Result<DynamicImage, String> {
         }
         "ai" => {
             // pdftoppm añade la extensión él solo.
-            let base = salida.ruta.to_str().ok_or("ruta temporal no es UTF-8")?;
+            let base = salida.ruta.to_str().ok_or(t("ruta temporal no es UTF-8", "temporary path is not UTF-8"))?;
             let lado = LADO.to_string();
             correr(
                 "pdftoppm",
@@ -199,6 +208,7 @@ pub fn previa(ruta: &Path, ext: &str) -> Result<DynamicImage, String> {
         }
         "kra" | "ora" => de_zip(ruta, &["mergedimage.png", "Thumbnails/thumbnail.png", "preview.png"]),
         "sketch" => de_zip(ruta, &["previews/preview.png"]),
+        _ if ingles() => Err(format!("can't draw .{ext} yet")),
         _ => Err(format!("todavía no sé dibujar .{ext}")),
     }
 }
@@ -226,7 +236,7 @@ fn parece_tipografia(cabeza: &[u8], largo: u64) -> bool {
 /// El nombre de la familia lo da `fc-scan`, que en Windows no existe: allí se
 /// queda en el nombre del archivo, que casi siempre basta.
 pub fn muestra_tipografia(ruta: &Path) -> Result<DynamicImage, String> {
-    let ruta_s = ruta.to_str().ok_or("ruta no es UTF-8")?;
+    let ruta_s = ruta.to_str().ok_or(t("ruta no es UTF-8", "path is not UTF-8"))?;
     // Antes de dibujar, que sea una fuente de verdad. Con una rota, ImageMagick
     // no falla: pone su letra por defecto y la muestra sale igual, con lo que
     // un archivo corrupto parecía una tipografía sana. En Linux no se notaba
@@ -240,7 +250,7 @@ pub fn muestra_tipografia(ruta: &Path) -> Result<DynamicImage, String> {
         b
     };
     if !parece_tipografia(&cabeza, std::fs::metadata(ruta).map(|m| m.len()).unwrap_or(0)) {
-        return Err("no es una tipografía que se pueda leer".into());
+        return Err(t("no es una tipografía que se pueda leer", "not a readable font").into());
     }
     let familia = correr_leyendo("fc-scan", &["--format", "%{family[0]} %{style[0]}", ruta_s], TOPE)
         .ok()
@@ -254,18 +264,20 @@ pub fn muestra_tipografia(ruta: &Path) -> Result<DynamicImage, String> {
         });
     let salida = Temporal::nuevo("letra").map_err(|e| e.to_string())?;
     let png = salida.con_extension("png");
-    let png_s = png.to_str().ok_or("ruta temporal no es UTF-8")?;
+    let png_s = png.to_str().ok_or(t("ruta temporal no es UTF-8", "temporary path is not UTF-8"))?;
     // El nombre va con la letra de la propia fuente: si no tiene esos glifos,
     // ImageMagick pone otros, y eso también dice algo de la fuente.
     let titulo = familia.replace('%', "%%");
+    // La frase de muestra, un pangrama en el idioma de quien mira.
+    let (frase1, frase2) = frases_muestra(ingles());
     correr(
         imagemagick(),
         &[
             "-size", "1024x640", "xc:#f2f0ec",
             "-font", ruta_s, "-fill", "#8a8179", "-pointsize", "34", "-annotate", "+56+80", &titulo,
             "-fill", "#1a1a1a", "-pointsize", "170", "-annotate", "+50+290", "Aa Bb Cc",
-            "-pointsize", "50", "-annotate", "+56+420", "El veloz murciélago hindú",
-            "-annotate", "+56+500", "comía feliz cardillo y kiwi.",
+            "-pointsize", "50", "-annotate", "+56+420", frase1,
+            "-annotate", "+56+500", frase2,
             "-fill", "#8a8179", "-annotate", "+56+590", "0123456789 &?!",
             png_s,
         ],
@@ -273,6 +285,15 @@ pub fn muestra_tipografia(ruta: &Path) -> Result<DynamicImage, String> {
     )
     .map_err(|f| fallo("ImageMagick", f))?;
     leer_png(&png)
+}
+
+/// Las dos líneas de la frase de muestra.
+fn frases_muestra(en: bool) -> (&'static str, &'static str) {
+    if en {
+        ("The quick brown fox jumps", "over the lazy dog.")
+    } else {
+        ("El veloz murciélago hindú", "comía feliz cardillo y kiwi.")
+    }
 }
 
 #[cfg(test)]
@@ -448,5 +469,11 @@ mod tests {
         assert!(parece_tipografia(&sana, 44));
         assert!(!parece_tipografia(&sana, 20));
         assert!(parece_tipografia(b"wOF2\0\0\0\0\0\0\0\0", 12));
+    }
+
+    #[test]
+    fn la_frase_de_muestra_va_en_el_idioma_de_quien_mira() {
+        assert_eq!(frases_muestra(false).0, "El veloz murciélago hindú");
+        assert_eq!(frases_muestra(true), ("The quick brown fox jumps", "over the lazy dog."));
     }
 }

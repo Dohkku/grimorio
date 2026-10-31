@@ -1,13 +1,21 @@
 // La ventanita del botón de la extensión: si Grimorio está, y dónde guardar.
 "use strict";
 
+/// Un texto en el idioma del navegador (_locales/).
+const t = (clave, ...huecos) => chrome.i18n.getMessage(clave, huecos.map(String)) || clave;
+
+// Los textos fijos de ventana.html, que en una página de la extensión no se
+// pueden poner con __MSG_…__.
+document.documentElement.lang = t("idioma");
+for (const el of document.querySelectorAll("[data-texto]")) el.textContent = t(el.dataset.texto);
+
 /// Hace cuánto, en corto: «ahora», «5 min», «2 h», «3 d».
 function haceCuanto(ms) {
   const s = Math.max(0, (Date.now() - ms) / 1000);
-  if (s < 60) return "ahora";
-  if (s < 3600) return `${Math.floor(s / 60)} min`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h`;
-  return `${Math.floor(s / 86400)} d`;
+  if (s < 60) return t("haceAhora");
+  if (s < 3600) return t("haceMinutos", Math.floor(s / 60));
+  if (s < 86400) return t("haceHoras", Math.floor(s / 3600));
+  return t("haceDias", Math.floor(s / 86400));
 }
 
 /// Lo último guardado: qué pasó con cada cosa, y pulsar lleva a Grimorio.
@@ -17,7 +25,8 @@ async function pintarUltimas() {
   document.getElementById("ultimas").hidden = false;
   const lista = document.getElementById("lista");
   const MARCA = { guardada: "✓", repetida: "●", error: "✕", "en camino": "◌" };
-  const TEXTO = { guardada: "guardada", repetida: "ya la tenías", error: "no se guardó", "en camino": "en camino" };
+  const TEXTO = { guardada: t("ultimaGuardada"), repetida: t("ultimaRepetida"), error: t("ultimaError"),
+                  "en camino": t("ultimaEnCamino") };
   for (const u of ultimas) {
     const fila = document.createElement("div");
     fila.className = "ultima " + (u.estado === "en camino" ? "camino" : u.estado);
@@ -53,18 +62,20 @@ async function pintarUltimas() {
   if (!r || !r.hola.ok) {
     estado.classList.add("mal");
     if (r && r.hola.sinConectar) {
-      estado.innerHTML = "Falta conectar Grimorio con el navegador. En una terminal: <code>grim navegador instalar</code>";
+      const orden = document.createElement("code");
+      orden.textContent = "grim navegador instalar";
+      estado.replaceChildren(t("ventanaSinConectar") + " ", orden);
     } else if (r && r.hola.cerrada) {
-      estado.textContent = "Grimorio no está abierto. Al guardar algo se abre solo.";
+      estado.textContent = t("ventanaCerrada");
     } else {
-      estado.textContent = (r && r.hola.error) || "no hay respuesta de Grimorio";
+      estado.textContent = (r && r.hola.error) || t("ventanaSinRespuesta");
     }
     return;
   }
 
-  estado.textContent = `Conectado con «${r.hola.biblioteca}».`;
+  estado.textContent = t("ventanaConectado", r.hola.biblioteca);
   destino.hidden = false;
-  const sinCarpeta = new Option("ninguna carpeta (Todo)", "");
+  const sinCarpeta = new Option(t("ventanaSinCarpeta"), "");
   select.add(sinCarpeta);
   for (const c of r.carpetas) {
     select.add(new Option("  ".repeat(c.nivel || 0) + c.nombre, c.id));

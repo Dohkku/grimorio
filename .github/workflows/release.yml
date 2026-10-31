@@ -101,7 +101,7 @@ jobs:
           cp app/build/grimorio.exe target/release/grim.exe target/release/grim-recorte.exe "$d/"
           # La extensión del navegador, para cargarla desde Ajustes → navegador.
           mkdir -p "$d/navegador"
-          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos "$d/navegador/"
+          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos navegador/_locales "$d/navegador/"
           # El modelo de quitar fondos va dentro. Sale de la release propia
           # `modelo-isnet-1` y se comprueba su huella: ver herramientas/modelo.
           mkdir -p "$d/modelos"
@@ -219,27 +219,42 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           sed -i "0,/^version = \".*\"/s//version = \"$v\"/" Cargo.toml
 
-      # El texto de la release es el apartado de esta versión en NOVEDADES.md,
-      # el mismo que enseña la aplicación al actualizar. Va aquí, al principio,
-      # para que una versión sin su apartado falle antes de compilar nada.
+      # El texto de la release es el apartado de esta versión en CHANGELOG.md
+      # (inglés) y debajo, plegado, el de NOVEDADES.md (español): los mismos
+      # que enseña la aplicación al actualizar, según su idioma. Va aquí, al
+      # principio, para que una versión sin sus apartados falle antes de
+      # compilar nada.
       - name: Novedades de la versión
         run: |
           v="${GITHUB_REF_NAME#v}"
           mkdir -p dist
-          awk -v v="$v" '
-            /^## / { sub(/^v/, "", $2); dentro = ($2 == v); next }
-            dentro { print }
-          ' NOVEDADES.md | sed -e '/./,$!d' > dist/novedades.md
-          if [ ! -s dist/novedades.md ]; then
-            echo "falta el apartado «## $v» en NOVEDADES.md"
-            exit 1
-          fi
-          cat >> dist/novedades.md <<EOF
-
-          ---
-
-          **Descargas:** el instalador de Windows (se actualiza solo desde la aplicación), la versión portable para Windows y el paquete de Linux están abajo. También en [grimorio.frederickandrade.com](https://grimorio.frederickandrade.com/).
-          EOF
+          apartado() {
+            awk -v v="$v" '
+              /^## / { sub(/^v/, "", $2); dentro = ($2 == v); next }
+              dentro { print }
+            ' "$1" | sed -e '/./,$!d'
+          }
+          apartado CHANGELOG.md > dist/en.md
+          apartado NOVEDADES.md > dist/es.md
+          for f in en es; do
+            if [ ! -s "dist/$f.md" ]; then
+              echo "falta el apartado «## $v» en CHANGELOG.md o en NOVEDADES.md"
+              exit 1
+            fi
+          done
+          {
+            cat dist/en.md
+            echo
+            echo "**Downloads:** the Windows installer (it updates itself from the app), the portable Windows version and the Linux package are below. Also at [grimorio.frederickandrade.com](https://grimorio.frederickandrade.com/)."
+            echo
+            echo "<details><summary>Español</summary>"
+            echo
+            cat dist/es.md
+            echo
+            echo "**Descargas:** el instalador de Windows (se actualiza solo desde la aplicación), la versión portable para Windows y el paquete de Linux están abajo. También en [grimorio.frederickandrade.com](https://grimorio.frederickandrade.com/)."
+            echo
+            echo "</details>"
+          } > dist/novedades.md
           cat dist/novedades.md
 
       - name: Qt y herramientas
@@ -280,7 +295,7 @@ jobs:
           mkdir -p "$d/icono"
           cp app/build/grimorio target/release/grim target/release/grim-recorte LICENSE.md README.md "$d/"
           mkdir -p "$d/navegador"
-          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos "$d/navegador/"
+          cp -r navegador/manifest.json navegador/*.js navegador/*.html navegador/iconos navegador/_locales "$d/navegador/"
           cp app/icono/grimorio.svg app/icono/grimorio-256.png "$d/icono/"
           strip "$d/grimorio" "$d/grim" "$d/grim-recorte"
           mkdir -p "$d/modelos"

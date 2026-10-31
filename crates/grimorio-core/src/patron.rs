@@ -2,6 +2,7 @@
 //!
 //! `{nombre}` el nombre que tenía · `{n}` un contador · `{n:3}` el contador con
 //! ceros delante hasta tres cifras · `{fecha}` el día que se importó.
+//! En inglés, `{name}` y `{date}`; valen las dos formas en cualquier idioma.
 //!
 //! Lo que no es una de esas marcas se deja tal cual, llaves incluidas: un
 //! patrón con un error de dedo da un nombre raro que se ve en la vista previa,
@@ -24,9 +25,9 @@ pub fn aplicar(patron: &str, nombre: &str, n: u64, importado_ms: u64) -> String 
         };
         let marca = &tras[1..j];
         match marca {
-            "nombre" => out.push_str(nombre),
+            "nombre" | "name" => out.push_str(nombre),
             "n" => out.push_str(&n.to_string()),
-            "fecha" => {
+            "fecha" | "date" => {
                 let desfase = crate::time::desfase_local_s(importado_ms);
                 let (y, m, d) = crate::time::fecha_local(importado_ms, desfase);
                 out.push_str(&format!("{y:04}-{m:02}-{d:02}"));
@@ -58,6 +59,15 @@ mod tests {
         assert_eq!(aplicar("moodboard {n}", "x", 7, 0), "moodboard 7");
         assert_eq!(aplicar("ref-{n:3}-{nombre}", "gato", 7, 0), "ref-007-gato");
         assert!(aplicar("{fecha}", "x", 1, 1_791_000_000_000).starts_with("2026-"));
+    }
+
+    #[test]
+    fn las_marcas_en_ingles_valen_igual() {
+        assert_eq!(aplicar("{name}", "gato", 1, 0), "gato");
+        assert_eq!(aplicar("ref-{n:3}-{name}", "gato", 7, 0), "ref-007-gato");
+        let ms = 1_791_000_000_000;
+        assert_eq!(aplicar("{date}", "x", 1, ms), aplicar("{fecha}", "x", 1, ms));
+        assert_eq!(aplicar("{name} {nombre}", "gato", 1, 0), "gato gato");
     }
 
     #[test]

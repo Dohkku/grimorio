@@ -15,6 +15,7 @@
 //! escribe un archivo **nuevo** y lo importa como un elemento más de la pila.
 
 use crate::error::{Error, Result};
+use crate::idioma::{self, t};
 use crate::import::{self, ImportOptions};
 use crate::item::{Item, OriginMode, Receta, Tramo};
 use crate::library::Library;
@@ -52,7 +53,9 @@ impl Library {
         for (principal, ids) in grupos {
             let principal = self.principal_de(principal)?;
             if self.load_item(&principal)?.trashed {
-                return Err(Error::Invalid("la principal está en la papelera".into()));
+                return Err(Error::Invalid(
+                    t("la principal está en la papelera", "the main one is in the trash").into(),
+                ));
             }
             for id in ids {
                 if *id == principal {
@@ -73,7 +76,9 @@ impl Library {
             return Ok(0);
         }
         let titulo = if parches.len() == 1 {
-            "apilar como versión".to_string()
+            t("apilar como versión", "stack as a version").to_string()
+        } else if idioma::ingles() {
+            format!("stack {} versions", parches.len())
         } else {
             format!("apilar {} versiones", parches.len())
         };
@@ -102,7 +107,7 @@ impl Library {
             return Ok(0);
         }
         let (tocados, _) =
-            self.editar(&salen, "sacar de la pila", |_| Parche::pila(""), &|_, _| {})?;
+            self.editar(&salen, t("sacar de la pila", "take out of the stack"), |_| Parche::pila(""), &|_, _| {})?;
         Ok(tocados)
     }
 
@@ -127,7 +132,7 @@ impl Library {
                 parches.insert(v, Parche::pila(&nueva.id));
             }
         }
-        self.editar_con(&parches, "cambiar la principal de la pila")?;
+        self.editar_con(&parches, t("cambiar la principal de la pila", "change the main one of the stack"))?;
         Ok(())
     }
 
@@ -154,7 +159,7 @@ impl Library {
         if !dentro {
             return self.editar(
                 ids,
-                "sacar de la papelera",
+                t("sacar de la papelera", "restore from the trash"),
                 |_| Parche::papelera(false),
                 progreso,
             );
@@ -212,7 +217,7 @@ impl Library {
             }
         }
 
-        let titulo = "mandar a la papelera";
+        let titulo = t("mandar a la papelera", "move to the trash");
         self.editar(
             &orden,
             titulo,
@@ -253,10 +258,14 @@ impl Library {
     pub fn recortar_tramo(&mut self, id: &str, tramo: Tramo) -> Result<String> {
         let fuente = self.load_item(id)?;
         if !matches!(fuente.kind, crate::medio::Familia::Video | crate::medio::Familia::Audio) {
-            return Err(Error::Invalid("solo se recortan vídeos y sonidos".into()));
+            return Err(Error::Invalid(
+                t("solo se recortan vídeos y sonidos", "only videos and sounds can be trimmed").into(),
+            ));
         }
         if tramo.hasta_ms <= tramo.desde_ms {
-            return Err(Error::Invalid("el tramo acaba antes de empezar".into()));
+            return Err(Error::Invalid(
+                t("el tramo acaba antes de empezar", "the clip ends before it starts").into(),
+            ));
         }
         let original = self.original_path(&fuente);
         let ext = fuente.ext.to_ascii_lowercase();
@@ -335,10 +344,12 @@ impl Library {
                 .failed
                 .first()
                 .map(|(_, e)| e.clone())
-                .unwrap_or_else(|| "la importación no la aceptó".into());
-            return Err(Error::Invalid(format!(
-                "no se pudo crear la versión: {motivo}"
-            )));
+                .unwrap_or_else(|| t("la importación no la aceptó", "the import rejected it").into());
+            return Err(Error::Invalid(if idioma::ingles() {
+                format!("could not create the version: {motivo}")
+            } else {
+                format!("no se pudo crear la versión: {motivo}")
+            }));
         };
 
         let mut item = self.load_item(&nuevo)?;
@@ -357,13 +368,13 @@ impl Library {
         self.save_item(&item)?;
 
         let titulo = if receta.recorte.is_some() {
-            "quitar el fondo"
+            t("quitar el fondo", "remove the background")
         } else if receta.fotograma.is_some() {
-            "sacar un fotograma"
+            t("sacar un fotograma", "save a frame")
         } else if receta.tramo.is_some() {
-            "recortar"
+            t("recortar", "trim")
         } else {
-            "crear una versión"
+            t("crear una versión", "create a version")
         };
         let mut op = Operacion::nueva(titulo);
         op.antes.push((nuevo.clone(), Parche::papelera(true)));
@@ -384,17 +395,28 @@ impl Library {
     fn preparar_version(&self, id: &str, receta: &Receta) -> Result<(Item, String, Vec<u8>)> {
         let formato = receta.formato.to_ascii_lowercase();
         if !FORMATOS.contains(&formato.as_str()) {
-            return Err(Error::Invalid(format!(
-                "no sé escribir «{}»; las versiones salen en jpg, png o webp",
-                receta.formato
-            )));
+            return Err(Error::Invalid(if idioma::ingles() {
+                format!("can't write «{}»; versions come out as jpg, png or webp", receta.formato)
+            } else {
+                format!(
+                    "no sé escribir «{}»; las versiones salen en jpg, png o webp",
+                    receta.formato
+                )
+            }));
         }
         let fuente = self.load_item(id)?;
         if !crate::image_ops::is_supported(&fuente.ext) {
-            return Err(Error::Invalid(format!(
-                "por ahora solo se sacan versiones de imágenes jpg, png, webp, gif o bmp, y esto es {}",
-                fuente.ext
-            )));
+            return Err(Error::Invalid(if idioma::ingles() {
+                format!(
+                    "for now versions can only be made from jpg, png, webp, gif or bmp images, and this is {}",
+                    fuente.ext
+                )
+            } else {
+                format!(
+                    "por ahora solo se sacan versiones de imágenes jpg, png, webp, gif o bmp, y esto es {}",
+                    fuente.ext
+                )
+            }));
         }
         let ruta = self.original_path(&fuente);
         let bytes = std::fs::read(&ruta).map_err(|e| Error::io(&ruta, e))?;
@@ -434,20 +456,25 @@ impl Library {
 /// su nombre, para que se reconozcan sin abrirlas.
 fn describir(receta: &Receta, hecho: &Item) -> String {
     if receta.recorte.is_some() {
-        return "sin fondo".into();
+        return t("sin fondo", "no background").into();
     }
-    if let Some(t) = receta.tramo {
-        return format!("{}–{}", reloj(t.desde_ms), reloj(t.hasta_ms));
+    if let Some(tr) = receta.tramo {
+        return format!("{}–{}", reloj(tr.desde_ms), reloj(tr.hasta_ms));
     }
     if let Some(ms) = receta.fotograma {
-        return format!("fotograma {}", reloj(ms));
+        return format!("{} {}", t("fotograma", "frame"), reloj(ms));
     }
     let mut s = receta.formato.to_ascii_lowercase();
     if receta.lado > 0 {
         s.push_str(&format!(" {} px", hecho.width.max(hecho.height)));
     }
     if con_perdida(receta) {
-        s.push_str(&format!(" {} %", receta.calidad.clamp(1, 100)));
+        let calidad = receta.calidad.clamp(1, 100);
+        if crate::idioma::ingles() {
+            s.push_str(&format!(" {calidad}%"));
+        } else {
+            s.push_str(&format!(" {calidad} %"));
+        }
     }
     s
 }
@@ -455,12 +482,18 @@ fn describir(receta: &Receta, hecho: &Item) -> String {
 /// `75 300` ms → `1:15,3`: minutos y segundos con décimas, como se lee un
 /// tramo.
 fn reloj(ms: u64) -> String {
+    reloj_en(ms, crate::idioma::ingles())
+}
+
+/// [`reloj`] con el idioma dicho: en inglés las décimas van tras un punto.
+fn reloj_en(ms: u64, en: bool) -> String {
     let s = ms / 1000;
     let d = (ms % 1000) / 100;
+    let sep = if en { '.' } else { ',' };
     if s >= 3600 {
-        format!("{}:{:02}:{:02},{d}", s / 3600, s / 60 % 60, s % 60)
+        format!("{}:{:02}:{:02}{sep}{d}", s / 3600, s / 60 % 60, s % 60)
     } else {
-        format!("{}:{:02},{d}", s / 60, s % 60)
+        format!("{}:{:02}{sep}{d}", s / 60, s % 60)
     }
 }
 
@@ -551,7 +584,13 @@ fn codificar(img: &image::DynamicImage, formato: &str, receta: &Receta) -> Resul
                     .to_vec();
             }
         }
-        otro => return Err(Error::Invalid(format!("formato desconocido: {otro}"))),
+        otro => {
+            return Err(Error::Invalid(if idioma::ingles() {
+                format!("unknown format: {otro}")
+            } else {
+                format!("formato desconocido: {otro}")
+            }))
+        }
     }
     Ok(out)
 }
@@ -1111,5 +1150,13 @@ mod tests {
         lib.deshacer(&nada).unwrap();
         assert!(lib.load_item(&exacto).unwrap().trashed);
         assert!(lib.recortar_tramo(&id, Tramo { desde_ms: 3000, hasta_ms: 1000, exacto: false }).is_err());
+    }
+
+    #[test]
+    fn el_reloj_usa_coma_en_espanol_y_punto_en_ingles() {
+        assert_eq!(reloj_en(75_300, false), "1:15,3");
+        assert_eq!(reloj_en(75_300, true), "1:15.3");
+        assert_eq!(reloj_en(3_723_400, true), "1:02:03.4");
+        assert_eq!(reloj_en(3_723_400, false), "1:02:03,4");
     }
 }

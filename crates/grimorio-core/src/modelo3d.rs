@@ -142,10 +142,10 @@ pub fn leer(bytes: &[u8], ext: &str, junto_a: Option<&Path>) -> Result<Malla> {
         "ply" => ply(bytes)?,
         "glb" | "gltf" => gltf(bytes, junto_a)?,
         "3mf" => tres_mf(bytes)?,
-        e => return Err(mal(format!("no sé leer modelos .{e}"))),
+        e => return Err(mal(if crate::idioma::ingles() { format!("can't read .{e} models") } else { format!("no sé leer modelos .{e}") })),
     };
     if m.v.is_empty() {
-        return Err(mal("el modelo no tiene ningún triángulo"));
+        return Err(mal(crate::idioma::t("el modelo no tiene ningún triángulo", "the model has no triangles")));
     }
     Ok(m)
 }
@@ -163,9 +163,9 @@ pub fn leer(bytes: &[u8], ext: &str, junto_a: Option<&Path>) -> Result<Malla> {
 /// ```
 /// `"GRIMTRIS"` es el de antes: los milímetros y los triángulos, sin más.
 pub fn leer_tris(b: &[u8]) -> Result<Malla> {
-    let corto = || mal("Blender devolvió una malla cortada");
+    let corto = || mal(crate::idioma::t("Blender devolvió una malla cortada", "Blender returned a truncated mesh"));
     if b.len() < 12 || (&b[..8] != b"GRIMTRIS" && &b[..8] != b"GRIMTRI2") {
-        return Err(mal("Blender no devolvió una malla"));
+        return Err(mal(crate::idioma::t("Blender no devolvió una malla", "Blender returned no mesh")));
     }
     let mm = f32_le(b, 8);
     let mut m = Malla {
@@ -231,7 +231,7 @@ pub fn leer_tris(b: &[u8]) -> Result<Malla> {
         }
     }
     if m.v.is_empty() {
-        return Err(mal("la escena no tiene nada visible con superficie"));
+        return Err(mal(crate::idioma::t("la escena no tiene nada visible con superficie", "the scene has nothing visible with a surface")));
     }
     Ok(m)
 }
@@ -273,7 +273,7 @@ fn stl(b: &[u8]) -> Result<Malla> {
                     *c = it
                         .next()
                         .and_then(|s| s.parse().ok())
-                        .ok_or_else(|| mal("STL de texto con un vértice roto"))?;
+                        .ok_or_else(|| mal(crate::idioma::t("STL de texto con un vértice roto", "text STL with a broken vertex")))?;
                 }
                 v.push(zup(p));
             }
@@ -404,11 +404,11 @@ impl Lector<'_> {
             return std::str::from_utf8(&self.b[ini..self.o])
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .ok_or_else(|| mal("PLY de texto con un número roto"));
+                .ok_or_else(|| mal(crate::idioma::t("PLY de texto con un número roto", "text PLY with a broken number")));
         }
         let n = t.bytes();
         if self.o + n > self.b.len() {
-            return Err(mal("PLY cortado antes de tiempo"));
+            return Err(mal(crate::idioma::t("PLY cortado antes de tiempo", "PLY cut off early")));
         }
         let mut x = [0u8; 8];
         x[..n].copy_from_slice(&self.b[self.o..self.o + n]);
@@ -433,7 +433,7 @@ fn ply(b: &[u8]) -> Result<Malla> {
     let fin = b
         .windows(10)
         .position(|w| w == b"end_header")
-        .ok_or_else(|| mal("PLY sin cabecera"))?;
+        .ok_or_else(|| mal(crate::idioma::t("PLY sin cabecera", "PLY without a header")))?;
     let cabecera = String::from_utf8_lossy(&b[..fin]);
     let mut cuerpo = fin + 10;
     // Tras «end_header» va un salto de línea, \n o \r\n.
@@ -454,24 +454,24 @@ fn ply(b: &[u8]) -> Result<Malla> {
                     "ascii" => 0,
                     "binary_little_endian" => 1,
                     "binary_big_endian" => 2,
-                    _ => return Err(mal(format!("PLY con formato desconocido: {f}"))),
+                    _ => return Err(mal(if crate::idioma::ingles() { format!("PLY with an unknown format: {f}") } else { format!("PLY con formato desconocido: {f}") })),
                 }
             }
             ["element", nombre, n] => elems.push(Elemento {
                 nombre: nombre.to_string(),
-                n: n.parse().map_err(|_| mal("PLY con un recuento roto"))?,
+                n: n.parse().map_err(|_| mal(crate::idioma::t("PLY con un recuento roto", "PLY with a broken count")))?,
                 props: Vec::new(),
             }),
             ["property", "list", tn, ti, nombre] => {
                 let (tn, ti) = Tipo::de(tn)
                     .zip(Tipo::de(ti))
-                    .ok_or_else(|| mal("PLY con un tipo desconocido"))?;
+                    .ok_or_else(|| mal(crate::idioma::t("PLY con un tipo desconocido", "PLY with an unknown type")))?;
                 if let Some(e) = elems.last_mut() {
                     e.props.push(Prop::Lista(tn, ti, nombre.to_string()));
                 }
             }
             ["property", t, nombre] => {
-                let t = Tipo::de(t).ok_or_else(|| mal("PLY con un tipo desconocido"))?;
+                let t = Tipo::de(t).ok_or_else(|| mal(crate::idioma::t("PLY con un tipo desconocido", "PLY with an unknown type")))?;
                 if let Some(e) = elems.last_mut() {
                     e.props.push(Prop::Escalar(t, nombre.to_string()));
                 }
@@ -480,7 +480,7 @@ fn ply(b: &[u8]) -> Result<Malla> {
         }
     }
     if formato == 255 {
-        return Err(mal("PLY sin formato"));
+        return Err(mal(crate::idioma::t("PLY sin formato", "PLY without a format")));
     }
 
     let mut lec = Lector {
@@ -520,7 +520,7 @@ fn ply(b: &[u8]) -> Result<Malla> {
                                 for &i in &[lista[0], lista[k], lista[k + 1]] {
                                     v.push(
                                         *vs.get(i).ok_or_else(|| {
-                                            mal("PLY con una cara que apunta fuera")
+                                            mal(crate::idioma::t("PLY con una cara que apunta fuera", "PLY with a face pointing out of range"))
                                         })?,
                                     );
                                 }
@@ -614,7 +614,7 @@ fn base64(s: &str) -> Result<Vec<u8>> {
             b'+' | b'-' => 62,
             b'/' | b'_' => 63,
             b'=' | b'\n' | b'\r' | b' ' => continue,
-            _ => return Err(mal("base64 roto dentro del glTF")),
+            _ => return Err(mal(crate::idioma::t("base64 roto dentro del glTF", "broken base64 inside the glTF"))),
         };
         acc = (acc << 6) | v as u32;
         bits += 6;
@@ -630,12 +630,12 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
     use serde_json::Value;
     let (json, bin): (&[u8], Option<&[u8]>) = if b.starts_with(b"glTF") {
         if b.len() < 20 {
-            return Err(mal("GLB cortado"));
+            return Err(mal(crate::idioma::t("GLB cortado", "truncated GLB")));
         }
         let largo_json = u32_le(b, 12) as usize;
         let json = b
             .get(20..20 + largo_json)
-            .ok_or_else(|| mal("GLB cortado"))?;
+            .ok_or_else(|| mal(crate::idioma::t("GLB cortado", "truncated GLB")))?;
         let o = 20 + largo_json;
         let bin = if b.len() >= o + 8 && &b[o + 4..o + 8] == b"BIN\0" {
             let n = u32_le(b, o) as usize;
@@ -648,15 +648,17 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
         (b, None)
     };
     let doc: Value =
-        serde_json::from_slice(json).map_err(|e| mal(format!("glTF con JSON roto: {e}")))?;
+        serde_json::from_slice(json).map_err(|e| mal(if crate::idioma::ingles() { format!("glTF with broken JSON: {e}") } else { format!("glTF con JSON roto: {e}") }))?;
 
     if let Some(req) = doc["extensionsRequired"].as_array() {
         for e in req {
             let e = e.as_str().unwrap_or("");
             if e.contains("draco") || e.contains("meshopt") {
-                return Err(mal(format!(
-                    "el glTF va comprimido con {e}, que todavía no sé descomprimir"
-                )));
+                return Err(mal(if crate::idioma::ingles() {
+                    format!("the glTF is compressed with {e}, which can't be decompressed yet")
+                } else {
+                    format!("el glTF va comprimido con {e}, que todavía no sé descomprimir")
+                }));
             }
         }
     }
@@ -667,17 +669,25 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
             None if i == 0 => bin.map(|b| b.to_vec()).unwrap_or_default(),
             None => Vec::new(),
             Some(uri) if uri.starts_with("data:") => {
-                let coma = uri.find(',').ok_or_else(|| mal("URI data: sin datos"))?;
+                let coma = uri.find(',').ok_or_else(|| mal(crate::idioma::t("URI data: sin datos", "data: URI with no data")))?;
                 base64(&uri[coma + 1..])?
             }
             Some(uri) => {
                 let base = junto_a
                     .and_then(|p| p.parent())
-                    .ok_or_else(|| mal(format!("el glTF guarda su geometría fuera, en «{uri}»")))?;
+                    .ok_or_else(|| {
+                        mal(if crate::idioma::ingles() {
+                            format!("the glTF keeps its geometry outside, in «{uri}»")
+                        } else {
+                            format!("el glTF guarda su geometría fuera, en «{uri}»")
+                        })
+                    })?;
                 std::fs::read(base.join(uri)).map_err(|_| {
-                    mal(format!(
-                        "el glTF guarda su geometría en «{uri}», y no está al lado"
-                    ))
+                    mal(if crate::idioma::ingles() {
+                        format!("the glTF keeps its geometry in «{uri}», which isn't next to it")
+                    } else {
+                        format!("el glTF guarda su geometría en «{uri}», y no está al lado")
+                    })
                 })?
             }
         };
@@ -703,7 +713,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
         let vista = &doc["bufferViews"][bv as usize];
         let buf = buffers
             .get(vista["buffer"].as_u64().unwrap_or(0) as usize)
-            .ok_or_else(|| mal("glTF con un buffer que no existe"))?;
+            .ok_or_else(|| mal(crate::idioma::t("glTF con un buffer que no existe", "glTF with a buffer that doesn't exist")))?;
         let ini = vista["byteOffset"].as_u64().unwrap_or(0) as usize
             + a["byteOffset"].as_u64().unwrap_or(0) as usize;
         let paso = vista["byteStride"]
@@ -715,7 +725,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
                 let o = ini + k * paso + c * tam;
                 let x = buf
                     .get(o..o + tam)
-                    .ok_or_else(|| mal("glTF con un accessor que se sale del buffer"))?;
+                    .ok_or_else(|| mal(crate::idioma::t("glTF con un accessor que se sale del buffer", "glTF with an accessor outside its buffer")))?;
                 sal[c] = match tipo {
                     5126 => f32::from_le_bytes([x[0], x[1], x[2], x[3]]),
                     5125 => u32::from_le_bytes([x[0], x[1], x[2], x[3]]) as f32,
@@ -770,7 +780,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
         let vista = &doc["bufferViews"][a["bufferView"].as_u64().unwrap_or(0) as usize];
         let buf = buffers
             .get(vista["buffer"].as_u64().unwrap_or(0) as usize)
-            .ok_or_else(|| mal("glTF con un buffer que no existe"))?;
+            .ok_or_else(|| mal(crate::idioma::t("glTF con un buffer que no existe", "glTF with a buffer that doesn't exist")))?;
         let ini = vista["byteOffset"].as_u64().unwrap_or(0) as usize
             + a["byteOffset"].as_u64().unwrap_or(0) as usize;
         let paso = vista["byteStride"]
@@ -782,7 +792,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
                 let o = ini + k * paso;
                 let x = buf
                     .get(o..o + tam)
-                    .ok_or_else(|| mal("glTF con índices fuera del buffer"))?;
+                    .ok_or_else(|| mal(crate::idioma::t("glTF con índices fuera del buffer", "glTF with indices outside the buffer")))?;
                 Ok(match tam {
                     1 => x[0] as u32,
                     2 => u16::from_le_bytes([x[0], x[1]]) as u32,
@@ -884,7 +894,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
     // material tampoco cuidó hacia dónde mira cada cara.
     let sin_material = materiales.len();
     materiales.push(Material {
-        nombre: "sin material".into(),
+        nombre: crate::idioma::t("sin material", "no material").into(),
         ..Default::default()
     });
     juego_uv.push(0);
@@ -948,7 +958,7 @@ fn gltf(b: &[u8], junto_a: Option<&Path>) -> Result<Malla> {
                 for i in orden {
                     out.v.push(
                         *ps.get(i as usize)
-                            .ok_or_else(|| mal("glTF con un índice que apunta fuera"))?,
+                            .ok_or_else(|| mal(crate::idioma::t("glTF con un índice que apunta fuera", "glTF with an index pointing out of range")))?,
                     );
                     if con_uv {
                         out.uv.push(uvs.get(i as usize).copied().unwrap_or([0.0; 2]));
@@ -1098,14 +1108,14 @@ fn zip_entradas_hasta(b: &[u8], tope_total: usize) -> Result<Vec<(String, Vec<u8
     let fin = (desde..b.len().saturating_sub(21))
         .rev()
         .find(|&o| u32_le(b, o) == 0x0605_4b50)
-        .ok_or_else(|| mal("el 3MF no es un zip"))?;
+        .ok_or_else(|| mal(crate::idioma::t("el 3MF no es un zip", "the 3MF is not a zip")))?;
     let n = u16::from_le_bytes([b[fin + 10], b[fin + 11]]) as usize;
     let mut o = u32_le(b, fin + 16) as usize;
     let mut out = Vec::new();
     let mut inflado = 0usize;
     for _ in 0..n {
         if o + 46 > b.len() || u32_le(b, o) != 0x0201_4b50 {
-            return Err(mal("el índice del zip está roto"));
+            return Err(mal(crate::idioma::t("el índice del zip está roto", "the zip index is broken")));
         }
         let metodo = u16::from_le_bytes([b[o + 10], b[o + 11]]);
         let comprimido = u32_le(b, o + 20) as usize;
@@ -1120,30 +1130,37 @@ fn zip_entradas_hasta(b: &[u8], tope_total: usize) -> Result<Vec<(String, Vec<u8
             continue;
         }
         if local + 30 > b.len() {
-            return Err(mal("el zip está cortado"));
+            return Err(mal(crate::idioma::t("el zip está cortado", "the zip is truncated")));
         }
         let lln = u16::from_le_bytes([b[local + 26], b[local + 27]]) as usize;
         let lle = u16::from_le_bytes([b[local + 28], b[local + 29]]) as usize;
         let ini = local + 30 + lln + lle;
         let datos = b
             .get(ini..ini + comprimido)
-            .ok_or_else(|| mal("el zip está cortado"))?;
+            .ok_or_else(|| mal(crate::idioma::t("el zip está cortado", "the zip is truncated")))?;
         let datos = match metodo {
             0 => datos.to_vec(),
             8 => {
                 let tope = tope_total.saturating_sub(inflado);
                 miniz_oxide::inflate::decompress_to_vec_with_limit(datos, tope).map_err(|e| {
                     if e.status == miniz_oxide::inflate::TINFLStatus::HasMoreOutput {
-                        mal(format!(
-                            "{nombre} se infla a más de {} MB; no parece un modelo",
-                            tope_total >> 20
-                        ))
+                        mal(if crate::idioma::ingles() {
+                            format!(
+                                "{nombre} inflates to more than {} MB; it doesn't look like a model",
+                                tope_total >> 20
+                            )
+                        } else {
+                            format!(
+                                "{nombre} se infla a más de {} MB; no parece un modelo",
+                                tope_total >> 20
+                            )
+                        })
                     } else {
-                        mal(format!("no pude inflar {nombre}"))
+                        mal(if crate::idioma::ingles() { format!("could not inflate {nombre}") } else { format!("no pude inflar {nombre}") })
                     }
                 })?
             }
-            m => return Err(mal(format!("zip con compresión {m}, que no conozco"))),
+            m => return Err(mal(if crate::idioma::ingles() { format!("zip with unknown compression {m}") } else { format!("zip con compresión {m}, que no conozco") })),
         };
         inflado += datos.len();
         out.push((format!("/{}", nombre.trim_start_matches('/')), datos));
@@ -1262,7 +1279,7 @@ struct Objeto3mf {
 fn tres_mf(b: &[u8]) -> Result<Malla> {
     let entradas = zip_entradas(b)?;
     if entradas.is_empty() {
-        return Err(mal("el 3MF no lleva ningún modelo dentro"));
+        return Err(mal(crate::idioma::t("el 3MF no lleva ningún modelo dentro", "the 3MF has no model inside")));
     }
     let mut objetos: HashMap<(String, String), Objeto3mf> = HashMap::new();
     let mut construir: Vec<(String, String, Mat3x4)> = Vec::new();
