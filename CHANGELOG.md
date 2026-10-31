@@ -7,6 +7,18 @@ Grimorio ships it inside and shows it when you open a new version after
 updating (and in Settings → about → «what's new»). Each version is a
 `## X.Y.Z` section; what goes under it is plain Markdown.
 
+## 0.1.18
+
+- **Settings, redone.** The settings panel (Ctrl+,) is no longer one long
+  list: it has five pages (general, grid, stacks and editor, updates and
+  about), each with its title and a line saying what it is for. Settings
+  are grouped in boxes, switches respond on the whole row, and pick-one
+  options (theme, language, stacks, snapping) are a selector with a marker
+  that slides to the chosen one. In the paper theme nothing feels cramped
+  anymore.
+- **Scrolling inside settings** no longer moves the grid behind it when you
+  reach the end of a page.
+
 ## 0.1.17
 
 - **Grimorio in English.** In Settings → appearance → language you choose

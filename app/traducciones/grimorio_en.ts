@@ -1,4 +1,5 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
 <TS version="2.1" language="en" sourcelanguage="es">
 <context>
     <name>Arranque</name>
@@ -640,7 +641,7 @@
     </message>
     <message>
         <source>entra en la pila del original, que no se toca (Intro)</source>
-        <translation>goes into the original's stack, which is not touched (Enter)</translation>
+        <translation>goes into the original&apos;s stack, which is not touched (Enter)</translation>
     </message>
 </context>
 <context>
@@ -1288,7 +1289,7 @@ Ctrl+click to select several; Shift+click, a range.</translation>
     </message>
     <message>
         <source>novedades: qué trae cada versión</source>
-        <translation>what's new: what each version brings</translation>
+        <translation>what&apos;s new: what each version brings</translation>
     </message>
     <message>
         <source>Qt</source>
@@ -1342,16 +1343,80 @@ Ctrl+click to select several; Shift+click, a range.</translation>
         <source>El estilo es dato: todo sale de un tema.</source>
         <translation>Style is data: everything comes from a theme.</translation>
     </message>
+    <message>
+        <source>cómo se ve Grimorio, en qué idioma y a qué tamaño</source>
+        <translation>how Grimorio looks, its language and its size</translation>
+    </message>
+    <message>
+        <source>las celdas, los vídeos y lo que se difumina</source>
+        <translation>the cells, the videos and what gets blurred</translation>
+    </message>
+    <message>
+        <source>pilas y editor</source>
+        <translation>stacks and editor</translation>
+    </message>
+    <message>
+        <source>qué pasa al tirar versiones y cómo se recorta un vídeo</source>
+        <translation>what happens when trashing versions, and how videos are trimmed</translation>
+    </message>
+    <message>
+        <source>cuándo te avisa Grimorio de que hay una nueva</source>
+        <translation>when Grimorio tells you there is a new one</translation>
+    </message>
+    <message>
+        <source>abre y cierra</source>
+        <translation>opens and closes</translation>
+    </message>
+    <message>
+        <source>noche, oscuro y con aire; papel, claro y con las celdas juntas</source>
+        <translation>night: dark and roomy; paper: light, with the cells close together</translation>
+    </message>
+    <message>
+        <source>volver al tamaño normal</source>
+        <translation>back to the normal size</translation>
+    </message>
+    <message>
+        <source>más pequeño (Ctrl+−)</source>
+        <translation>smaller (Ctrl+−)</translation>
+    </message>
+    <message>
+        <source>más grande (Ctrl++)</source>
+        <translation>bigger (Ctrl++)</translation>
+    </message>
+    <message>
+        <source>los has movido tú; esto los deja como vienen en el tema</source>
+        <translation>you moved them; this puts them back as the theme has them</translation>
+    </message>
+    <message>
+        <source>los que vienen en el tema; se cambian arrastrando su borde</source>
+        <translation>the ones the theme has; drag their edge to change them</translation>
+    </message>
+    <message>
+        <source>privacidad</source>
+        <translation>privacy</translation>
+    </message>
+    <message>
+        <source>la tuya es la %1</source>
+        <translation>yours is %1</translation>
+    </message>
+    <message>
+        <source>novedades</source>
+        <translation>what&apos;s new</translation>
+    </message>
+    <message>
+        <source>qué trae cada versión, de la última a la primera</source>
+        <translation>what each version brings, newest first</translation>
+    </message>
 </context>
 <context>
     <name>PanelNovedades</name>
     <message>
         <source>Novedades de Grimorio</source>
-        <translation>What's new in Grimorio</translation>
+        <translation>What&apos;s new in Grimorio</translation>
     </message>
     <message>
         <source>Qué hay de nuevo en Grimorio %1</source>
-        <translation>What's new in Grimorio %1</translation>
+        <translation>What&apos;s new in Grimorio %1</translation>
     </message>
     <message>
         <source>Se ha actualizado. Esto es lo que cambia:</source>

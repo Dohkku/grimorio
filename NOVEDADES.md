@@ -8,6 +8,18 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.18
+
+- **Ajustes renovados.** El panel de ajustes (Ctrl+,) ya no es una sola
+  lista larga: tiene cinco páginas (general, galería, pilas y editor,
+  versiones y acerca de), cada una con su título y una línea que dice de
+  qué va. Los ajustes van agrupados en cajas, los interruptores se pulsan
+  en toda la fila y las opciones de elegir una (tema, idioma, pilas, imán)
+  son un selector con una marca que se desliza a la elegida. En el tema
+  papel ya no sale todo apretado.
+- **La rueda dentro de los ajustes** ya no mueve la galería de detrás al
+  llegar al final de una página.
+
 ## 0.1.17
 
 - **Grimorio en inglés.** En Ajustes → apariencia → idioma eliges español,
