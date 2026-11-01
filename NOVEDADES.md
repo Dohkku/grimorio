@@ -8,6 +8,14 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.19
+
+- **El sonido sigue a la salida del sistema.** Si cambias de altavoz a
+  auriculares (o al revés) con Grimorio abierto, los vídeos suenan por la
+  salida nueva, también los que abras después. Antes se quedaban en la que
+  había al abrir Grimorio. Lo mismo al conectar o quitar unos auriculares
+  Bluetooth.
+
 ## 0.1.18
 
 - **Ajustes renovados.** El panel de ajustes (Ctrl+,) ya no es una sola

@@ -24,6 +24,7 @@
 #include "pixeles.h"
 #include "portapapeles.h"
 #include "proveedor.h"
+#include "salida.h"
 #include "tema.h"
 #include "traer.h"
 #include "vigilancia.h"
@@ -441,6 +442,7 @@ int main(int argc, char **argv)
     Fotogramas fotogramas;
     Pixeles pixeles;
     Portapapeles portapapeles;
+    SalidaSonido salidaSonido;
     portapapeles.setBiblioteca(QDir(nucleo.raiz()).absolutePath());
     Traer traer(&nucleo);
     Captura captura(&nucleo);
@@ -496,6 +498,7 @@ int main(int argc, char **argv)
     ctx->setContextProperty(QStringLiteral("fotogramas"), &fotogramas);
     ctx->setContextProperty(QStringLiteral("pixeles"), &pixeles);
     ctx->setContextProperty(QStringLiteral("portapapeles"), &portapapeles);
+    ctx->setContextProperty(QStringLiteral("salidaSonido"), &salidaSonido);
     ctx->setContextProperty(QStringLiteral("traer"), &traer);
     ctx->setContextProperty(QStringLiteral("captura"), &captura);
     ctx->setContextProperty(QStringLiteral("recorte"), &recorte);

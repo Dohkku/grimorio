@@ -555,27 +555,39 @@ Item {
     // Sonar por la salida que el sistema tenga ahora, no por la que tenía al
     // abrir el programa.
     //
-    // `AudioOutput` se queda con el dispositivo por defecto de cuando se crea,
-    // y en Qt 6.4 `MediaDevices` no avisa cuando el sistema cambia de salida:
-    // el valor sí está al día si se pregunta, pero sin señal no hay atadura
-    // que se entere. Y cada tubería nueva abría el sonido pidiendo ese
-    // dispositivo viejo por su nombre, así que PipeWire lo dejaba allí aunque
-    // el resto del escritorio ya sonara por otro lado. Se pregunta al
-    // arrancar y, mientras suena, cada dos segundos.
-    MediaDevices { id: dispositivos }
-
-    function seguirSalida() {
-        if (silencio) return
-        const d = dispositivos.defaultAudioOutput
-        if (d.isNull || String(d.id) === String(salidaAudio.device.id)) return
-        salidaAudio.device = d
+    // `AudioOutput` se queda con el dispositivo por defecto de cuando se
+    // crea, y en Qt 6.4 `MediaDevices.defaultAudioOutput` no cambia nunca
+    // aunque el sistema cambie de salida. Cada tubería nueva abría el sonido
+    // pidiendo ese dispositivo viejo por su nombre, y PipeWire lo dejaba allí
+    // aunque el resto del escritorio ya sonara por otro lado. La salida buena
+    // la dice `salidaSonido` (ver salida.h), que pregunta al sistema; aquí se
+    // busca entre los dispositivos de Qt el que tiene ese nombre.
+    //
+    // Se mira al cargar cada vídeo, al arrancar y cada vez que el sistema
+    // cambia de salida o Qt se entera de una nueva. También en los que van en
+    // silencio, los de la galería: su sonido sale igual, a volumen cero, y
+    // dejado en la salida vieja la mantiene despierta (unos auriculares
+    // Bluetooth que no se apagan, un altavoz que sigue conectado).
+    MediaDevices {
+        id: dispositivos
+        onAudioOutputsChanged: reproductor.seguirSalida()
     }
 
-    Timer {
-        interval: 2000
-        repeat: true
-        running: reproductor.enMarcha && !reproductor.silencio
-        onTriggered: reproductor.seguirSalida()
+    function seguirSalida() {
+        const nombre = salidaSonido.predeterminada
+        if (nombre.length === 0 || String(salidaAudio.device.id) === nombre) return
+        const lista = dispositivos.audioOutputs
+        for (let i = 0; i < lista.length; ++i) {
+            if (String(lista[i].id) === nombre) {
+                salidaAudio.device = lista[i]
+                return
+            }
+        }
+    }
+
+    Connections {
+        target: salidaSonido
+        function onPredeterminadaCambiada() { reproductor.seguirSalida() }
     }
 
     MediaPlayer {

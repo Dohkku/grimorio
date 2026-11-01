@@ -7,6 +7,14 @@ Grimorio ships it inside and shows it when you open a new version after
 updating (and in Settings → about → «what's new»). Each version is a
 `## X.Y.Z` section; what goes under it is plain Markdown.
 
+## 0.1.19
+
+- **Sound follows the system output.** If you switch from speakers to
+  headphones (or back) while Grimorio is open, videos play through the new
+  output, including the ones you open afterwards. Before, they stayed on
+  whichever output was active when Grimorio started. The same goes for
+  connecting or removing Bluetooth headphones.
+
 ## 0.1.18
 
 - **Settings, redone.** The settings panel (Ctrl+,) is no longer one long
