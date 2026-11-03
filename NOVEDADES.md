@@ -8,6 +8,16 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.20
+
+- **Grimorio ya no se congela si lo dejas abierto.** Cuando el sistema
+  cambiaba de salida de sonido (por ejemplo, unos auriculares Bluetooth que
+  se apagan solos al rato) con un vídeo abierto o en pausa, la ventana se
+  quedaba congelada y había que cerrarla a la fuerza. Ya no pasa.
+- **El vídeo que ya suena cambia de salida siempre.** Si unos auriculares se
+  apagaban y volvían con un vídeo abierto, ese vídeo seguía sonando por ellos
+  aunque eligieras el altavoz. Ahora pasa a la salida que elijas.
+
 ## 0.1.19
 
 - **El sonido sigue a la salida del sistema.** Si cambias de altavoz a

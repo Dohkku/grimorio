@@ -41,6 +41,7 @@ signals:
 private:
     void preguntar();
     void escuchar();
+    void moverFlujos();
 
     QString m_predeterminada;
     QProcess *m_escucha = nullptr;
@@ -49,4 +50,5 @@ private:
     // vuelve a preguntar al acabar, que la respuesta en camino puede ser vieja.
     bool m_otraVez = false;
     int m_reintentos = 0;
+    QProcess *m_flujos = nullptr;
 };

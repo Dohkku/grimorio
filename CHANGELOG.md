@@ -7,6 +7,17 @@ Grimorio ships it inside and shows it when you open a new version after
 updating (and in Settings → about → «what's new»). Each version is a
 `## X.Y.Z` section; what goes under it is plain Markdown.
 
+## 0.1.20
+
+- **Grimorio no longer freezes when left open.** When the system switched
+  sound output (for example, Bluetooth headphones that turn themselves off
+  after a while) with a video open or paused, the window froze and had to be
+  force closed. That no longer happens.
+- **A video that is already playing always switches output.** If headphones
+  turned off and back on while a video was open, that video kept playing
+  through them even after you chose the speakers. Now it moves to the output
+  you choose.
+
 ## 0.1.19
 
 - **Sound follows the system output.** If you switch from speakers to

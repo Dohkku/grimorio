@@ -357,7 +357,7 @@ Item {
         // esta sesión—, se va directo a ella y no se pasa otra vez por el error.
         const hecha = idElemento.length > 0 ? derivados.hecho("proxy:" + idElemento) : ({})
         usandoCopia = hecha.ok === true
-        efectiva = usandoCopia ? derivados.url(hecha.ruta) : fuente
+        ponerEfectiva(usandoCopia ? derivados.url(hecha.ruta) : fuente)
         // Fuera de pantalla se carga pero no se arranca. El visor cerrado
         // tiene su reproductor vivo —ver `hizoFalta` en Visor.qml— y le llega
         // cada vídeo que se elige en la malla: arrancando aquí sonaba por
@@ -365,7 +365,6 @@ Item {
         // veces, y solo se callaba al elegir algo que no fuera un vídeo.
         // Ya arrancará `onEnPantallaChanged` cuando se vea.
         pendiente = String(fuente).length > 0 && enPantalla
-        seguirSalida()
         if (pendiente) reproduccion.play()
         corregirColor = false
         claveColor = verdeCambiado && idElemento.length > 0 && String(fuente).length > 0
@@ -459,7 +458,7 @@ Item {
                 if (r.ok) {
                     reproductor.usandoCopia = true
                     reproductor.textoError = ""
-                    reproductor.efectiva = derivados.url(r.ruta)
+                    reproductor.ponerEfectiva(derivados.url(r.ruta))
                     reproductor.pendiente = reproductor.enPantalla
                     if (reproductor.enPantalla) reproduccion.play()
                 } else {
@@ -563,26 +562,58 @@ Item {
     // la dice `salidaSonido` (ver salida.h), que pregunta al sistema; aquí se
     // busca entre los dispositivos de Qt el que tiene ese nombre.
     //
-    // Se mira al cargar cada vídeo, al arrancar y cada vez que el sistema
-    // cambia de salida o Qt se entera de una nueva. También en los que van en
-    // silencio, los de la galería: su sonido sale igual, a volumen cero, y
-    // dejado en la salida vieja la mantiene despierta (unos auriculares
-    // Bluetooth que no se apagan, un altavoz que sigue conectado).
+    // Y solo se cambia con la tubería vacía. Qt 6.4 cambia el dispositivo
+    // quitando el elemento de sonido y poniendo otro en cuanto la tubería
+    // suelta lo que lleva entre manos, y espera a eso sin tope, en el hilo de
+    // la interfaz. Con un vídeo en pausa o parado, el elemento de sonido se
+    // queda sujetando el primer trozo y no lo suelta nunca; con una salida que
+    // acaba de irse (unos auriculares Bluetooth que se apagan solos al rato)
+    // tampoco. La ventana entera se quedaba congelada para siempre, y era lo
+    // que pasaba al dejar Grimorio abierto un rato: los auriculares se
+    // apagaban, el sistema cambiaba de salida y el visor tenía un vídeo
+    // cargado. Visto en gdb: `QGstreamerAudioOutput::setAudioDevice` esperando
+    // en `QSemaphore::acquire`.
+    //
+    // Con la fuente vacía la tubería está desmontada (Qt la pasa a NULL) y el
+    // cambio es inmediato. Así que se cambia al poner cada fuente, vaciando
+    // antes si hace falta, y un aviso del sistema con algo cargado se deja
+    // para el siguiente vídeo. Lo que ya suena lo mueve `salidaSonido` por
+    // fuera de Qt, pidiéndoselo al servidor de sonido (ver salida.cpp).
+    //
+    // También en los que van en silencio, los de la galería: su sonido sale
+    // igual, a volumen cero, y dejado en la salida vieja la mantiene
+    // despierta (unos auriculares que no se apagan, un altavoz conectado).
     MediaDevices {
         id: dispositivos
         onAudioOutputsChanged: reproductor.seguirSalida()
     }
 
-    function seguirSalida() {
+    /// El dispositivo de Qt que se llama como la salida del sistema, si no es
+    /// ya el que se usa.
+    function salidaNueva() {
         const nombre = salidaSonido.predeterminada
-        if (nombre.length === 0 || String(salidaAudio.device.id) === nombre) return
+        if (nombre.length === 0 || String(salidaAudio.device.id) === nombre) return null
         const lista = dispositivos.audioOutputs
-        for (let i = 0; i < lista.length; ++i) {
-            if (String(lista[i].id) === nombre) {
-                salidaAudio.device = lista[i]
-                return
-            }
+        for (let i = 0; i < lista.length; ++i)
+            if (String(lista[i].id) === nombre) return lista[i]
+        return null
+    }
+
+    /// Pone la fuente del reproductor, y antes la salida buena si ha cambiado.
+    function ponerEfectiva(url) {
+        const d = salidaNueva()
+        if (d !== null) {
+            efectiva = ""
+            salidaAudio.device = d
         }
+        efectiva = url
+    }
+
+    /// Un aviso del sistema: solo se atiende con la tubería vacía.
+    function seguirSalida() {
+        if (String(efectiva).length > 0) return
+        const d = salidaNueva()
+        if (d !== null) salidaAudio.device = d
     }
 
     Connections {
@@ -620,7 +651,6 @@ Item {
             reproductor.pendiente = false
             if (debe && playbackState !== MediaPlayer.PlayingState) play()
         }
-        onPlaybackStateChanged: if (playbackState === MediaPlayer.PlayingState) reproductor.seguirSalida()
         loops: reproductor.bucle ? MediaPlayer.Infinite : 1
         audioOutput: AudioOutput {
             id: salidaAudio
