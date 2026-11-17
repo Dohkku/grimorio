@@ -39,6 +39,9 @@ Item {
     readonly property bool esVideo: familiaFoco === Textos.VIDEO
     readonly property bool esDocumento: familiaFoco === Textos.DOCUMENTO
     readonly property bool esModelo: familiaFoco === Textos.MODELO
+    /// Una página web guardada: se ve su captura, y se lee fuera, en el
+    /// navegador del sistema (Grimorio no lleva uno dentro).
+    readonly property bool esWeb: familiaFoco === Textos.WEB
     readonly property bool conVisorPropio: esDocumento || esModelo
 
     /// La pila del elemento en foco, de la versión más pesada a la más ligera,
@@ -516,6 +519,35 @@ Item {
                 nucleo.hacerPrincipal(visor.version.id)
                 visor.idVersion = ""
             }
+        }
+    }
+
+    // Una página guardada: la captura es solo para reconocerla. Para leerla,
+    // la copia en el navegador, que funciona sin conexión, o la web de verdad
+    // si sigue ahí.
+    Row {
+        z: 3
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: rotulo.y - height - tema.hueco
+        spacing: tema.hueco
+        visible: visor.esWeb && visor.foco >= 0 && pila.length === 0
+        opacity: visor.interfazFuera ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: tema.aparicionS * 1000 } }
+
+        Boton {
+            centrado: false
+            icono: "externo"
+            texto: qsTr("leer la copia guardada")
+            pista: qsTr("la abre el navegador, sin conexión")
+            onPulsado: nucleo.abrirFuera(visor.idFoco)
+        }
+        Boton {
+            centrado: false
+            visible: ventana.webOriginal().length > 0
+            icono: "externo"
+            texto: qsTr("abrir la web original")
+            pista: ventana.webOriginal()
+            onPulsado: Qt.openUrlExternally(ventana.webOriginal())
         }
     }
 

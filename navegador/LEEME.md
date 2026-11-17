@@ -5,8 +5,8 @@ English · [Español](LEEME.es.md)
 Saves images to your library without downloading them first:
 
 - **Right click → «Save to Grimorio»**, on any website: on an image or a
-  video it saves that file; on a link or on the page, the image that
-  represents it (`og:image`). On Instagram it saves whatever is under the
+  video it saves that file; on the page, **the whole page** (see below); on a
+  link, the image that represents it (`og:image`). On Instagram it saves whatever is under the
   mouse, using the same path as the button, even when the photo is covered
   by layers.
 - **On Instagram:** hovering over a photo or a video shows a «to Grimorio»
@@ -71,6 +71,19 @@ extension ──native messaging──▶ grim ──local socket──▶ runni
 
 None of this leaves your computer: the photo goes from the browser to your
 library.
+
+## Whole pages
+
+On the page (right click outside an image or a link) it saves what you are
+looking at, not what the server sends: the HTML as already drawn (with what
+appears after logging in or scrolling), without scripts, and with the
+stylesheets, images and fonts inside (`pagina.js`). The result is a single
+`.html` that any browser opens offline. Its thumbnail in Grimorio is a
+screenshot of the tab, stored inside the file itself (`docs/FORMATO.md`).
+
+Videos, `iframe`s (a YouTube video embedded in an article) and whatever does
+not fit keep pointing to the website, and only show if it is still there:
+up to about 24 MB goes inside, and up to 8 MB per file.
 
 ## Tests
 

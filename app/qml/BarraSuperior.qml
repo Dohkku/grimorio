@@ -377,7 +377,8 @@ Rectangle {
                     { texto: qsTr("3D"), valor: "modelo", icono: "forma" },
                     { texto: qsTr("documentos"), valor: "documento", icono: "pegar" },
                     { texto: qsTr("fuentes"), valor: "tipografia", icono: "etiqueta" },
-                    { texto: qsTr("RAW"), valor: "raw", icono: "captura" }
+                    { texto: qsTr("RAW"), valor: "raw", icono: "captura" },
+                    { texto: qsTr("páginas web"), valor: "web", icono: "externo" }
                 ]
             }
             Chip {

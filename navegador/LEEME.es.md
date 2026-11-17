@@ -5,8 +5,8 @@
 Guarda imágenes en tu biblioteca sin descargarlas antes:
 
 - **Clic derecho → «Guardar en Grimorio»**, en cualquier web: en una imagen o
-  un vídeo guarda ese archivo; en un enlace o en la página, la imagen que los
-  representa (`og:image`). En Instagram guarda lo que hay bajo el ratón, con el
+  un vídeo guarda ese archivo; en la página, **la página entera** (ver abajo);
+  en un enlace, la imagen que lo representa (`og:image`). En Instagram guarda lo que hay bajo el ratón, con el
   mismo camino que el botón, aunque la foto esté tapada por capas.
 - **En Instagram:** al pasar por encima de una foto o un vídeo sale un botón
   «a Grimorio», también en la cuadrícula de un perfil. Se lleva el original
@@ -68,6 +68,20 @@ extensión ──native messaging──▶ grim ──socket local──▶ Grim
   carpetas no abre nada.
 
 Nada de esto sale de tu equipo: la foto va del navegador a tu biblioteca.
+
+## Páginas enteras
+
+En la página (clic derecho fuera de una imagen o un enlace) se guarda lo que se
+está viendo, no lo que manda el servidor: el HTML ya pintado —con lo que sale
+después de iniciar sesión o de bajar—, sin scripts, y con las hojas de estilo,
+las imágenes y las tipografías dentro (`pagina.js`). Sale un solo `.html` que
+se abre con cualquier navegador sin conexión. Su miniatura en Grimorio es una
+captura de la pestaña, que va dentro del propio archivo
+(`docs/FORMATO.es.md`).
+
+Se quedan apuntando a la web, y solo se ven si sigue ahí, los vídeos, los
+`iframe` (un vídeo de YouTube metido en un artículo) y lo que no quepa: se
+meten hasta unos 24 MB, y cada archivo hasta 8 MB.
 
 ## Pruebas
 

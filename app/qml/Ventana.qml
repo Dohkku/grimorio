@@ -351,13 +351,26 @@ Window {
 
     /// Lo que se puede hacer con lo elegido. Una sola lista para el clic
     /// derecho y para los botones del panel, así no dicen cosas distintas.
+    /// La dirección http(s) de la que vino el elemento en foco, o "". Sale de
+    /// la ficha, que es la del foco cuando ya ha llegado.
+    function webOriginal() {
+        if (modelo.actual < 0 || nucleo.ficha.id !== modelo.idDe(modelo.actual)) return ""
+        const f = String(nucleo.ficha.fuente || "")
+        return /^https?:\/\//i.test(f) ? f : ""
+    }
+
     function accionesElemento() {
         const varios = modelo.elegidos > 1
         // `corto`, si lo hay, es para los botones del panel de detalle, que
         // son estrechos; el menú enseña `texto`.
+        // Una página web guardada se abre fuera, en el navegador: Grimorio no
+        // lleva uno dentro. Y si se sabe de qué web vino, también esa.
+        const esWeb = modelo.actual >= 0 && modelo.familiaDe(modelo.actual) === Textos.WEB
+        const web = webOriginal()
         let a = [
             { texto: qsTr("ver"), valor: "ver", icono: "ojo", atajo: qsTr("Intro") },
-            { texto: qsTr("abrir fuera"), valor: "fuera", icono: "externo" },
+            esWeb ? { texto: qsTr("abrir la copia guardada"), corto: qsTr("abrir copia"), valor: "fuera", icono: "externo" }
+                  : { texto: qsTr("abrir fuera"), valor: "fuera", icono: "externo" },
             { texto: qsTr("copiar"), valor: "copiar", icono: "copiar", atajo: "Ctrl+C" },
             { texto: qsTr("exportar…"), valor: "exportar", icono: "exportar", atajo: "Ctrl+E" },
             { separador: true },
@@ -365,6 +378,9 @@ Window {
             { texto: varios ? qsTr("renombrar…") : qsTr("renombrar"),
               valor: "renombrar", icono: "lapiz", atajo: "F2" }
         ]
+        if (!varios && web.length > 0)
+            a.splice(2, 0, { texto: qsTr("abrir la web original"), corto: qsTr("web original"),
+                             valor: "web", icono: "externo" })
         if (carpetaActual.length > 0)
             a.push({ texto: qsTr("sacar de la carpeta"), valor: "sacar", icono: "salir" })
         // Las pilas. Apilar pide más de uno —el del foco es la principal—.
@@ -412,6 +428,7 @@ Window {
         switch (accion) {
         case "ver": if (modelo.actual >= 0) visorAbierto = true; break
         case "fuera": nucleo.abrirFuera(modelo.seleccion[0]); break
+        case "web": Qt.openUrlExternally(webOriginal()); break
         case "copiar": copiarElegidos(); break
         case "exportar": exportar.exportar(modelo.urlsElegidas()); break
         case "mover": inspector.moverA(null, px, py); break

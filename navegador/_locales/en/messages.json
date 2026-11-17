@@ -328,5 +328,11 @@
   },
   "ultimaEnCamino": {
     "message": "on the way"
+  },
+  "errorPagina": {
+    "message": "couldn't read the page"
+  },
+  "errorPaginaGrande": {
+    "message": "the page is too big to save whole (over 40 MB)"
   }
 }

@@ -316,6 +316,10 @@
         <translation>RAW</translation>
     </message>
     <message>
+        <source>páginas web</source>
+        <translation>web pages</translation>
+    </message>
+    <message>
         <source>color</source>
         <translation>color</translation>
     </message>
@@ -1952,6 +1956,14 @@ preparing a copy to watch it (only the first time)…</translation>
         <translation>view</translation>
     </message>
     <message>
+        <source>abrir la copia guardada</source>
+        <translation>open the saved copy</translation>
+    </message>
+    <message>
+        <source>abrir copia</source>
+        <translation>open copy</translation>
+    </message>
+    <message>
         <source>abrir fuera</source>
         <translation>open outside</translation>
     </message>
@@ -1974,6 +1986,14 @@ preparing a copy to watch it (only the first time)…</translation>
     <message>
         <source>renombrar</source>
         <translation>rename</translation>
+    </message>
+    <message>
+        <source>abrir la web original</source>
+        <translation>open the original website</translation>
+    </message>
+    <message>
+        <source>web original</source>
+        <translation>original website</translation>
     </message>
     <message>
         <source>sacar de la carpeta</source>
@@ -2200,6 +2220,18 @@ sudo apt install qml6-module-qtmultimedia</translation>
     <message>
         <source>hacer principal</source>
         <translation>make main</translation>
+    </message>
+    <message>
+        <source>leer la copia guardada</source>
+        <translation>read the saved copy</translation>
+    </message>
+    <message>
+        <source>la abre el navegador, sin conexión</source>
+        <translation>opens in your browser, works offline</translation>
+    </message>
+    <message>
+        <source>abrir la web original</source>
+        <translation>open the original website</translation>
     </message>
     <message>
         <source>editar</source>

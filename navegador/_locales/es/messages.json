@@ -328,5 +328,11 @@
   },
   "ultimaEnCamino": {
     "message": "en camino"
+  },
+  "errorPagina": {
+    "message": "no pude leer la página"
+  },
+  "errorPaginaGrande": {
+    "message": "la página es demasiado grande para guardarla entera (más de 40 MB)"
   }
 }

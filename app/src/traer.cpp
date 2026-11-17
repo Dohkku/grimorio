@@ -35,6 +35,9 @@ QString extensionDe(const QString &tipo)
         { "audio/mpeg", "mp3" },       { "audio/ogg", "ogg" },       { "audio/wav", "wav" },
         { "audio/x-wav", "wav" },      { "audio/flac", "flac" },     { "application/pdf", "pdf" },
         { "model/stl", "stl" },        { "model/gltf-binary", "glb" },
+        // Una página entera, solo desde la extensión del navegador, que la
+        // guarda con todo dentro (ver crates/grimorio-core/src/web.rs).
+        { "text/html", "html" },
     };
     return tabla.value(tipo);
 }

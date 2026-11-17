@@ -471,6 +471,7 @@ pub unsafe extern "C" fn grim_vista_familia(v: *const Vista, i: usize) -> u8 {
         Familia::Documento => 4,
         Familia::Tipografia => 5,
         Familia::Modelo => 6,
+        Familia::Web => 7,
     }
 }
 

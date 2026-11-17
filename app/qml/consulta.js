@@ -50,7 +50,7 @@ var CAMPOS = {
 /// no están aquí (números, colores, `7d`) se escriben igual en los dos.
 var VALORES = {
     tipo: { imagen: "image", video: "video", audio: "audio", modelo: "model",
-            documento: "document", tipografia: "font", raw: "raw" },
+            documento: "document", tipografia: "font", raw: "raw", web: "web" },
     orden: { recientes: "newest", antiguos: "oldest", nombre: "name", peso: "size",
              estrellas: "stars", azar: "random", manual: "manual" },
     fecha: { hoy: "today", ayer: "yesterday", "año": "year" },
@@ -206,9 +206,9 @@ function nombreDe(texto) {
     var en = Qt.uiLanguage === "en"
     var FAMILIAS = en
         ? { imagen: "images", video: "videos", audio: "audio", modelo: "3D",
-            documento: "documents", tipografia: "fonts", raw: "RAW" }
+            documento: "documents", tipografia: "fonts", raw: "RAW", web: "web pages" }
         : { imagen: "imágenes", video: "vídeos", audio: "audio", modelo: "3D",
-            documento: "documentos", tipografia: "fuentes", raw: "RAW" }
+            documento: "documentos", tipografia: "fuentes", raw: "RAW", web: "páginas web" }
     var o = en ? " or " : " o "
     var partes = []
     var t = trozos(texto)
@@ -257,6 +257,7 @@ var SUGERENCIAS = [
     { claves: ["3d", "modelo", "stl", "malla", "model", "mesh"], texto: "tipo: 3D", en: "type: 3D", token: "tipo:modelo", icono: "forma" },
     { claves: ["pdf", "documento", "document"], texto: "tipo: documentos", en: "type: documents", token: "tipo:documento", icono: "pegar" },
     { claves: ["fuente", "tipografía", "tipografia", "letra", "font", "typeface"], texto: "tipo: fuentes", en: "type: fonts", token: "tipo:tipografia", icono: "etiqueta" },
+    { claves: ["web", "webs", "página", "páginas", "pagina", "paginas", "html", "page", "pages", "website"], texto: "tipo: páginas web", en: "type: web pages", token: "tipo:web", icono: "externo" },
     { claves: ["hoy", "today"], texto: "importado hoy", en: "imported today", token: "fecha:hoy", icono: "fecha" },
     { claves: ["ayer", "yesterday"], texto: "importado ayer", en: "imported yesterday", token: "fecha:ayer", icono: "fecha" },
     { claves: ["semana", "reciente", "recientes", "week", "recent"], texto: "importado esta semana", en: "imported this week", token: "fecha:7d", icono: "fecha" },

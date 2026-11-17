@@ -28,8 +28,9 @@
 
 - **Todo en un sitio.** Imágenes (también PSD, AI, EPS, Krita, Sketch y RAW),
   vídeo que se reproduce al pasar el ratón, sonido con su onda y su espectro,
-  PDF con visor y modelos 3D (STL, OBJ, PLY, glTF, 3MF, y `.blend`/`.fbx` con
-  Blender instalado).
+  PDF con visor, modelos 3D (STL, OBJ, PLY, glTF, 3MF, y `.blend`/`.fbx` con
+  Blender instalado) y **páginas web enteras**, guardadas desde el navegador
+  para leerlas sin conexión aunque la web cambie o desaparezca.
 - **Ordenar sin esfuerzo.** Etiquetas con grupos y colores, estrellas, notas,
   carpetas anidadas con color y **carpetas dinámicas** que se rellenan solas
   con un filtro.

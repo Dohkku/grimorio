@@ -100,8 +100,15 @@ azar. Dos propiedades que usamos en todas partes:
 - `phash` es un dHash de 64 bits en hexadecimal, para "parecidas a esta".
 - `palette` va ordenada por peso; el primer color es el dominante.
 - `kind` es la familia: `imagen`, `raw`, `video`, `audio`, `documento`,
-  `tipografia` o `modelo`. Se saca de la extensión; está escrita para no
-  tener que saber cuál es cuál.
+  `tipografia`, `modelo` o `web`. Se saca de la extensión; está escrita para
+  no tener que saber cuál es cuál.
+- Un elemento `web` es una página guardada entera por la extensión del
+  navegador: un solo `original.html` con sus estilos, imágenes y tipografías
+  dentro como URL `data:` y sin scripts, que cualquier navegador abre sin
+  conexión. Al principio de su `<head>` lleva `<meta name="grimorio:origen">`
+  (la dirección), `<meta name="grimorio:guardada">` (cuándo, ISO 8601) y
+  `<meta name="grimorio:captura">` (una captura de la pestaña como imagen
+  `data:`, que es su miniatura).
 - `adult` (solo si es `true`) marca lo que el modo seguro difumina.
 - `rotation` (0, 90, 180 o 270) es el giro con el que se mira. El original no
   se gira.

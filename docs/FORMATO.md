@@ -100,8 +100,15 @@ bits. Two properties we rely on everywhere:
 - `phash` is a 64-bit dHash in hexadecimal, for "similar to this one".
 - `palette` is sorted by weight; the first color is the dominant one.
 - `kind` is the family: `imagen`, `raw`, `video`, `audio`, `documento`,
-  `tipografia` or `modelo`. It comes from the extension; it is written down so
-  readers do not have to know which is which.
+  `tipografia`, `modelo` or `web`. It comes from the extension; it is written
+  down so readers do not have to know which is which.
+- A `web` item is a page saved whole by the browser extension: a single
+  `original.html` with its styles, images and fonts inside as `data:` URLs and
+  no scripts, which any browser opens offline. At the start of its `<head>`
+  it carries `<meta name="grimorio:origen">` (the address),
+  `<meta name="grimorio:guardada">` (when, ISO 8601) and
+  `<meta name="grimorio:captura">` (a screenshot of the tab as a `data:` image,
+  which is its thumbnail).
 - `adult` (only when `true`) marks what safe mode blurs.
 - `rotation` (0, 90, 180 or 270) is the rotation it is viewed with. The
   original is not rotated.

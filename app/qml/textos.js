@@ -83,7 +83,7 @@ function etiquetados(n) {
 }
 
 /// Los números de `GrimFamilia`, repetidos aquí porque QML no ve el enum de C.
-var IMAGEN = 0, RAW = 1, VIDEO = 2, AUDIO = 3, DOCUMENTO = 4, TIPOGRAFIA = 5, MODELO = 6
+var IMAGEN = 0, RAW = 1, VIDEO = 2, AUDIO = 3, DOCUMENTO = 4, TIPOGRAFIA = 5, MODELO = 6, WEB = 7
 
 /// Segundos en "1:23" o "1:02:03". Sin ceros a la izquierda en la primera
 /// cifra: "0:07" y no "00:07", que es como lo escribe todo el mundo.
@@ -110,6 +110,8 @@ function insignia(familia, ext, segundos) {
     case RAW:
     case MODELO:
         return String(ext || "").toUpperCase()
+    case WEB:
+        return "WEB"
     default:
         return ""
     }
@@ -124,6 +126,7 @@ function nombreFamilia(f) {
         case TIPOGRAFIA: return "font"
         case RAW: return "raw photo"
         case MODELO: return "3D model"
+        case WEB: return "web page"
         default: return "image"
         }
     }
@@ -134,6 +137,7 @@ function nombreFamilia(f) {
     case TIPOGRAFIA: return "tipografía"
     case RAW: return "negativo"
     case MODELO: return "modelo 3D"
+    case WEB: return "página web"
     default: return "imagen"
     }
 }
@@ -142,7 +146,7 @@ function nombreFamilia(f) {
 /// "tipografia"…): así llega en el reparto del pie de la barra lateral.
 function nombreFamiliaPorClave(clave) {
     var n = { "imagen": IMAGEN, "raw": RAW, "video": VIDEO, "audio": AUDIO,
-              "documento": DOCUMENTO, "tipografia": TIPOGRAFIA, "modelo": MODELO }[clave]
+              "documento": DOCUMENTO, "tipografia": TIPOGRAFIA, "modelo": MODELO, "web": WEB }[clave]
     return nombreFamilia(n === undefined ? IMAGEN : n)
 }
 
