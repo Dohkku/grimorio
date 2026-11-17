@@ -7,6 +7,14 @@ Grimorio ships it inside and shows it when you open a new version after
 updating (and in Settings → about → «what's new»). Each version is a
 `## X.Y.Z` section; what goes under it is plain Markdown.
 
+## 0.1.21
+
+- **Sound follows the system output with Qt 6.10 too.** On distributions with
+  Qt 6.10 or newer, videos could play through a different output (for
+  example, a Bluetooth speaker) instead of the headphones chosen on the
+  desktop, and switching outputs didn't move them. Now they follow the
+  system output again.
+
 ## 0.1.20
 
 - **Grimorio no longer freezes when left open.** When the system switched

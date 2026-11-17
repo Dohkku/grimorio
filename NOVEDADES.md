@@ -8,6 +8,14 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.21
+
+- **El sonido sale por donde lo tiene el sistema también con Qt 6.10.** En
+  distribuciones con Qt 6.10 o más nuevo, los vídeos podían sonar por otra
+  salida (por ejemplo, un altavoz Bluetooth) en vez de por los auriculares
+  elegidos en el escritorio, y cambiar de salida no los movía. Ahora siguen
+  a la salida del sistema como antes.
+
 ## 0.1.20
 
 - **Grimorio ya no se congela si lo dejas abierto.** Cuando el sistema

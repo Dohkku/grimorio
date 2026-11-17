@@ -277,6 +277,21 @@ private:
 
 int main(int argc, char **argv)
 {
+#ifdef Q_OS_LINUX
+    // El sonido por PulseAudio, también sobre PipeWire (pipewire-pulse).
+    //
+    // Desde Qt 6.10 el sonido va por defecto directo a PipeWire, y ese camino
+    // no ve todas las salidas: los auriculares Bluetooth que WirePlumber pone
+    // tras su «loopback» (bluez_output.XX:XX:...) no salen en
+    // `MediaDevices.audioOutputs`, así que Qt se queda con otra como «por
+    // defecto», abre el flujo atado a ella (`node.dont-reconnect`) y ni
+    // `salidaSonido` lo puede llevar a la buena: `pactl move-sink-input` no
+    // mueve flujos nativos de PipeWire. Por PulseAudio Qt ve las mismas
+    // salidas que el escritorio, sigue a la de por defecto y los flujos se
+    // pueden mover. Si alguien pide otro a mano, se respeta.
+    if (!qEnvironmentVariableIsSet("QT_AUDIO_BACKEND"))
+        qputenv("QT_AUDIO_BACKEND", "pulseaudio");
+#endif
     Aplicacion app(argc, argv);
     app.setApplicationName(QStringLiteral("Grimorio"));
     app.setOrganizationName(QStringLiteral("Grimorio"));
