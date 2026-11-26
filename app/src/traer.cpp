@@ -2,6 +2,7 @@
 
 #include "nombres.h"
 #include "nucleo.h"
+#include "pagina.h"
 #include "portal.h"
 
 #include <QClipboard>
@@ -35,6 +36,9 @@ QString extensionDe(const QString &tipo)
         { "audio/mpeg", "mp3" },       { "audio/ogg", "ogg" },       { "audio/wav", "wav" },
         { "audio/x-wav", "wav" },      { "audio/flac", "flac" },     { "application/pdf", "pdf" },
         { "model/stl", "stl" },        { "model/gltf-binary", "glb" },
+        // Una página entera, con todo dentro: de la extensión del navegador
+        // o de pegar su dirección (ver pagina.h y crates/grimorio-core/src/web.rs).
+        { "text/html", "html" },
     };
     return tabla.value(tipo);
 }
@@ -238,7 +242,7 @@ void Traer::descargar(const QUrl &url, const QString &carpeta)
         emit aviso(tr("no es una dirección web: %1").arg(url.toString()), true);
         return;
     }
-    bajar(url, carpeta, QString(), 0, QImage());
+    bajar(url, carpeta, QString(), 0, QImage(), QString(), true);
 }
 
 void Traer::mal(const QString &etiqueta, const QString &mensaje)
@@ -300,7 +304,7 @@ void Traer::guardarImagen(const QImage &img, const QString &carpeta, const QStri
 }
 
 void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen, int saltos,
-                  const QImage &reserva, const QString &etiqueta)
+                  const QImage &reserva, const QString &etiqueta, bool paginaEntera)
 {
     QNetworkRequest pide(url);
     // Hay sitios que a un cliente sin nombre le devuelven una página de error
@@ -326,9 +330,25 @@ void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen
         const QByteArray datos = r->readAll();
         const QUrl final_ = r->url();
 
-        // Una página: se va a por su imagen principal, una vez. El origen es
-        // la página, que es lo que se querrá volver a abrir.
         if (tipo == QLatin1String("text/html") || tipo == QLatin1String("application/xhtml+xml")) {
+            // La dirección de una página pegada o soltada en Grimorio: la
+            // página entera, para leerla sin conexión.
+            if (paginaEntera && reserva.isNull()) {
+                const QUrl otra = saltos < 3 ? pagina::redireccion(
+                                                   pagina::decodificar(datos, r->header(QNetworkRequest::ContentTypeHeader).toString()),
+                                                   final_)
+                                             : QUrl();
+                if (otra.isValid() && otra != final_) {
+                    bajar(otra, carpeta, origen, saltos + 1, reserva, etiqueta, true);
+                    return;
+                }
+                archivar(datos, r->header(QNetworkRequest::ContentTypeHeader).toString(), final_, carpeta,
+                         etiqueta);
+                return;
+            }
+            // Si no (un enlace desde la extensión), su imagen principal, una
+            // vez. El origen es la página, que es lo que se querrá volver a
+            // abrir.
             const QUrl img = saltos == 0 ? imagenPrincipal(QString::fromUtf8(datos), final_) : QUrl();
             if (img.isValid()) {
                 bajar(img, carpeta, origen.isEmpty() ? url.toString() : origen, saltos + 1, reserva, etiqueta);
@@ -366,6 +386,18 @@ void Traer::bajar(const QUrl &url, const QString &carpeta, const QString &origen
         m_nucleo->importarDeFuera({ ruta }, carpeta, origen.isEmpty() ? url.toString() : origen, true,
                                   etiqueta);
     });
+}
+
+void Traer::archivar(const QByteArray &html, const QString &tipo, const QUrl &url, const QString &carpeta,
+                     const QString &etiqueta)
+{
+    emit aviso(tr("guardando la página de %1…").arg(url.host()), false);
+    auto *a = new ArchivarPagina(m_red, this);
+    connect(a, &ArchivarPagina::hecha, this, [=](const QByteArray &h, const QString &titulo) {
+        guardarDatos(h, QStringLiteral("text/html"), titulo.isEmpty() ? url.host() : titulo, carpeta,
+                     url.toString(), etiqueta);
+    });
+    a->empezar(html, tipo, url, url.toString());
 }
 
 void Traer::elegirEImportar(const QString &carpeta)

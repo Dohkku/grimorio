@@ -316,6 +316,14 @@
         <translation>RAW</translation>
     </message>
     <message>
+        <source>páginas web</source>
+        <translation>web pages</translation>
+    </message>
+    <message>
+        <source>etiquetas</source>
+        <translation>tags</translation>
+    </message>
+    <message>
         <source>color</source>
         <translation>color</translation>
     </message>
@@ -555,6 +563,30 @@
     <message>
         <source>quitar</source>
         <translation>remove</translation>
+    </message>
+    <message>
+        <source>buscar etiqueta…</source>
+        <translation>search tag…</translation>
+    </message>
+    <message>
+        <source>aún no hay etiquetas</source>
+        <translation>no tags yet</translation>
+    </message>
+    <message>
+        <source>ninguna etiqueta encaja</source>
+        <translation>no tag matches</translation>
+    </message>
+    <message>
+        <source>filtrar por esta</source>
+        <translation>filter by this</translation>
+    </message>
+    <message>
+        <source>dejar fuera esta</source>
+        <translation>exclude this</translation>
+    </message>
+    <message>
+        <source>✓ filtra por ella · ⊘ la deja fuera · otro clic la quita</source>
+        <translation>✓ filters by it · ⊘ excludes it · click again to clear</translation>
     </message>
 </context>
 <context>
@@ -1786,6 +1818,10 @@ preparing a copy to watch it (only the first time)…</translation>
         <translation>could not save the download</translation>
     </message>
     <message>
+        <source>guardando la página de %1…</source>
+        <translation>saving the page from %1…</translation>
+    </message>
+    <message>
         <source>Importar a Grimorio</source>
         <translation>Import into Grimorio</translation>
     </message>
@@ -1952,6 +1988,14 @@ preparing a copy to watch it (only the first time)…</translation>
         <translation>view</translation>
     </message>
     <message>
+        <source>abrir la copia guardada</source>
+        <translation>open the saved copy</translation>
+    </message>
+    <message>
+        <source>abrir copia</source>
+        <translation>open copy</translation>
+    </message>
+    <message>
         <source>abrir fuera</source>
         <translation>open outside</translation>
     </message>
@@ -1974,6 +2018,14 @@ preparing a copy to watch it (only the first time)…</translation>
     <message>
         <source>renombrar</source>
         <translation>rename</translation>
+    </message>
+    <message>
+        <source>abrir la web original</source>
+        <translation>open the original website</translation>
+    </message>
+    <message>
+        <source>web original</source>
+        <translation>original website</translation>
     </message>
     <message>
         <source>sacar de la carpeta</source>
@@ -2108,6 +2160,18 @@ preparing a copy to watch it (only the first time)…</translation>
         <translation>%1 copied to the clipboard</translation>
     </message>
     <message>
+        <source>filtrar por esta etiqueta</source>
+        <translation>filter by this tag</translation>
+    </message>
+    <message>
+        <source>dejar fuera esta etiqueta</source>
+        <translation>exclude this tag</translation>
+    </message>
+    <message>
+        <source>quitar del filtro</source>
+        <translation>remove from filter</translation>
+    </message>
+    <message>
         <source>¿Borrar %1 de la papelera?</source>
         <translation>Delete %1 from the trash?</translation>
     </message>
@@ -2200,6 +2264,18 @@ sudo apt install qml6-module-qtmultimedia</translation>
     <message>
         <source>hacer principal</source>
         <translation>make main</translation>
+    </message>
+    <message>
+        <source>leer la copia guardada</source>
+        <translation>read the saved copy</translation>
+    </message>
+    <message>
+        <source>la abre el navegador, sin conexión</source>
+        <translation>opens in your browser, works offline</translation>
+    </message>
+    <message>
+        <source>abrir la web original</source>
+        <translation>open the original website</translation>
     </message>
     <message>
         <source>editar</source>

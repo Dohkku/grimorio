@@ -38,6 +38,8 @@ pub enum Familia {
     Tipografia,
     /// Modelos 3D: piezas de impresión, escenas de Blender, mallas de juego.
     Modelo,
+    /// Páginas web guardadas enteras, en un `.html` que se abre sin conexión.
+    Web,
 }
 
 impl Familia {
@@ -50,6 +52,7 @@ impl Familia {
             Familia::Documento => "documento",
             Familia::Tipografia => "tipografia",
             Familia::Modelo => "modelo",
+            Familia::Web => "web",
         }
     }
 
@@ -66,6 +69,7 @@ impl Familia {
             "documento" | "document" | "doc" | "pdf" => Some(Familia::Documento),
             "tipografia" | "tipografía" | "fuente" | "font" => Some(Familia::Tipografia),
             "modelo" | "model" | "3d" | "malla" | "pieza" => Some(Familia::Modelo),
+            "web" | "pagina" | "página" | "page" | "html" => Some(Familia::Web),
             _ => None,
         }
     }
@@ -111,6 +115,7 @@ const TABLA: &[(Familia, &[&str])] = &[
         Familia::Modelo,
         &["stl", "obj", "ply", "glb", "gltf", "3mf", "blend", "fbx"],
     ),
+    (Familia::Web, &["html", "htm"]),
 ];
 
 /// La familia de una extensión, o `None` si no es nada que sepamos guardar.
@@ -221,6 +226,7 @@ pub fn que_leer(ext: &str) -> Lectura {
             Lectura::Entero
         }
         Some(Familia::Audio) => Lectura::Principio(PRINCIPIO_AUDIO),
+        Some(Familia::Web) => Lectura::Principio(crate::web::PRINCIPIO),
         _ => Lectura::Nada,
     }
 }
@@ -263,6 +269,7 @@ pub fn abrir(ruta: &Path, ext: &str, bytes: &[u8]) -> Result<Lienzo> {
         Some(Familia::Audio) => Ok(de_audio(ruta, bytes)),
         Some(Familia::Documento) => Ok(de_pdf(ruta)),
         Some(Familia::Modelo) => Ok(de_modelo(ruta, ext, bytes)),
+        Some(Familia::Web) => Ok(de_web(bytes)),
         Some(Familia::Raw) => match crate::raw::previa(bytes) {
             // Las medidas son las de la vista previa, no las del negativo: son
             // las únicas que conocemos sin revelarlo, y decir un número
@@ -516,6 +523,25 @@ fn datos_de_video(ruta: &Path) -> Option<(u32, u32, Option<u64>)> {
     Some((w, h, dur))
 }
 
+/// Una página web guardada: su miniatura es la captura que lleva dentro (ver
+/// web.rs). Sin medidas, como una tipografía: «1280 × 720» sería lo que medía
+/// la ventana del navegador, no la página.
+fn de_web(bytes: &[u8]) -> Lienzo {
+    let Some(captura) = crate::web::captura(bytes) else {
+        return Lienzo::a_ciegas(t(
+            "la página no lleva captura dentro",
+            "the page has no screenshot inside",
+        ));
+    };
+    match image_ops::decode(&captura) {
+        Ok(img) => Lienzo {
+            imagen: Some(img),
+            ..Default::default()
+        },
+        Err(e) => Lienzo::a_ciegas(e.to_string()),
+    }
+}
+
 /// La primera página del PDF, con `pdftoppm`.
 fn de_pdf(ruta: &Path) -> Lienzo {
     let paginas = paginas_de_pdf(ruta);
@@ -598,6 +624,9 @@ mod tests {
         assert_eq!(familia_de("woff2"), Some(Familia::Tipografia));
         assert_eq!(familia_de("STL"), Some(Familia::Modelo));
         assert_eq!(familia_de("blend"), Some(Familia::Modelo));
+        assert_eq!(familia_de("HTML"), Some(Familia::Web));
+        assert_eq!(Familia::parse("páginas"), Some(Familia::Web));
+        assert_eq!(que_leer("htm"), Lectura::Principio(crate::web::PRINCIPIO));
     }
 
     #[test]

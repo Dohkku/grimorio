@@ -8,6 +8,43 @@ una versión nueva después de actualizar (y en Ajustes → acerca de →
 GitHub, y la web lo enseña en su página de novedades. Cada versión es un
 apartado `## X.Y.Z`; lo que va debajo, en Markdown sencillo.
 
+## 0.1.22
+
+- **Guardar páginas web enteras para leerlas sin conexión.** Pega en
+  Grimorio la dirección de una página (Ctrl+V) o suelta un enlace en la
+  ventana, y se guarda la página entera en un solo `.html`, con sus estilos,
+  imágenes y tipografías dentro, que se abre aunque no haya conexión o la web
+  cambie. Antes solo se guardaba su imagen de portada. Las webs hechas
+  enteras con JavaScript pueden salir incompletas así; para esas, clic
+  derecho en la página del navegador y «Guardar en Grimorio»: la extensión
+  guarda la página tal como se ve. Las páginas son un tipo nuevo, con su
+  filtro «páginas web» (`tipo:web`) y su imagen de portada (o una captura,
+  desde la extensión) como miniatura. Desde el visor, el clic derecho o el
+  panel de detalle se puede «leer la copia guardada» en el navegador o «abrir
+  la web original».
+- **Guardar fotos y vídeos de X.** La extensión del navegador enseña ahora el
+  botón «a Grimorio» también en X (Twitter), y el clic derecho guarda lo que
+  hay bajo el ratón: las fotos a su tamaño original y los vídeos con la mayor
+  calidad que da X. Hay que actualizar la extensión del navegador para tener
+  las dos cosas.
+- **Volumen en el panel de detalle.** Los vídeos del panel de la derecha
+  tienen una barra de volumen junto al botón de silencio: se arrastra, se
+  pulsa o se mueve con la rueda.
+- **Un volumen que suena como se espera.** La barra sigue ahora cómo oye el
+  oído: cada paso suena al mismo cambio, de fuerte a flojo. Antes casi toda la
+  barra apenas cambiaba nada y todo el cambio estaba en el último cuarto.
+- **El volumen se recuerda.** El que elijas es el mismo en el panel y en el
+  visor, y sigue igual al cerrar Grimorio. Antes volvía al máximo cada vez.
+- **Filtrar y dejar fuera etiquetas con clics.** La fila de filtros tiene un
+  botón nuevo, «etiquetas»: busca una etiqueta y pulsa ✓ para ver solo lo que
+  la lleva, o ⊘ para esconderlo. Se pueden combinar varias. Con clic derecho
+  en una etiqueta del panel de detalle también se filtra o se deja fuera.
+  Escribe `#etiqueta` y `-#etiqueta` en el buscador, así que se pueden seguir
+  tecleando a mano.
+- **Lo que no tiene miniatura enseña su propio nombre.** Después de importar
+  algo nuevo, un archivo sin miniatura podía enseñar el nombre del que antes
+  estaba en su sitio.
+
 ## 0.1.21
 
 - **El sonido sale por donde lo tiene el sistema también con Qt 6.10.** En

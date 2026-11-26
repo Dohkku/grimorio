@@ -13,13 +13,15 @@ Rectangle {
     property string campo: ""
     /// `[{texto, valor, icono?}]`. El de valor "" es «sin filtro».
     property var opciones: []
-    /// "lista" o "color".
+    /// "lista", "color" o "etiquetas" (varias a la vez, cada una dentro o
+    /// fuera; se eligen en su propia lista).
     property string modo: "lista"
     /// Un chip que no abre nada: se enciende y se apaga (repetidos).
     property string interruptor: ""
 
-    readonly property string valor: Consulta.leer(ventana.textoBusqueda, campo)
-    readonly property bool puesto: valor.length > 0
+    readonly property string valor: modo === "etiquetas" ? "" : Consulta.leer(ventana.textoBusqueda, campo)
+    readonly property int nEtiquetas: modo === "etiquetas" ? Consulta.cuantasEtiquetas(ventana.textoBusqueda) : 0
+    readonly property bool puesto: modo === "etiquetas" ? nEtiquetas > 0 : valor.length > 0
     readonly property string valorTexto: {
         for (let i = 0; i < opciones.length; i++)
             if (opciones[i].valor === valor) return opciones[i].texto
@@ -66,7 +68,9 @@ Rectangle {
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: chip.puesto && chip.interruptor.length === 0 && chip.modo !== "color"
+            text: chip.modo === "etiquetas"
+                  ? (chip.puesto ? chip.titulo + " · " + chip.nEtiquetas : chip.titulo)
+                  : chip.puesto && chip.interruptor.length === 0 && chip.modo !== "color"
                   ? chip.titulo + ": " + chip.valorTexto : chip.titulo
             color: chip.puesto ? tema.seleccion : tema.texto
             font.pixelSize: tema.fuente * 0.92
@@ -94,7 +98,8 @@ Rectangle {
                 anchors.margins: -tema.hueco * 0.3
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: ventana.ponerFiltro(chip.campo, "")
+                onClicked: chip.modo === "etiquetas" ? ventana.quitarFiltroEtiquetas()
+                                                     : ventana.ponerFiltro(chip.campo, "")
             }
         }
     }

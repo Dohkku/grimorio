@@ -351,13 +351,26 @@ Window {
 
     /// Lo que se puede hacer con lo elegido. Una sola lista para el clic
     /// derecho y para los botones del panel, así no dicen cosas distintas.
+    /// La dirección http(s) de la que vino el elemento en foco, o "". Sale de
+    /// la ficha, que es la del foco cuando ya ha llegado.
+    function webOriginal() {
+        if (modelo.actual < 0 || nucleo.ficha.id !== modelo.idDe(modelo.actual)) return ""
+        const f = String(nucleo.ficha.fuente || "")
+        return /^https?:\/\//i.test(f) ? f : ""
+    }
+
     function accionesElemento() {
         const varios = modelo.elegidos > 1
         // `corto`, si lo hay, es para los botones del panel de detalle, que
         // son estrechos; el menú enseña `texto`.
+        // Una página web guardada se abre fuera, en el navegador: Grimorio no
+        // lleva uno dentro. Y si se sabe de qué web vino, también esa.
+        const esWeb = modelo.actual >= 0 && modelo.familiaDe(modelo.actual) === Textos.WEB
+        const web = webOriginal()
         let a = [
             { texto: qsTr("ver"), valor: "ver", icono: "ojo", atajo: qsTr("Intro") },
-            { texto: qsTr("abrir fuera"), valor: "fuera", icono: "externo" },
+            esWeb ? { texto: qsTr("abrir la copia guardada"), corto: qsTr("abrir copia"), valor: "fuera", icono: "externo" }
+                  : { texto: qsTr("abrir fuera"), valor: "fuera", icono: "externo" },
             { texto: qsTr("copiar"), valor: "copiar", icono: "copiar", atajo: "Ctrl+C" },
             { texto: qsTr("exportar…"), valor: "exportar", icono: "exportar", atajo: "Ctrl+E" },
             { separador: true },
@@ -365,6 +378,9 @@ Window {
             { texto: varios ? qsTr("renombrar…") : qsTr("renombrar"),
               valor: "renombrar", icono: "lapiz", atajo: "F2" }
         ]
+        if (!varios && web.length > 0)
+            a.splice(2, 0, { texto: qsTr("abrir la web original"), corto: qsTr("web original"),
+                             valor: "web", icono: "externo" })
         if (carpetaActual.length > 0)
             a.push({ texto: qsTr("sacar de la carpeta"), valor: "sacar", icono: "salir" })
         // Las pilas. Apilar pide más de uno —el del foco es la principal—.
@@ -412,6 +428,7 @@ Window {
         switch (accion) {
         case "ver": if (modelo.actual >= 0) visorAbierto = true; break
         case "fuera": nucleo.abrirFuera(modelo.seleccion[0]); break
+        case "web": Qt.openUrlExternally(webOriginal()); break
         case "copiar": copiarElegidos(); break
         case "exportar": exportar.exportar(modelo.urlsElegidas()); break
         case "mover": inspector.moverA(null, px, py); break
@@ -785,10 +802,41 @@ Window {
     }
 
     /// Pinchar una etiqueta la añade al filtro, y volver a pincharla la quita.
+    /// Clic en una etiqueta: filtra por ella, y otro clic lo quita. Si estaba
+    /// fuera (`-#x`), pasa a filtrar.
     function filtrarPorEtiqueta(t) {
-        textoBusqueda = Consulta.alternar(textoBusqueda, "etiqueta", t)
+        filtrarEtiqueta(t, Consulta.estadoEtiqueta(textoBusqueda, t) === 1 ? 0 : 1)
+    }
+
+    /// Una etiqueta en el buscador: 1 filtra por ella, -1 la deja fuera y 0
+    /// la quita. Escribe `#x` o `-#x` en la misma línea que se teclea.
+    function filtrarEtiqueta(t, estado) {
+        textoBusqueda = Consulta.ponerEtiqueta(textoBusqueda, t, estado)
         consultar()
         guardarEnDinamica()
+    }
+
+    function quitarFiltroEtiquetas() {
+        textoBusqueda = Consulta.quitarEtiquetas(textoBusqueda)
+        consultar()
+        guardarEnDinamica()
+    }
+
+    /// El menú de una etiqueta (clic derecho en sus fichas): filtrar, dejar
+    /// fuera o quitarla del filtro, en (px, py) de la ventana.
+    function menuEtiqueta(t, px, py) {
+        const e = Consulta.estadoEtiqueta(textoBusqueda, t)
+        let ops = [
+            { texto: qsTr("filtrar por esta etiqueta"), valor: "1", icono: "buscar" },
+            { texto: qsTr("dejar fuera esta etiqueta"), valor: "-1", icono: "cerrar" }
+        ]
+        if (e !== 0) ops.push({ texto: qsTr("quitar del filtro"), valor: "0", icono: "menos" })
+        desplegable.abrirEn(px, py, {
+            titulo: "#" + t,
+            opciones: ops,
+            actual: e === 0 ? "" : String(e),
+            alElegir: function (v) { ventana.filtrarEtiqueta(t, Number(v)) }
+        })
     }
 
     function ponerFiltro(campo, valor) {

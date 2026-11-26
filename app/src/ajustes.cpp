@@ -8,6 +8,10 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_anchoInspector = m_disco.value(QStringLiteral("paneles/inspector"), 0.0).toReal();
     m_videoAlPasar = m_disco.value(QStringLiteral("video/alPasar"), true).toBool();
     m_sonidoPanel = m_disco.value(QStringLiteral("video/sonidoPanel"), false).toBool();
+    m_volumen = qBound(0.0, m_disco.value(QStringLiteral("video/volumen"), 1.0).toReal(), 1.0);
+    m_guardarVolumen.setSingleShot(true);
+    m_guardarVolumen.setInterval(400);
+    connect(&m_guardarVolumen, &QTimer::timeout, this, [this] { guardar("video/volumen", m_volumen); });
     m_modoSeguro = m_disco.value(QStringLiteral("seguro/puesto"), true).toBool();
     m_verNombres = m_disco.value(QStringLiteral("malla/nombres"), false).toBool();
     m_verInspector = m_disco.value(QStringLiteral("paneles/verInspector"), true).toBool();
@@ -19,6 +23,12 @@ Ajustes::Ajustes(QObject *padre) : QObject(padre)
     m_pasoIman = qBound(0.05, m_disco.value(QStringLiteral("editor/pasoIman"), 0.5).toReal(), 60.0);
     m_idioma = m_disco.value(QStringLiteral("interfaz/idioma"), QString()).toString();
     m_idiomaEnUso = idiomaEfectivo(m_idioma);
+}
+
+Ajustes::~Ajustes()
+{
+    // Cerrar justo después de mover el volumen no se lo puede llevar.
+    if (m_guardarVolumen.isActive()) m_disco.setValue(QStringLiteral("video/volumen"), m_volumen);
 }
 
 QString Ajustes::idiomaEfectivo(const QString &elegido)
@@ -80,6 +90,15 @@ void Ajustes::setSonidoPanel(bool v)
     if (m_sonidoPanel == v) return;
     m_sonidoPanel = v;
     guardar("video/sonidoPanel", v);
+}
+
+void Ajustes::setVolumen(qreal v)
+{
+    v = qBound(0.0, v, 1.0);
+    if (qFuzzyCompare(1.0 + m_volumen, 1.0 + v)) return;
+    m_volumen = v;
+    emit cambio();
+    m_guardarVolumen.start();
 }
 
 void Ajustes::setModoSeguro(bool v)

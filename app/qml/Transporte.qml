@@ -43,6 +43,45 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
     }
 
+    /// El volumen: arrastrar, clic en un punto, o la rueda encima. Mueve la
+    /// barra, y el reproductor la pasa a decibelios (`Reproductor.ganancia`):
+    /// cada paso de rueda es el mismo salto de oído arriba que abajo.
+    component BarraVolumen: Item {
+        id: volumen
+        anchors.verticalCenter: parent.verticalCenter
+        height: transporte.fila
+        readonly property real v: transporte.hayRep && !transporte.rep.silencio ? transporte.rep.volumen : 0
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width
+            height: barra.grosor
+            radius: height / 2
+            color: tema.marcador
+        }
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width * volumen.v
+            height: barra.grosor
+            radius: height / 2
+            color: tema.textoTenue
+        }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            function poner(x) {
+                transporte.rep.silencio = false
+                transporte.rep.volumen = Math.max(0, Math.min(1, x / volumen.width))
+            }
+            onPressed: function (e) { poner(e.x) }
+            onPositionChanged: function (e) { if (pressed) poner(e.x) }
+            onWheel: function (r) {
+                transporte.rep.silencio = false
+                transporte.rep.volumen = Math.max(0, Math.min(1,
+                    transporte.rep.volumen + (r.angleDelta.y > 0 ? 0.05 : -0.05)))
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- la barra
     Item {
         id: barra
@@ -240,6 +279,10 @@ Rectangle {
                 pista: transporte.hayRep && transporte.rep.silencio ? qsTr("con sonido") : qsTr("silencio")
                 onPulsado: transporte.rep.silencio = !transporte.rep.silencio
             }
+            BarraVolumen {
+                visible: transporte.compacto && transporte.esVideo
+                width: tema.fuente * 4.5
+            }
         }
 
         Row {
@@ -303,43 +346,7 @@ Rectangle {
                 pista: transporte.hayRep && transporte.rep.silencio ? qsTr("con sonido (M)") : qsTr("silencio (M)")
                 onPulsado: transporte.rep.silencio = !transporte.rep.silencio
             }
-            // El volumen: arrastrar, o la rueda encima.
-            Item {
-                id: volumen
-                anchors.verticalCenter: parent.verticalCenter
-                width: tema.fuente * 6
-                height: transporte.fila
-                readonly property real v: transporte.hayRep && !transporte.rep.silencio ? transporte.rep.volumen : 0
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width
-                    height: barra.grosor
-                    radius: height / 2
-                    color: tema.marcador
-                }
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width * volumen.v
-                    height: barra.grosor
-                    radius: height / 2
-                    color: tema.textoTenue
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    function poner(x) {
-                        transporte.rep.silencio = false
-                        transporte.rep.volumen = Math.max(0, Math.min(1, x / volumen.width))
-                    }
-                    onPressed: function (e) { poner(e.x) }
-                    onPositionChanged: function (e) { if (pressed) poner(e.x) }
-                    onWheel: function (r) {
-                        transporte.rep.silencio = false
-                        transporte.rep.volumen = Math.max(0, Math.min(1,
-                            transporte.rep.volumen + (r.angleDelta.y > 0 ? 0.05 : -0.05)))
-                    }
-                }
-            }
+            BarraVolumen { width: tema.fuente * 6 }
 
             Item { width: tema.hueco / 2; height: 1 }
 

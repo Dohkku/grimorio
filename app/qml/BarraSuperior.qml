@@ -38,6 +38,7 @@ Rectangle {
         const campos = ["tipo", "color", "fecha", "estrellas", "orientacion", "repetidos"]
         for (let i = 0; i < campos.length; i++)
             if (Consulta.leer(t, campos[i]).length > 0) n += 1
+        if (Consulta.cuantasEtiquetas(t) > 0) n += 1
         return n
     }
 
@@ -377,8 +378,15 @@ Rectangle {
                     { texto: qsTr("3D"), valor: "modelo", icono: "forma" },
                     { texto: qsTr("documentos"), valor: "documento", icono: "pegar" },
                     { texto: qsTr("fuentes"), valor: "tipografia", icono: "etiqueta" },
-                    { texto: qsTr("RAW"), valor: "raw", icono: "captura" }
+                    { texto: qsTr("RAW"), valor: "raw", icono: "captura" },
+                    { texto: qsTr("páginas web"), valor: "web", icono: "externo" }
                 ]
+            }
+            Chip {
+                titulo: qsTr("etiquetas")
+                icono: "etiqueta"
+                campo: "etiqueta"
+                modo: "etiquetas"
             }
             Chip {
                 titulo: qsTr("color")

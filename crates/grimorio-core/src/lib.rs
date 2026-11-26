@@ -35,6 +35,7 @@ pub mod sugerencias;
 pub mod thumbs;
 pub mod time;
 pub mod vigiladas;
+pub mod web;
 
 pub use error::{Error, Result};
 pub use folder::{Folder, Folders};

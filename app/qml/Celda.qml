@@ -258,7 +258,7 @@ Item {
                             width: Math.max(10, celda.celdaAncho - tema.hueco * 2)
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideMiddle
-                            text: modelo.nombreDe(celda.celdaIndice)
+                            text: celda.nombre
                             color: tema.textoTenue
                             font.pixelSize: Math.min(tema.fuente * 0.85,
                                                      Math.max(8, celda.celdaAlto * 0.1))

@@ -377,12 +377,24 @@ Rectangle {
                     value: !ajustes.sonidoPanel
                     when: reproductor.status === Loader.Ready
                 }
+                // El volumen, el mismo que en el visor y guardado: mover la
+                // barra aquí deja el siguiente vídeo, y el del visor, igual.
+                Binding {
+                    target: reproductor.item
+                    property: "volumen"
+                    value: ajustes.volumen
+                    when: reproductor.status === Loader.Ready
+                }
                 Connections {
                     target: reproductor.item
                     ignoreUnknownSignals: true
                     function onSilencioChanged() {
                         const r = inspector.rep
                         if (r && ajustes.sonidoPanel === r.silencio) ajustes.sonidoPanel = !r.silencio
+                    }
+                    function onVolumenChanged() {
+                        const r = inspector.rep
+                        if (r) ajustes.volumen = r.volumen
                     }
                     // Doble clic sobre el vídeo, al visor: lo mismo que en
                     // una foto o en la malla.

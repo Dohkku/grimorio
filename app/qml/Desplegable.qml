@@ -8,6 +8,9 @@
 //   modo "lista"   opciones con icono, atajo y marca en la elegida
 //   modo "color"   las muestras de color y un campo para un hex
 //   modo "texto"   un campo, para lo que se escribe (una dirección web)
+//   modo "etiquetas"  todas las etiquetas con un buscador; cada una se pone
+//                  dentro (✓) o fuera (⊘) del filtro, y el menú sigue abierto
+//                  para poner varias
 import QtQuick
 import "consulta.js" as Consulta
 
@@ -55,12 +58,20 @@ Item {
             campo.forceActiveFocus()
         } else if (modo === "color") {
             hex.text = Consulta.MUESTRAS.indexOf(actual) < 0 ? actual : ""
+        } else if (modo === "etiquetas") {
+            // La lista se pide al abrir, como en el gestor: puede haber
+            // cambiado desde la última vez.
+            nucleo.pedirTodasEtiquetas()
+            buscaEtiqueta.text = ""
+            listaEtiquetas.positionViewAtBeginning()
+            buscaEtiqueta.forceActiveFocus()
         }
     }
 
     function cerrar() {
         campo.focus = false
         hex.focus = false
+        buscaEtiqueta.focus = false
         visible = false
     }
 
@@ -256,6 +267,174 @@ Item {
                         texto: qsTr("quitar")
                         onPulsado: menu.elegir("")
                     }
+                }
+            }
+
+            // --------------------------------------------------- etiquetas
+            Column {
+                id: etiquetasMenu
+                visible: menu.modo === "etiquetas"
+                width: parent.width
+                spacing: tema.hueco * 0.4
+
+                readonly property var filas: {
+                    if (menu.modo !== "etiquetas" || !menu.visible) return []
+                    const f = buscaEtiqueta.text.trim().toLowerCase()
+                    const todas = nucleo.todasEtiquetas
+                    let out = []
+                    for (let i = 0; i < todas.length; i++)
+                        if (f.length === 0 || todas[i].nombre.toLowerCase().indexOf(f) >= 0)
+                            out.push(todas[i])
+                    return out
+                }
+                readonly property real altoFila: Math.round(tema.fuente * 2.1)
+
+                Rectangle {
+                    x: tema.hueco
+                    width: parent.width - tema.hueco * 2
+                    height: Math.round(tema.fuente * 2.1)
+                    radius: tema.radio
+                    color: tema.fondo
+                    border.color: buscaEtiqueta.activeFocus ? tema.seleccion : tema.borde
+                    border.width: 1
+                    TextInput {
+                        id: buscaEtiqueta
+                        anchors.fill: parent
+                        anchors.leftMargin: tema.hueco * 0.6
+                        anchors.rightMargin: tema.hueco * 0.6
+                        verticalAlignment: TextInput.AlignVCenter
+                        clip: true
+                        color: tema.texto
+                        font.pixelSize: tema.fuente * 0.95
+                        // Intro pone la primera que encaja, para ir con el teclado.
+                        onAccepted: {
+                            const fs = etiquetasMenu.filas
+                            if (fs.length > 0) ventana.filtrarEtiqueta(fs[0].nombre, 1)
+                        }
+                        Keys.onEscapePressed: menu.cerrar()
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: buscaEtiqueta.text.length === 0
+                            text: qsTr("buscar etiqueta…")
+                            color: tema.textoTenue
+                            font: buscaEtiqueta.font
+                        }
+                    }
+                }
+
+                Text {
+                    visible: etiquetasMenu.filas.length === 0
+                    x: tema.hueco
+                    width: parent.width - tema.hueco * 2
+                    topPadding: tema.hueco * 0.3
+                    bottomPadding: tema.hueco * 0.3
+                    wrapMode: Text.WordWrap
+                    text: nucleo.todasEtiquetas.length === 0 ? qsTr("aún no hay etiquetas")
+                                                             : qsTr("ninguna etiqueta encaja")
+                    color: tema.textoTenue
+                    font.pixelSize: tema.fuente * 0.9
+                }
+
+                ListView {
+                    id: listaEtiquetas
+                    visible: etiquetasMenu.filas.length > 0
+                    width: parent.width
+                    height: Math.min(etiquetasMenu.filas.length, 12) * etiquetasMenu.altoFila
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: etiquetasMenu.filas
+                    delegate: Rectangle {
+                        id: filaE
+                        required property var modelData
+                        /// 1 dentro del filtro, -1 fuera, 0 sin poner.
+                        readonly property int estado: Consulta.estadoEtiqueta(ventana.textoBusqueda,
+                                                                               modelData.nombre)
+                        width: ListView.view.width
+                        height: etiquetasMenu.altoFila
+                        color: sobreE.containsMouse ? tema.borde : "transparent"
+
+                        // Clic en el nombre: dentro, o quitar si ya lo estaba.
+                        MouseArea {
+                            id: sobreE
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: ventana.filtrarEtiqueta(filaE.modelData.nombre,
+                                                               filaE.estado === 1 ? 0 : 1)
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: tema.hueco
+                            width: parent.width - x - cuentaE.width - botonesE.width - tema.hueco * 2
+                            elide: Text.ElideRight
+                            text: filaE.modelData.nombre
+                            color: filaE.estado === 1 ? tema.seleccion
+                                 : filaE.estado === -1 ? tema.textoTenue : tema.texto
+                            font.strikeout: filaE.estado === -1
+                            font.pixelSize: tema.fuente * 0.95
+                        }
+                        Text {
+                            id: cuentaE
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: botonesE.left
+                            anchors.rightMargin: tema.hueco * 0.6
+                            text: filaE.modelData.n
+                            color: tema.textoTenue
+                            font.pixelSize: tema.fuente * 0.8
+                        }
+                        Row {
+                            id: botonesE
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: tema.hueco * 0.6
+                            spacing: tema.hueco * 0.3
+                            Repeater {
+                                model: [
+                                    { estado: 1, marca: "✓", pista: qsTr("filtrar por esta") },
+                                    { estado: -1, marca: "⊘", pista: qsTr("dejar fuera esta") }
+                                ]
+                                delegate: Rectangle {
+                                    id: interruptorE
+                                    required property var modelData
+                                    readonly property bool puesto: filaE.estado === modelData.estado
+                                    width: Math.round(tema.fuente * 1.7)
+                                    height: width
+                                    radius: tema.radio
+                                    color: puesto ? tema.seleccion : "transparent"
+                                    border.color: puesto ? tema.seleccion
+                                                : sobreI.containsMouse ? tema.textoTenue : tema.borde
+                                    border.width: 1
+                                    Component.onDestruction: ventana.pistas.ocultar(interruptorE)
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: interruptorE.modelData.marca
+                                        color: interruptorE.puesto ? tema.fondo : tema.textoTenue
+                                        font.pixelSize: tema.fuente * 0.9
+                                    }
+                                    MouseArea {
+                                        id: sobreI
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onContainsMouseChanged: containsMouse
+                                            ? ventana.pistas.mostrar(interruptorE, interruptorE.modelData.pista)
+                                            : ventana.pistas.ocultar(interruptorE)
+                                        onClicked: ventana.filtrarEtiqueta(filaE.modelData.nombre,
+                                            interruptorE.puesto ? 0 : interruptorE.modelData.estado)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    x: tema.hueco
+                    width: parent.width - tema.hueco * 2
+                    wrapMode: Text.WordWrap
+                    text: qsTr("✓ filtra por ella · ⊘ la deja fuera · otro clic la quita")
+                    color: tema.textoTenue
+                    font.pixelSize: tema.fuente * 0.78
                 }
             }
 

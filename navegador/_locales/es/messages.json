@@ -8,7 +8,7 @@
     "description": "Nombre de la extensión"
   },
   "extDescription": {
-    "message": "Guarda imágenes en tu biblioteca de Grimorio: con el clic derecho en cualquier web y con un botón en Instagram, TikTok y 4chan.",
+    "message": "Guarda imágenes en tu biblioteca de Grimorio: con el clic derecho en cualquier web y con un botón en Instagram, TikTok, X y 4chan.",
     "description": "Descripción de la extensión"
   },
   "menuGuardar": {
@@ -328,5 +328,43 @@
   },
   "ultimaEnCamino": {
     "message": "en camino"
+  },
+  "errorPagina": {
+    "message": "no pude leer la página"
+  },
+  "errorPaginaGrande": {
+    "message": "la página es demasiado grande para guardarla entera (más de 40 MB)"
+  },
+  "motivoXSinDatos": {
+    "message": "X no dio los datos del tuit"
+  },
+  "motivoXNoEsDeX": {
+    "message": "no es una foto de X"
+  },
+  "motivoDeQueTuit": {
+    "message": "no sé de qué tuit es"
+  },
+  "motivoXSinVideo": {
+    "message": "X no dio el vídeo"
+  },
+  "motivoXSinSesion": {
+    "message": "X no enseña ese tuit sin sesión"
+  },
+  "motivoXContesto": {
+    "message": "X contestó $n1$",
+    "description": "$1: código HTTP",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
+  },
+  "motivoXNoContesto": {
+    "message": "X no contestó ($n1$)",
+    "placeholders": {
+      "n1": {
+        "content": "$1"
+      }
+    }
   }
 }

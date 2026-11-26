@@ -28,8 +28,10 @@ English · [Español](README.es.md)
 
 - **Everything in one place.** Images (including PSD, AI, EPS, Krita, Sketch
   and RAW), video that plays when you hover over it, audio with its waveform
-  and spectrum, PDF with a viewer, and 3D models (STL, OBJ, PLY, glTF, 3MF,
-  and `.blend`/`.fbx` when Blender is installed).
+  and spectrum, PDF with a viewer, 3D models (STL, OBJ, PLY, glTF, 3MF,
+  and `.blend`/`.fbx` when Blender is installed) and **whole web pages**,
+  saved from the browser or by pasting their address, to read offline even
+  if the site changes or goes away.
 - **Effortless organizing.** Tags with groups and colors, ratings, notes,
   nested folders with colors and **smart folders** that fill themselves from
   a filter.

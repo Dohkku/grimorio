@@ -11,8 +11,9 @@
 //   una imagen sin archivo        se guarda y se importa (una captura, «copiar
 //                                 imagen» en el navegador)
 //   una URL http(s)               se descarga: si es una imagen o un vídeo, eso;
-//                                 si es una página, su imagen principal
-//                                 (og:image). La URL queda como origen.
+//                                 si es una página, la página entera, con sus
+//                                 estilos e imágenes dentro (ver pagina.h).
+//                                 La URL queda como origen.
 #pragma once
 #include <QImage>
 #include <QList>
@@ -75,8 +76,12 @@ private:
     QString dirTemporal() const;
     void guardarImagen(const QImage &img, const QString &carpeta, const QString &origen,
                        const QString &etiqueta = QString());
+    /// `paginaEntera`: si es una página, guardarla entera (pegar, soltar) y
+    /// no solo su imagen principal (un enlace desde la extensión).
     void bajar(const QUrl &url, const QString &carpeta, const QString &origen, int saltos,
-               const QImage &reserva, const QString &etiqueta = QString());
+               const QImage &reserva, const QString &etiqueta = QString(), bool paginaEntera = false);
+    void archivar(const QByteArray &html, const QString &tipo, const QUrl &url, const QString &carpeta,
+                  const QString &etiqueta);
     /// Un error: a la barra de estado y, si alguien espera, a quien espera.
     void mal(const QString &etiqueta, const QString &mensaje);
 

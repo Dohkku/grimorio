@@ -11,6 +11,7 @@
 #pragma once
 #include <QObject>
 #include <QSettings>
+#include <QTimer>
 
 class Ajustes : public QObject {
     Q_OBJECT
@@ -27,6 +28,10 @@ class Ajustes : public QObject {
     /// marcha solo al elegirlo, y un sonido que salta al pasar con las flechas
     /// por la galería sorprende. Se cambia con su botón o en ajustes.
     Q_PROPERTY(bool sonidoPanel READ sonidoPanel WRITE setSonidoPanel NOTIFY cambio)
+    /// Dónde está la barra del volumen, de 0 a 1, la misma en el panel y en el
+    /// visor. Se guarda la posición de la barra; el reproductor la pasa a
+    /// decibelios, porque el oído oye así.
+    Q_PROPERTY(qreal volumen READ volumen WRITE setVolumen NOTIFY cambio)
     /// Con el modo seguro puesto, lo marcado como +18 sale difuminado.
     Q_PROPERTY(bool modoSeguro READ modoSeguro WRITE setModoSeguro NOTIFY cambio)
     /// El nombre de cada elemento debajo de su celda. Apagado de fábrica:
@@ -64,11 +69,13 @@ class Ajustes : public QObject {
 
 public:
     explicit Ajustes(QObject *padre = nullptr);
+    ~Ajustes() override;
 
     qreal anchoLateral() const { return m_anchoLateral; }
     qreal anchoInspector() const { return m_anchoInspector; }
     bool videoAlPasar() const { return m_videoAlPasar; }
     bool sonidoPanel() const { return m_sonidoPanel; }
+    qreal volumen() const { return m_volumen; }
     bool modoSeguro() const { return m_modoSeguro; }
     bool verNombres() const { return m_verNombres; }
     bool verInspector() const { return m_verInspector; }
@@ -87,6 +94,7 @@ public:
     void setAnchoInspector(qreal v);
     void setVideoAlPasar(bool v);
     void setSonidoPanel(bool v);
+    void setVolumen(qreal v);
     void setModoSeguro(bool v);
     void setVerNombres(bool v);
     void setVerInspector(bool v);
@@ -115,6 +123,10 @@ private:
     qreal m_anchoInspector = 0;
     bool m_videoAlPasar = true;
     bool m_sonidoPanel = false;
+    qreal m_volumen = 1;
+    /// Arrastrando la barra llegan decenas de valores por segundo: al disco
+    /// va solo el último, un rato después de soltar.
+    QTimer m_guardarVolumen;
     bool m_modoSeguro = true;
     bool m_verNombres = false;
     bool m_verInspector = true;

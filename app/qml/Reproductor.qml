@@ -132,6 +132,8 @@ Item {
     /// multimedia de Qt 6.4 no corrige el tono al cambiar de ritmo.
     property real velocidad: 1
     readonly property var velocidades: [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]
+    /// Dónde está la barra del volumen, de 0 a 1. Lo que se le pide a la
+    /// salida sale de `ganancia()`.
     property real volumen: 1
     /// Bucle entre dos puntos, en milisegundos. -1 es «sin poner».
     property real puntoA: -1
@@ -655,7 +657,7 @@ Item {
         audioOutput: AudioOutput {
             id: salidaAudio
             muted: reproductor.silencio
-            volume: reproductor.volumen
+            volume: reproductor.ganancia(reproductor.volumen)
         }
         videoOutput: salidaVideo
     }
@@ -889,6 +891,23 @@ Item {
             color: tema.texto
             font.pixelSize: tema.fuente
         }
+    }
+
+    /// De la barra a lo que se le pide a la salida. `AudioOutput.volume` es
+    /// ganancia en línea recta, y el oído oye en decibelios: con la barra a
+    /// pelo, de la mitad hacia arriba casi no cambiaba nada y todo el cambio
+    /// se apelotonaba en el primer cuarto. Así cada tramo igual de barra es
+    /// el mismo salto en decibelios: 50 dB de punta a punta, y el último
+    /// pellizco baja en línea recta hasta el silencio, que en decibelios no
+    /// se alcanza nunca.
+    readonly property real rangoDb: 50
+    readonly property real codoSilencio: 0.05
+    function ganancia(v) {
+        if (v >= 1) return 1
+        if (v <= 0) return 0
+        const db = (Math.max(v, codoSilencio) - 1) * rangoDb
+        const g = Math.pow(10, db / 20)
+        return v < codoSilencio ? g * v / codoSilencio : g
     }
 
     Transporte {

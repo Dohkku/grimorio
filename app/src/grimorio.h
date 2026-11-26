@@ -53,6 +53,7 @@ enum GrimFamilia {
     GRIM_DOCUMENTO = 4,
     GRIM_TIPOGRAFIA = 5,
     GRIM_MODELO = 6,
+    GRIM_WEB = 7,
 };
 uint8_t grim_vista_familia(const GrimVista *v, size_t i);
 /// 1 si está marcado como contenido adulto.

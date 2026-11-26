@@ -7,7 +7,7 @@
 // traduce a algo que se pueda hacer.
 "use strict";
 
-importScripts("aviso.js");
+importScripts("aviso.js", "x-datos.js");
 
 const PROGRAMA = "com.grimorio.puerta";
 /// Por encima de esto no se mandan los bytes, se manda la dirección y la baja
@@ -16,7 +16,8 @@ const PROGRAMA = "com.grimorio.puerta";
 const TOPE_BYTES = 40 * 1024 * 1024;
 
 // Una sola entrada para todo: en una imagen o un vídeo guarda ese archivo; en
-// una página o un enlace, la imagen que los representa; en Instagram y en
+// la página, la página entera (pagina.js); en un enlace, la imagen que lo
+// representa, que la página de destino no está abierta; en Instagram y en
 // TikTok, lo que hay bajo el ratón, que el navegador no ve porque está tapado
 // por capas.
 chrome.runtime.onInstalled.addListener(() => {
@@ -137,10 +138,69 @@ async function marcar(tabId, bien) {
   setTimeout(() => chrome.action.setBadgeText({ text: "", tabId }), 3000);
 }
 
+/// Lo que se ve de la pestaña, para la miniatura de una página guardada. En
+/// JPEG, que una captura en PNG pesa diez veces más y es solo para reconocerla.
+async function capturar(tab) {
+  try {
+    return await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 80 });
+  } catch (_) {
+    // Las páginas del propio navegador no se dejan.
+    return "";
+  }
+}
+
+/// Un recurso de una página que se está guardando (ver pagina.js), con la
+/// sesión de quien mira y sin la política de orígenes de la página: los datos
+/// en una URL `data:`, o el texto de una hoja de estilo.
+async function bajarRecurso(url, { tope, texto }) {
+  const r = await fetch(url, { credentials: "include" });
+  if (!r.ok) return null;
+  const largo = Number(r.headers.get("content-length") || 0);
+  if (largo > tope) return null;
+  if (texto) return { texto: await r.text() };
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (bytes.length > tope) return null;
+  const tipo = (r.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
+  return { datos: `data:${tipo};base64,${base64(bytes)}` };
+}
+
+/// La página de la pestaña, entera, para leerla sin conexión.
+async function guardarPagina(tab, captura) {
+  let html;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["pagina.js"] });
+    const [r] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (opciones) => archivarPaginaGrimorio(document, {
+        ...opciones,
+        bajar: (url, o) => chrome.runtime.sendMessage({ tipo: "recurso", url, ...o }),
+      }),
+      args: [{ captura }],
+    });
+    html = r && r.result;
+  } catch (e) {
+    html = null;
+  }
+  const nombre = (tab.title || "").trim();
+  let resultados;
+  const bytes = typeof html === "string" ? new TextEncoder().encode(html) : null;
+  if (!bytes) {
+    resultados = [{ ok: false, error: textoGrimorio("errorPagina"), nombre }];
+  } else if (bytes.length > TOPE_BYTES) {
+    resultados = [{ ok: false, error: textoGrimorio("errorPaginaGrande"), nombre }];
+  } else {
+    const uno = await hablar({ accion: "traer", datos: base64(bytes), tipo: "text/html",
+                               nombre, origen: tab.url, carpeta: await carpetaElegida() });
+    resultados = [{ ...uno, nombre: uno.nombre || nombre }];
+  }
+  await apuntar(resultados);
+  return { ok: resultados[0].ok, resultados };
+}
+
 /// Las webs con script propio: el clic derecho lo atiende él, que sabe qué
-/// había bajo el ratón —Instagram y TikTok lo tapan con capas— o dónde está
-/// el original —4chan enseña una miniatura—.
-const RE_CON_BOTON = /^https:\/\/(www\.(instagram|tiktok)\.com|boards\.4chan(nel)?\.org)\//;
+/// había bajo el ratón —Instagram, TikTok y X lo tapan con capas— o dónde está
+/// el original —4chan y X enseñan una versión reducida—.
+const RE_CON_BOTON = /^https:\/\/(www\.(instagram|tiktok)\.com|boards\.4chan(nel)?\.org|((www|mobile)\.)?(x|twitter)\.com)\//;
 
 /// Lo que hace la entrada del clic derecho. Aparte del oyente para poder
 /// llamarla en las pruebas sin abrir un menú de verdad.
@@ -154,12 +214,16 @@ async function alPulsarMenu(info, tab) {
       return { ok: false, error: String(e.message || e) };
     }
   }
+  // La captura antes que el aviso: si no, el aviso sale en la foto.
+  const captura = !info.linkUrl && !info.mediaType && tab ? await capturar(tab) : "";
   if (tab) await avisarEn(tab, { estado: "en curso", titulo: textoGrimorio("avisoGuardando") });
   let r;
   if ((info.mediaType === "image" || info.mediaType === "video") && info.srcUrl) {
     r = await guardarLista([{ url: info.srcUrl, origen: info.pageUrl, nombre: tab && tab.title }]);
+  } else if (!info.linkUrl && tab) {
+    r = await guardarPagina(tab, captura);
   } else {
-    // Un enlace o la página: Grimorio busca su imagen principal (og:image).
+    // Un enlace: Grimorio busca la imagen principal de su página (og:image).
     const url = info.linkUrl || info.pageUrl;
     const uno = await hablar({ accion: "traer", url, origen: url, carpeta: await carpetaElegida() });
     const resultados = [{ ...uno, nombre: uno.nombre || (tab && tab.title) || "" }];
@@ -176,12 +240,31 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((m, de, responder) => {
+  if (m.tipo === "recurso") {
+    bajarRecurso(m.url, m).then(responder, () => responder(null));
+    return true;
+  }
   if (m.tipo === "mostrar") {
     hablar({ accion: "mostrar", id: m.id }).then(responder);
     return true;
   }
   if (m.tipo === "guardar") {
     guardarLista(m.lista).then(responder);
+    return true;
+  }
+  if (m.tipo === "x") {
+    // Los datos de un tuit, del servicio con el que X pinta los incrustados.
+    // Se piden aquí: desde la página de X ese servicio no contesta (CORS).
+    (async () => {
+      try {
+        const r = await fetch(direccionSindicacion(m.id), { credentials: "omit" });
+        if (!r.ok) return responder({ motivo: textoGrimorio("motivoXContesto", r.status) });
+        const datos = await r.json();
+        responder(datos && datos.__typename === "Tweet" ? { datos } : { motivo: textoGrimorio("motivoXSinSesion") });
+      } catch (e) {
+        responder({ motivo: textoGrimorio("motivoXNoContesto", e.message) });
+      }
+    })();
     return true;
   }
   if (m.tipo === "cargadas" && de.tab) {

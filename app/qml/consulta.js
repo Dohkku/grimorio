@@ -50,7 +50,7 @@ var CAMPOS = {
 /// no están aquí (números, colores, `7d`) se escriben igual en los dos.
 var VALORES = {
     tipo: { imagen: "image", video: "video", audio: "audio", modelo: "model",
-            documento: "document", tipografia: "font", raw: "raw" },
+            documento: "document", tipografia: "font", raw: "raw", web: "web" },
     orden: { recientes: "newest", antiguos: "oldest", nombre: "name", peso: "size",
              estrellas: "stars", azar: "random", manual: "manual" },
     fecha: { hoy: "today", ayer: "yesterday", "año": "year" },
@@ -156,6 +156,69 @@ function alternar(texto, campo, valor) {
     return salida.join(" ")
 }
 
+/// Si un trozo es una sola etiqueta, `{nombre, fuera}`; si no, null. Vale
+/// `#x`, `etiqueta:x` (o `tag:x`) y lo mismo con `-` delante, que la deja
+/// fuera. Las de «cualquiera de» (`#a|b`) no cuentan como una sola: esas las
+/// escribió alguien a mano y los clics no las tocan.
+function etiquetaDe(trozo) {
+    var fuera = trozo.charAt(0) === "-"
+    var t = fuera ? trozo.substring(1) : trozo
+    var nombre = null
+    if (t.charAt(0) === "#") nombre = t.substring(1)
+    else if (esCampo(t, "etiqueta")) nombre = valorDe(t)
+    if (nombre === null || nombre.length === 0 || nombre.indexOf("|") >= 0) return null
+    return { nombre: nombre, fuera: fuera }
+}
+
+/// 1 si se filtra por la etiqueta, -1 si se deja fuera, 0 si no está.
+function estadoEtiqueta(texto, nombre) {
+    var t = trozos(texto)
+    for (var i = 0; i < t.length; ++i) {
+        var e = etiquetaDe(t[i])
+        if (e && e.nombre === nombre) return e.fuera ? -1 : 1
+    }
+    return 0
+}
+
+/// Pone la etiqueta en ese estado (1 filtrar, -1 dejar fuera, 0 quitar).
+/// Va en el sitio donde ya estaba, o al final; cualquier otra aparición de la
+/// misma etiqueta se quita, para que no queden `#x -#x` a la vez.
+function ponerEtiqueta(texto, nombre, estado) {
+    var t = trozos(texto)
+    var salida = []
+    var nuevo = estado === 0 ? "" : (estado < 0 ? "-" : "") + comoEtiqueta(nombre)
+    var puesto = false
+    for (var i = 0; i < t.length; ++i) {
+        var e = etiquetaDe(t[i])
+        if (e && e.nombre === nombre) {
+            if (nuevo.length > 0 && !puesto) { salida.push(nuevo); puesto = true }
+        } else {
+            salida.push(t[i].indexOf(" ") >= 0 ? '"' + t[i] + '"' : t[i])
+        }
+    }
+    if (nuevo.length > 0 && !puesto) salida.push(nuevo)
+    return salida.join(" ")
+}
+
+/// Quita del buscador todas las etiquetas sueltas, dentro y fuera. Las de
+/// «cualquiera de» se quedan: no las puso ningún clic.
+function quitarEtiquetas(texto) {
+    var t = trozos(texto)
+    var salida = []
+    for (var i = 0; i < t.length; ++i)
+        if (!etiquetaDe(t[i])) salida.push(t[i].indexOf(" ") >= 0 ? '"' + t[i] + '"' : t[i])
+    return salida.join(" ")
+}
+
+/// Cuántas etiquetas hay puestas en el buscador, dentro y fuera.
+function cuantasEtiquetas(texto) {
+    var t = trozos(texto)
+    var n = 0
+    for (var i = 0; i < t.length; ++i)
+        if (etiquetaDe(t[i])) ++n
+    return n
+}
+
 /// Las muestras del filtro de color. Son valores que se buscan, no colores de
 /// la interfaz: por eso viven aquí como datos y no en el tema. Doce tonos que
 /// cubren la rueda y los neutros, que es lo que se busca de verdad —«algo
@@ -206,9 +269,9 @@ function nombreDe(texto) {
     var en = Qt.uiLanguage === "en"
     var FAMILIAS = en
         ? { imagen: "images", video: "videos", audio: "audio", modelo: "3D",
-            documento: "documents", tipografia: "fonts", raw: "RAW" }
+            documento: "documents", tipografia: "fonts", raw: "RAW", web: "web pages" }
         : { imagen: "imágenes", video: "vídeos", audio: "audio", modelo: "3D",
-            documento: "documentos", tipografia: "fuentes", raw: "RAW" }
+            documento: "documentos", tipografia: "fuentes", raw: "RAW", web: "páginas web" }
     var o = en ? " or " : " o "
     var partes = []
     var t = trozos(texto)
@@ -257,6 +320,7 @@ var SUGERENCIAS = [
     { claves: ["3d", "modelo", "stl", "malla", "model", "mesh"], texto: "tipo: 3D", en: "type: 3D", token: "tipo:modelo", icono: "forma" },
     { claves: ["pdf", "documento", "document"], texto: "tipo: documentos", en: "type: documents", token: "tipo:documento", icono: "pegar" },
     { claves: ["fuente", "tipografía", "tipografia", "letra", "font", "typeface"], texto: "tipo: fuentes", en: "type: fonts", token: "tipo:tipografia", icono: "etiqueta" },
+    { claves: ["web", "webs", "página", "páginas", "pagina", "paginas", "html", "page", "pages", "website"], texto: "tipo: páginas web", en: "type: web pages", token: "tipo:web", icono: "externo" },
     { claves: ["hoy", "today"], texto: "importado hoy", en: "imported today", token: "fecha:hoy", icono: "fecha" },
     { claves: ["ayer", "yesterday"], texto: "importado ayer", en: "imported yesterday", token: "fecha:ayer", icono: "fecha" },
     { claves: ["semana", "reciente", "recientes", "week", "recent"], texto: "importado esta semana", en: "imported this week", token: "fecha:7d", icono: "fecha" },

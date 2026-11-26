@@ -114,13 +114,23 @@ Column {
                     font.pixelSize: tema.fuente * 0.9
                 }
 
+                // Clic: filtrar por ella. Clic derecho: filtrar, dejar fuera
+                // o quitarla del filtro.
                 MouseArea {
                     id: fichaRaton
                     anchors.fill: parent
                     anchors.rightMargin: cruz.width
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: raiz.buscar(ficha.modelData)
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function (e) {
+                        if (e.button === Qt.RightButton) {
+                            const p = mapToItem(null, e.x, e.y)
+                            ventana.menuEtiqueta(ficha.modelData, p.x, p.y)
+                        } else {
+                            raiz.buscar(ficha.modelData)
+                        }
+                    }
                 }
 
                 Item {

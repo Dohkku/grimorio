@@ -7,6 +7,43 @@ Grimorio ships it inside and shows it when you open a new version after
 updating (and in Settings → about → «what's new»). Each version is a
 `## X.Y.Z` section; what goes under it is plain Markdown.
 
+## 0.1.22
+
+- **Save whole web pages to read offline.** Paste a page address into
+  Grimorio (Ctrl+V) or drop a link on the window, and it keeps the whole page
+  in a single `.html` file, with its styles, images and fonts inside, so it
+  still opens when you are offline or the site changes. Before, it only kept
+  the page's preview image. Sites built entirely with JavaScript can come out
+  incomplete this way; for those, right-click the page in your browser and
+  choose «Save to Grimorio»: the browser extension keeps the page as you see
+  it. Web pages are a new type, with their own «web pages» filter
+  (`type:web`) and the page's preview image (or a screenshot, from the
+  extension) as thumbnail. From the viewer, the right-click menu or the
+  details panel you can «read the saved copy» in your browser or «open the
+  original website».
+- **Save photos and videos from X.** The browser extension now shows the
+  «to Grimorio» button on X (Twitter) too, and right click saves what is under
+  the mouse: photos at their original size and videos at the largest quality
+  X offers. Update the browser extension to get both.
+- **Volume control in the details panel.** Videos playing in the panel on the
+  right now have a volume bar next to the mute button: drag it, click it or
+  use the mouse wheel over it.
+- **Volume that sounds right.** The volume bar now follows how the ear
+  hears: each step sounds like the same change, from loud to quiet. Before,
+  most of the bar barely changed anything and all the change was in the last
+  quarter.
+- **Volume is remembered.** The volume you choose is the same in the panel
+  and in the viewer, and stays after closing Grimorio. Before, it went back
+  to the maximum every time.
+- **Filter and exclude tags with clicks.** The filter row has a new «tags»
+  button: search for a tag and press ✓ to show only items with it, or ⊘ to
+  hide them. You can combine several. Right-clicking a tag in the details
+  panel also lets you filter by it or exclude it. It writes `#tag` and
+  `-#tag` in the search box, so you can still type them by hand.
+- **Items without a preview show their own name.** After importing
+  something new, a file without a thumbnail could show the name of the one
+  that was in its place before.
+
 ## 0.1.21
 
 - **Sound follows the system output with Qt 6.10 too.** On distributions with

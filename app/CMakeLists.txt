@@ -3,7 +3,7 @@
 # Qt se enlaza SIEMPRE de forma dinámica: la licencia LGPLv3 lo exige para poder
 # distribuir el binario sin abrir el código. Ver docs/DEPENDENCIAS.md.
 cmake_minimum_required(VERSION 3.21)
-project(grimorio VERSION 0.1.21 LANGUAGES CXX)
+project(grimorio VERSION 0.1.22 LANGUAGES CXX)
 
 # La versión que se enseña (ajustes, «acerca de», propiedades del .exe). Por
 # defecto la del `project()`; al publicar, la integración continua la saca de
@@ -115,6 +115,7 @@ qt_add_executable(grimorio
     src/portapapeles.cpp
     src/salida.cpp
     src/traer.cpp
+    src/pagina.cpp
     src/captura.cpp
     src/recorte.cpp
     src/puerta.cpp
@@ -311,6 +312,13 @@ qt_add_executable(prueba_filas pruebas/filas_test.cpp src/filas.cpp)
 target_include_directories(prueba_filas PRIVATE src)
 target_link_libraries(prueba_filas PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME filas COMMAND prueba_filas)
+
+# Guardar una página entera desde su dirección, sin red: limpiar, recoger y
+# montar (ver src/pagina.h).
+qt_add_executable(prueba_pagina pruebas/pagina_test.cpp src/pagina.cpp)
+target_include_directories(prueba_pagina PRIVATE src)
+target_link_libraries(prueba_pagina PRIVATE Qt6::Core Qt6::Network Qt6::Test)
+add_test(NAME pagina COMMAND prueba_pagina)
 
 # Lo que decide si sale el aviso de versión nueva, sin red.
 qt_add_executable(prueba_version pruebas/version_test.cpp)
